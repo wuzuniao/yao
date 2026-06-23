@@ -1,0 +1,122 @@
+{
+  "项目根目录": {
+    "backend": {
+      "描述": "FastAPI后端项目目录",
+      "app": {
+        "描述": "核心源码目录",
+        "__init__.py": "Python包初始化文件",
+        "api": {
+          "描述": "路由层，负责接收请求、参数校验、调用service、返回响应",
+          "__init__.py": "API路由聚合文件",
+          "v1": {
+            "描述": "版本化接口，存放v1版本的API接口定义",
+            "__init__.py": "v1路由初始化文件",
+            "users.py": "用户模块API接口"
+          }
+        },
+        "core": {
+          "描述": "核心配置与工具",
+          "config.py": "统一读取.env配置，自动切换开发/生产环境",
+          "database.py": "数据库连接引擎（SQLAlchemy异步）",
+          "security.py": "加密、JWT等安全相关工具"
+        },
+        "models": {
+          "描述": "SQLAlchemy ORM模型，对应数据库表结构",
+          "__init__.py": "模型包初始化文件",
+          "user.py": "用户数据表模型"
+        },
+        "schemas": {
+          "描述": "Pydantic模型，负责请求/响应校验",
+          "__init__.py": "Schema包初始化文件",
+          "user.py": "用户相关Schema"
+        },
+        "services": {
+          "描述": "业务逻辑层，供api层调用，与框架无关",
+          "__init__.py": "服务包初始化文件",
+          "user_service.py": "用户业务逻辑服务"
+        },
+        "utils": {
+          "描述": "通用工具函数，非业务相关",
+          "__init__.py": "工具包初始化文件",
+          "logger.py": "日志配置与工具"
+        },
+        "main.py": "FastAPI应用入口，负责挂载路由和中间件"
+      },
+      "logs": {
+        "描述": "本地运行日志目录，.gitignore忽略"
+      },
+      ".env.dev": "Windows开发环境变量配置（数据库连接等）",
+      ".env.prod": "Linux生产环境变量配置（不提交Git）",
+      "requirements.txt": "Python依赖清单",
+      "run.py": "可选，替代uvicorn命令的启动入口"
+    },
+    "frontend": {
+      "描述": "uni-app前端项目目录（HBuilder X打开此目录）",
+      "src": {
+        "描述": "源码目录",
+        "api": {
+          "描述": "接口请求封装",
+          "request.js": "axios/uni.request统一请求封装",
+          "modules": {
+            "描述": "按业务模块划分API请求",
+            "user.js": "用户相关API"
+          }
+        },
+        "assets": {
+          "描述": "静态资源目录",
+          "images": {
+            "描述": "图片资源"
+          },
+          "styles": {
+            "描述": "全局样式，如common.scss、variables.scss"
+          }
+        },
+        "components": {
+          "描述": "全局公共组件"
+        },
+        "pages": {
+          "描述": "页面目录，按业务模块分包",
+          "index": {
+            "描述": "主包首页",
+            "index.vue": "首页组件"
+          },
+          "user": {
+            "描述": "分包：用户模块",
+            "profile.vue": "个人信息页面",
+            "settings.vue": "设置页面"
+          }
+        },
+        "store": {
+          "描述": "状态管理（Vuex/Pinia）",
+          "modules": {
+            "描述": "状态管理模块"
+          }
+        },
+        "utils": {
+          "描述": "前端工具函数"
+        },
+        "App.vue": "应用根组件",
+        "main.js": "应用入口文件"
+      },
+      "static": {
+        "描述": "非编译静态资源，不经过webpack处理"
+      },
+      ".env.dev": "前端开发环境变量（API_BASE）",
+      ".env.prod": "前端生产环境变量",
+      "manifest.json": "微信小程序/App配置文件",
+      "pages.json": "路由配置文件，pages与subPackages注册",
+      "uni.scss": "全局可用的SCSS变量",
+      "package.json": "npm依赖配置"
+    },
+    "scripts": {
+      "描述": "本地开发辅助脚本",
+      "dev.bat": "Windows一键启动后端脚本",
+      "init_db.py": "初始化数据库表结构脚本",
+      "test_db_connection.py": "数据库连接测试脚本"
+    },
+    ".gitignore": "Git忽略文件配置",
+    "README.md": "项目说明文档",
+    "目录结构.json": "本项目目录结构说明文件",
+    "更新记录.md": "项目功能更新记录文件"
+  }
+}

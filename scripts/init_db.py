@@ -1,0 +1,15 @@
+import asyncio
+import sys
+sys.path.insert(0, '..')
+
+from backend.app.core.database import engine, Base
+
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("数据库表初始化完成！")
+
+
+if __name__ == "__main__":
+    asyncio.run(init_db())
