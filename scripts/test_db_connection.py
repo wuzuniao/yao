@@ -5,7 +5,7 @@ from sqlalchemy import text
 async def test_db_connection():
     # 先连接到服务器而不指定数据库
     SERVER_URL = "mysql+asyncmy://root:root@127.0.0.1:3306?charset=utf8mb4"
-    DATABASE_URL = "mysql+asyncmy://root:root@127.0.0.1:3306/mydb?charset=utf8mb4"
+    DATABASE_URL = "mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4"
     
     try:
         print("正在连接数据库服务器...")
@@ -27,22 +27,22 @@ async def test_db_connection():
             databases = [row[0] for row in result.fetchall()]
             print(f"[OK] 当前数据库列表: {', '.join(databases)}")
             
-            # 检查mydb是否存在
-            if 'mydb' not in databases:
-                print("\n正在创建 'mydb' 数据库...")
-                await conn.execute(text("CREATE DATABASE IF NOT EXISTS mydb DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+            # 检查wuzuniao_yao是否存在
+            if 'wuzuniao_yao' not in databases:
+                print("\n正在创建 'wuzuniao_yao' 数据库...")
+                await conn.execute(text("CREATE DATABASE IF NOT EXISTS wuzuniao_yao DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci"))
                 await conn.commit()
-                print("[OK] 数据库 'mydb' 创建成功！")
+                print("[OK] 数据库 'wuzuniao_yao' 创建成功！")
             else:
-                print("\n[OK] 数据库 'mydb' 已存在")
+                print("\n[OK] 数据库 'wuzuniao_yao' 已存在")
         
         await server_engine.dispose()
         
-        # 连接到mydb数据库验证
-        print("\n正在连接到 'mydb' 数据库...")
+        # 连接到wuzuniao_yao数据库验证
+        print("\n正在连接到 'wuzuniao_yao' 数据库...")
         db_engine = create_async_engine(DATABASE_URL, echo=False)
         async with db_engine.connect() as conn:
-            print("[OK] 'mydb' 数据库连接成功！")
+            print("[OK] 'wuzuniao_yao' 数据库连接成功！")
         
         await db_engine.dispose()
         print("\n测试完成！")
