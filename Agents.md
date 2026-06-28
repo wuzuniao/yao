@@ -81,7 +81,24 @@
 
 ---
 
-## 4. 项目文档同步（强制）
+## 4. 新会话初始化要求（强制）
+
+每次新会话开启时，必须首先完成以下初始化步骤：
+
+1. **检查并加载核心文档**
+   - 检查上下文中是否存在 `d:\wuzuniao\yao\Agents.md`
+   - 检查上下文中是否存在 `d:\wuzuniao\yao\目录结构.json`
+   - 若不存在或不确定，必须使用 Read 工具重新读取这两个文件
+   - 确保使用的是这两个文档的最新版本
+
+2. **理解项目状态**
+   - 基于加载的 Agents.md 理解项目约束和编码规范
+   - 基于目录结构.json 了解当前项目结构
+   - 查阅更新记录.md 了解最近的项目变更
+
+---
+
+## 5. 项目文档同步（强制）
 项目根目录下存在以下两个核心文档，**每次完成功能开发或修改后，必须同步更新它们**：
 
 - **`目录结构.json`**：记录当前项目的完整目录树及每个文件夹/文件的作用说明。任何新增、删除、移动或重命名文件/文件夹的操作，都必须在此文件中同步更新，保持与实际结构严格一致。
@@ -91,9 +108,9 @@
 
 ---
 
-## 5. 编码规范（具体技术细节）
+## 6. 编码规范（具体技术细节）
 
-### 5.1 Python（后端）
+### 6.1 Python（后端）
 - **Python 3.14.2**，遵循 PEP 8，使用 `black`（行宽 100）和 `isort` 格式化。
 - **类型注解**：所有函数参数和返回值必须添加类型注解（`typing` 模块或 `from __future__ import annotations`）。
 - **异步**：使用 `async/await`（FastAPI 原生支持）。数据库驱动使用 `asyncmy`（开发环境）或 `mariadb` 异步版（生产）。
@@ -109,7 +126,7 @@
   - 校验使用 `@field_validator`（v2）。
 - **路由**：`APIRouter(prefix="/api/v1")`，每个模块独立文件。
 
-### 5.2 Vue 3 / uni-app（前端）
+### 6.2 Vue 3 / uni-app（前端）
 - **语言**：JavaScript（组合式 API，`<script setup>` 语法）。
 - **组件命名**：PascalCase（如 `BaseButton.vue`）。
 - **样式**：SCSS，BEM 命名（`block__element--modifier`），全局变量在 `uni.scss` 或 `assets/styles/variables.scss`。
@@ -119,7 +136,7 @@
 - **微信 API**：使用 `uni` 命名空间（如 `uni.request`），条件编译 `#ifdef MP-WEIXIN` 处理平台差异。
 - **性能**：避免在 `onLoad` 中重操作，合理使用下拉刷新和滚动加载。
 
-### 5.3 MariaDB（数据库）
+### 6.3 MariaDB（数据库）
 - **字符集**：`utf8mb4`，排序规则 `utf8mb4_unicode_ci`。
 - **表设计**：必须包含 `id`（BIGINT AUTO_INCREMENT）、`created_at`（DATETIME DEFAULT CURRENT_TIMESTAMP）、`updated_at`（DATETIME ON UPDATE CURRENT_TIMESTAMP）。
 - **索引**：高频查询字段建普通索引，外键不设物理约束（应用层保证引用完整性），但为外键字段建索引。
@@ -127,7 +144,7 @@
 
 ---
 
-## 6. API 设计规范
+## 7. API 设计规范
 - **URL**：`/api/v1/{resource}`（复数）。
 - **方法**：GET（列表/详情）、POST、PUT、PATCH、DELETE 对应 CRUD。
 - **分页**：`?page=1&limit=20`，响应返回 `total`、`items`。
@@ -142,7 +159,7 @@
 - **认证**：JWT Bearer Token，过期 7 天，刷新待定。
 - **错误码**：非 0 表示错误，msg 不暴露敏感信息。
 
-## 7. 环境配置与切换
+## 8. 环境配置与切换
 
 - **开发（Windows）**：
   - 后端 `.env.dev`：`DATABASE_URL=mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4`
@@ -156,7 +173,7 @@
   - 后端：`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`（开发），生产使用容器启动。
   - 前端：`npm run dev:mp-weixin`（开发）/ `npm run build:mp-weixin`（构建）
 
-## 8. 成功标准与质量门禁
+## 9. 成功标准与质量门禁
 
 完成任何代码变更后，AI 应自检：
 
@@ -170,7 +187,7 @@
 
 **如果上述任何项未通过，必须先修正再提交。**
 
-## 9. AI 特别约束（禁止事项）
+## 10. AI 特别约束（禁止事项）
 
 - **禁止**生成测试代码（除非用户明确要求）。
 - **禁止**引入图片、字体等二进制资源。
@@ -180,22 +197,17 @@
 - **必须**使用简体中文与用户交流，包括代码注释、日志消息、提交信息等所有自然语言内容（代码本身除外）。
 - **必须**遵守根目录下 `design_wise.md` 中的额外约定（若存在）。
 
-## 10. 参考文档（查阅优先级：高→低）
+## 11. 参考文档（查阅优先级：高→低）
 
 1. 官方文档（链接见第 2 节）—— **必须首先查阅**
 2. 本项目已有的代码（遵循现有模式）
 3. 社区通用最佳实践（仅当官方文档未覆盖时）
 
-## 11. 提交与版本控制
+## 12. 提交与版本控制
 
 - Git 忽略：`__pycache__/`、`*.pyc`、`node_modules/`、`unpackage/`、`logs/`、`.env.prod`。
 - 提交信息格式：`<type>(<scope>): <subject>`，type 包括 `feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`chore`。
 
-**最后更新**：2026-06-26
-**维护者**：无足鸟
-**变更记录**：
-- 2026-06-26：合并 CLAUDE.md 通用行为指南至第 3 节核心原则，优化表述并增强约束力；移除对 CLAUDE.md 的交叉引用，消除文档冗余；新增简体中文交流要求。
-- 2026-06-25：数据库名修正为 `wuzuniao_yao`，并明确数据库结构为演进式设计，允许后续修改。
 
 ---
 

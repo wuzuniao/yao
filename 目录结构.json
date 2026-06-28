@@ -42,6 +42,11 @@
         },
         "main.py": "FastAPI应用入口，负责挂载路由和中间件"
       },
+      "sql": {
+        "描述": "数据库SQL脚本目录",
+        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本",
+        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本"
+      },
       "logs": {
         "描述": "本地运行日志目录，.gitignore忽略"
       },
