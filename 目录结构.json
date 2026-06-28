@@ -59,25 +59,11 @@
       "描述": "uni-app前端项目目录（HBuilder X打开此目录）",
       "src": {
         "描述": "源码目录",
-        "api": {
-          "描述": "接口请求封装",
-          "request.js": "axios/uni.request统一请求封装",
-          "modules": {
-            "描述": "按业务模块划分API请求",
-            "user.js": "用户相关API"
-          }
-        },
         "assets": {
           "描述": "静态资源目录",
           "images": {
-            "描述": "图片资源"
-          },
-          "styles": {
-            "描述": "全局样式，如common.scss、variables.scss"
+            "描述": "图片资源，包含图标、按钮等图片文件"
           }
-        },
-        "components": {
-          "描述": "全局公共组件"
         },
         "pages": {
           "描述": "页面目录，按业务模块分包",
@@ -91,27 +77,17 @@
             "settings.vue": "设置页面"
           }
         },
-        "store": {
-          "描述": "状态管理（Vuex/Pinia）",
-          "modules": {
-            "描述": "状态管理模块"
-          }
-        },
-        "utils": {
-          "描述": "前端工具函数"
-        },
         "App.vue": "应用根组件",
-        "main.js": "应用入口文件"
-      },
-      "static": {
-        "描述": "非编译静态资源，不经过webpack处理"
+        "main.js": "应用入口文件",
+        "manifest.json": "微信小程序/App配置文件",
+        "pages.json": "路由配置文件，pages与subPackages注册",
+        "uni.scss": "全局可用的SCSS变量"
       },
       ".env.dev": "前端开发环境变量（API_BASE）",
-      ".env.prod": "前端生产环境变量",
-      "manifest.json": "微信小程序/App配置文件",
-      "pages.json": "路由配置文件，pages与subPackages注册",
-      "uni.scss": "全局可用的SCSS变量",
-      "package.json": "npm依赖配置"
+      "index.html": "HTML入口文件",
+      "package.json": "npm依赖配置",
+      "package-lock.json": "npm依赖锁定文件",
+      "vite.config.js": "Vite构建工具配置"
     },
     "scripts": {
       "描述": "本地开发辅助脚本",

@@ -3,7 +3,9 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "首页"
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "首页",
+        "backgroundColor": "#FFFFFF"
       }
     }
   ],

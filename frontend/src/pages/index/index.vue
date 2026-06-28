@@ -1,20 +1,341 @@
 <template>
-  <view class="container">
-    <text>首页</text>
+  <view class="index-page">
+    <view class="index-page__frame">
+      <view class="index-page__top-bar">
+        <view class="index-page__notice-button">
+          <image class="index-page__notice-icon" :src="noticeIcon" mode="aspectFit" />
+        </view>
+      </view>
+
+      <view class="index-page__main-canvas">
+        <view class="index-page__hero">
+          <view class="index-page__primary-card">
+            <view class="index-page__primary-copy">
+              <text class="index-page__primary-title">按时吃药</text>
+              <text class="index-page__primary-desc">让您的健康步入正轨。</text>
+            </view>
+            <view class="index-page__status-badge">
+              <view class="index-page__status-dot"></view>
+              <text class="index-page__status-text">进行中</text>
+            </view>
+          </view>
+
+          <view class="index-page__secondary-card">
+            <view class="index-page__secondary-copy">
+              <text class="index-page__secondary-title">每日饮水</text>
+              <text class="index-page__secondary-desc">下个提醒: 14:00</text>
+            </view>
+            <view class="index-page__secondary-button">
+              <view class="index-page__secondary-button-line"></view>
+            </view>
+          </view>
+        </view>
+
+        <view class="index-page__checkin-shell">
+          <view class="index-page__checkin-button">
+            <image class="index-page__checkin-icon" :src="checkinIcon" mode="aspectFit" />
+            <text class="index-page__checkin-text">立即打卡</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="index-page__bottom-nav">
+        <view class="index-page__nav-item index-page__nav-item--active">
+          <image class="index-page__nav-icon index-page__nav-icon--home" :src="homeActiveIcon" mode="aspectFit" />
+          <text class="index-page__nav-text index-page__nav-text--active">首页</text>
+        </view>
+
+        <view class="index-page__nav-item">
+          <image class="index-page__nav-icon index-page__nav-icon--record" :src="recordInactiveIcon" mode="aspectFit" />
+          <text class="index-page__nav-text">记录</text>
+        </view>
+
+        <view class="index-page__nav-item">
+          <image class="index-page__nav-icon index-page__nav-icon--settings" :src="settingsInactiveIcon" mode="aspectFit" />
+          <text class="index-page__nav-text">设置</text>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
-<script>
-export default {
-  data() {
-    return {}
-  },
-  methods: {}
-}
+<script setup>
+import noticeInactiveIcon from '../../assets/images/tongzhi_0.png'
+import noticeActiveIcon from '../../assets/images/tongzhi_1.png'
+import checkinInactiveIcon from '../../assets/images/daka_0.png'
+import checkinActiveIcon from '../../assets/images/daka_1.png'
+import homeActiveIcon from '../../assets/images/dh_shouye_1.png'
+import recordInactiveIcon from '../../assets/images/dh_jilu_0.png'
+import settingsInactiveIcon from '../../assets/images/dh_shezhi_0.png'
+
+const hasNotification = false
+const hasCheckedIn = false
+
+const noticeIcon = hasNotification ? noticeActiveIcon : noticeInactiveIcon
+const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
 </script>
 
-<style>
-.container {
-  padding: 20px;
+<style lang="scss">
+.index-page {
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.index-page__frame {
+  position: relative;
+  min-height: 884px;
+  padding-top: 17px;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.index-page__top-bar {
+  position: absolute;
+  top: 17px;
+  left: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+.index-page__notice-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.index-page__notice-icon {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.index-page__main-canvas {
+  min-height: 884px;
+  padding: 96px 24px 272px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 113px;
+}
+
+.index-page__hero {
+  width: 342px;
+  padding-top: 32px;
+  box-sizing: border-box;
+}
+
+.index-page__primary-card {
+  position: relative;
+  width: 342px;
+  height: 94px;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 32px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.index-page__primary-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.index-page__primary-title {
+  color: #0e0f0c;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+.index-page__primary-desc {
+  margin-top: 4px;
+  color: #454745;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.index-page__status-badge {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  height: 28px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background: #9fe870;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.index-page__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #2ead4b;
+}
+
+.index-page__status-text {
+  color: #2e6900;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.index-page__secondary-card {
+  margin-top: -32px;
+  width: 342px;
+  height: 85px;
+  padding: 32px 16px 12px;
+  box-sizing: border-box;
+  border-radius: 0 0 32px 32px;
+  background: #f3f3f4;
+  box-shadow: inset 0 0 0 1px #e2e2e2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.index-page__secondary-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.index-page__secondary-title {
+  color: #0e0f0c;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.index-page__secondary-desc {
+  color: #454745;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+
+.index-page__secondary-button {
+  width: 24px;
+  height: 18px;
+  padding: 4px 4px 10px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.index-page__secondary-button-line {
+  width: 16px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #454745;
+}
+
+.index-page__checkin-shell {
+  width: 342px;
+  padding: 32px 75px 0;
+  box-sizing: border-box;
+}
+
+.index-page__checkin-button {
+  width: 192px;
+  height: 192px;
+  border-radius: 9999px;
+  background: #d03238;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.index-page__checkin-icon {
+  width: 32px;
+  height: 36px;
+  margin-top: 50px;
+  display: block;
+}
+
+.index-page__checkin-text {
+  margin-top: 32px;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.index-page__bottom-nav {
+  position: absolute;
+  left: 50%;
+  bottom: 15px;
+  transform: translateX(-50%);
+  width: 351px;
+  height: 86px;
+  padding: 8px 25.5px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow:
+    0 4px 6px -4px rgba(0, 0, 0, 0.1),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px #e2e2e2;
+  display: flex;
+  align-items: center;
+  gap: 35px;
+}
+
+.index-page__nav-item {
+  width: 76px;
+  height: 68px;
+  padding: 12px 24px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.index-page__nav-item--active {
+  height: 66px;
+  background: #9fe870;
+}
+
+.index-page__nav-icon {
+  display: block;
+}
+
+.index-page__nav-icon--home {
+  width: 16px;
+  height: 18px;
+}
+
+.index-page__nav-icon--record {
+  width: 18px;
+  height: 20px;
+}
+
+.index-page__nav-icon--settings {
+  width: 21px;
+  height: 24px;
+}
+
+.index-page__nav-text {
+  color: #454745;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.index-page__nav-text--active {
+  color: #2f6c00;
 }
 </style>
