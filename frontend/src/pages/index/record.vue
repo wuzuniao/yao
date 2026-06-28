@@ -29,6 +29,7 @@
             v-for="(day, index) in calendarDays"
             :key="index"
             class="record-page__calendar-cell"
+            @click="handleSelectDay(day)"
           >
             <template v-if="day">
               <view
@@ -56,7 +57,7 @@
       <view class="record-page__list">
         <view class="record-page__list-header">
           <image class="record-page__list-icon" :src="jiluXqIcon" mode="aspectFit" />
-          <text class="record-page__list-title">6月15日</text>
+          <text class="record-page__list-title">{{ selectedDate }}</text>
         </view>
 
         <view class="record-page__list-items">
@@ -154,6 +155,24 @@ const calendarDays = ref([
 
 function handlePrevMonth() {
   uni.showToast({ title: '上一月', icon: 'none' })
+}
+
+// 当前选中日期文本：与日历 isSelected 状态联动，初始匹配 calendarDays 中 isSelected=true 的 16 日
+const selectedDate = ref('6月16日')
+
+/**
+ * 日历单元格点击选中处理
+ * - day 为 null（月首尾占位空格）直接返回，不处理
+ * - 清除所有日期的 isSelected，将点击日期置为选中
+ * - 同步更新列表标题为"6月{date}日"
+ */
+function handleSelectDay(day) {
+  if (!day) return
+  calendarDays.value.forEach((d) => {
+    if (d) d.isSelected = false
+  })
+  day.isSelected = true
+  selectedDate.value = `6月${day.date}日`
 }
 
 function handleNextMonth() {
