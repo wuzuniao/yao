@@ -7,6 +7,38 @@
         "navigationBarTitleText": "首页",
         "backgroundColor": "#FFFFFF"
       }
+    },
+    {
+      "path": "pages/index/record",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "用药记录",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    {
+      "path": "pages/index/settings",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "设置",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    {
+      "path": "pages/index/notification",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "通知方式",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    {
+      "path": "pages/index/plan",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "制定计划",
+        "backgroundColor": "#FFFFFF"
+      }
     }
   ],
   "subPackages": [
@@ -20,9 +52,43 @@
           }
         },
         {
-          "path": "settings",
+          "path": "login",
           "style": {
-            "navigationBarTitleText": "设置"
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "登录",
+            "backgroundColor": "#FFFFFF"
+          }
+        },
+        {
+          "path": "register",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "注册",
+            "backgroundColor": "#FFFFFF"
+          }
+        },
+        {
+          "path": "contact",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "联系我们",
+            "backgroundColor": "#FFFFFF"
+          }
+        },
+        {
+          "path": "help",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "帮助中心",
+            "backgroundColor": "#FFFFFF"
+          }
+        },
+        {
+          "path": "privacy",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "隐私政策",
+            "backgroundColor": "#FFFFFF"
           }
         }
       ]

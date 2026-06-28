@@ -49,7 +49,7 @@ import recordInactiveIcon from '../assets/images/dh_jilu_0.png'
 import settingsActiveIcon from '../assets/images/dh_shezhi_1.png'
 import settingsInactiveIcon from '../assets/images/dh_shezhi_0.png'
 
-defineProps({
+const props = defineProps({
   active: {
     type: String,
     default: 'home',
@@ -57,16 +57,24 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['change'])
-
+// 模内紧耦：导航逻辑封装在组件内部，页面无需重复实现
 function handleClick(type) {
-  emit('change', type)
+  // 点击当前已激活的导航项时不重复跳转，避免页面重载
+  if (type === props.active) return
+  if (type === 'home') {
+    uni.reLaunch({ url: '/pages/index/index' })
+  } else if (type === 'record') {
+    uni.reLaunch({ url: '/pages/index/record' })
+  } else if (type === 'settings') {
+    uni.reLaunch({ url: '/pages/index/settings' })
+  }
 }
 </script>
 
 <style lang="scss" scoped>
 .bottom-nav {
-  position: absolute;
+  /* position: fixed 相对视口定位，不随页面内容滚动，始终固定在可视区域底部 */
+  position: fixed;
   left: 50%;
   bottom: 15px;
   transform: translateX(-50%);
@@ -83,6 +91,7 @@ function handleClick(type) {
   display: flex;
   align-items: center;
   gap: 35px;
+  z-index: 100;
 }
 
 .bottom-nav__item {

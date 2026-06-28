@@ -1,9 +1,7 @@
 <template>
   <view class="index-page">
     <view class="index-page__frame">
-      <view class="index-page__top-bar">
-        <NoticeButton :has-notification="hasNotification" @click="handleNoticeClick" />
-      </view>
+      <NoticeButton :has-notification="hasNotification" />
 
       <view class="index-page__main-canvas">
         <view class="index-page__hero">
@@ -37,12 +35,21 @@
         </view>
       </view>
 
-      <BottomNav active="home" @change="handleNavChange" />
+      <BottomNav active="home" />
     </view>
   </view>
 </template>
 
 <script setup>
+/**
+ * 首页（index.vue）
+ * --------------------------------------------------------------------------
+ * 功能：应用主入口，展示用户当日打卡状态与快捷功能入口
+ *  - 顶部通知按钮（NoticeButton）
+ *  - Hero 区：今日打卡状态卡片，点击触发打卡（hasCheckedIn 切换图标）
+ *  - 快捷入口：制定计划、打卡记录、通知方式、更多功能（入口卡点击跳转对应页面）
+ *  - 底部固定导航栏（BottomNav），当前激活项为"首页"
+ */
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
@@ -52,56 +59,27 @@ const hasNotification = false
 const hasCheckedIn = false
 
 const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
-
-function handleNoticeClick() {
-  uni.navigateTo({
-    url: '/pages/user/settings'
-  })
-}
-
-function handleNavChange(type) {
-  if (type === 'home') {
-    uni.reLaunch({
-      url: '/pages/index/index'
-    })
-  } else if (type === 'record') {
-    uni.navigateTo({
-      url: '/pages/user/profile'
-    })
-  } else if (type === 'settings') {
-    uni.navigateTo({
-      url: '/pages/user/settings'
-    })
-  }
-}
 </script>
 
 <style lang="scss">
 .index-page {
   min-height: 100vh;
-  background: #ffffff;
+  background-color: var(--page-bg-color);
 }
 
 .index-page__frame {
   position: relative;
-  min-height: 884px;
+  /* min-height 100vh + box-sizing border-box：含 padding-top 17px 不超出视口，消除底部空白滚动 */
+  min-height: 100vh;
   padding-top: 17px;
   box-sizing: border-box;
-  background: #ffffff;
-}
-
-.index-page__top-bar {
-  position: absolute;
-  top: 17px;
-  left: 24px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
 }
 
 .index-page__main-canvas {
-  min-height: 884px;
-  padding: 96px 24px 272px;
+  /* 去掉 min-height: 884px（强制撑高导致滚动），内容顶部位置 = frame 17px + 100px = 117px 保持不变 */
+  /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
+  /* padding-bottom 120px：底部导航高 86 + bottom 15 = 101px，留 19px 余量避免遮挡 */
+  padding: 100px 24px 120px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

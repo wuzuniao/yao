@@ -1,0 +1,416 @@
+<template>
+  <view class="login-page">
+    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
+    <NoticeButton :has-notification="hasNotification" />
+
+    <!-- 氛围背景装饰圆（设计稿 Background+Blur） -->
+    <view class="login-page__ambient"></view>
+
+    <!-- 主登录卡片 -->
+    <view class="login-page__card">
+      <text class="login-page__title">欢迎回来</text>
+
+      <view class="login-page__form">
+        <!-- 用户名或邮箱 -->
+        <view class="login-page__field">
+          <text class="login-page__label">用户名或邮箱</text>
+          <input
+            class="login-page__input"
+            v-model="form.username"
+            placeholder="请输入用户名或邮箱"
+            placeholder-class="login-page__placeholder"
+            :placeholder-style="phStyle('username')"
+            @focus="onFocus('username')"
+            @blur="onBlur"
+          />
+        </view>
+
+        <!-- 密码 -->
+        <view class="login-page__field login-page__field--password">
+          <text class="login-page__label">密码</text>
+          <view class="login-page__password-row">
+            <input
+              class="login-page__input login-page__input--password"
+              v-model="form.password"
+              :password="!showPassword"
+              placeholder="请输入密码"
+              placeholder-class="login-page__placeholder"
+              :placeholder-style="phStyle('password')"
+              @focus="onFocus('password')"
+              @blur="onBlur"
+            />
+            <view class="login-page__eye" @click="togglePassword">
+              <image class="login-page__eye-icon" :src="mimaIcon" mode="aspectFit" />
+            </view>
+          </view>
+          <view class="login-page__forgot-row">
+            <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
+          </view>
+        </view>
+
+        <!-- 操作区 -->
+        <view class="login-page__actions">
+          <view class="login-page__remember" @click="toggleRemember">
+            <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': remember }">
+              <view v-if="remember" class="login-page__checkmark"></view>
+            </view>
+            <text class="login-page__remember-text">查看并同意</text>
+            <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+          </view>
+          <view class="login-page__submit" @click="handleLogin">
+            <text class="login-page__submit-text">登录</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 底部注册链接 -->
+      <view class="login-page__footer" @click="goRegister">
+        <text class="login-page__footer-text">还没有账号？ 立即注册</text>
+      </view>
+    </view>
+
+    <!-- 微信一键登录区 -->
+    <view class="login-page__wechat">
+      <text class="login-page__wechat-title">微信一键登录</text>
+      <view class="login-page__wechat-btn" @click="handleWechatLogin">
+        <image class="login-page__wechat-icon" :src="wxIcon" mode="aspectFit" />
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup>
+/**
+ * 登录页（login.vue）
+ * --------------------------------------------------------------------------
+ * 功能：用户账号密码登录 + 微信一键登录入口
+ *  - 账号密码登录：用户名/邮箱 + 密码，支持密码显隐切换、忘记密码、勾选隐私协议
+ *  - 微信一键登录：点击微信图标触发（当前为占位 toast，待接入 wx.login）
+ *  - 底部提供注册入口，跳转 register.vue
+ *  - 《隐私政策》文本可点击跳转 privacy.vue
+ * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
+ */
+import { reactive, ref } from 'vue'
+import NoticeButton from '../../components/NoticeButton.vue'
+import { usePlaceholder } from '../../composables/usePlaceholder'
+import mimaIcon from '../../assets/images/mima_1.png'
+import wxIcon from '../../assets/images/dl_wx.png'
+
+// 设计稿顶栏铃铛为绿色无红点态
+const hasNotification = false
+
+const form = reactive({ username: '', password: '' })
+const showPassword = ref(false)
+const remember = ref(false)
+
+// 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
+const { onFocus, onBlur, phStyle } = usePlaceholder()
+
+function togglePassword() {
+  showPassword.value = !showPassword.value
+}
+
+function toggleRemember() {
+  remember.value = !remember.value
+}
+
+function handleLogin() {
+  if (!form.username || !form.password) {
+    uni.showToast({ title: '请输入用户名和密码', icon: 'none' })
+    return
+  }
+  uni.showToast({ title: '登录成功', icon: 'success' })
+}
+
+function handleForgot() {
+  uni.showToast({ title: '找回密码', icon: 'none' })
+}
+
+function handleWechatLogin() {
+  uni.showToast({ title: '微信登录', icon: 'none' })
+}
+
+function goRegister() {
+  uni.navigateTo({
+    url: '/pages/user/register',
+    fail: () => {
+      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+    }
+  })
+}
+
+function goPrivacy() {
+  uni.navigateTo({
+    url: '/pages/user/privacy',
+    fail: () => {
+      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+    }
+  })
+}
+</script>
+
+<style lang="scss">
+.login-page {
+  min-height: 100vh;
+  background-color: var(--page-bg-color);
+  position: relative;
+  box-sizing: border-box;
+  /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与卡片重叠 */
+  padding: 100px 24px 33.5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 氛围背景装饰圆（312x312 #e2f6d5，居中模糊） */
+.login-page__ambient {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 312px;
+  height: 312px;
+  margin-top: -156px;
+  margin-left: -156px;
+  background: #e2f6d5;
+  border-radius: 9999px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ===== 主登录卡片 ===== */
+.login-page__card {
+  position: relative;
+  z-index: 1;
+  width: 342px;
+  margin-top: 32px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.login-page__title {
+  color: #0e0f0c;
+  font-size: 32px;
+  line-height: 36px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ===== 表单 ===== */
+.login-page__form {
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+
+.login-page__field {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-page__field--password {
+  padding-top: 16px;
+}
+
+.login-page__label {
+  color: #41493a;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.login-page__input {
+  margin-top: 4px;
+  height: 49px;
+  padding: 14px 12px 12px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px #c1cab5;
+  color: #0e0f0c;
+  font-size: 16px;
+  line-height: 21px;
+}
+
+.login-page__placeholder {
+  color: #454745;
+  font-size: 16px;
+}
+
+/* 密码行：输入框 + 眼睛图标 */
+.login-page__password-row {
+  position: relative;
+  margin-top: 4px;
+}
+
+.login-page__input--password {
+  padding-right: 24px;
+  margin-top: 0;
+}
+
+.login-page__eye {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 18.33px;
+  height: 12.5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-page__eye-icon {
+  width: 18.33px;
+  height: 12.5px;
+  display: block;
+}
+
+/* 忘记密码链接行 */
+.login-page__forgot-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  padding-top: 4px;
+  height: 20px;
+}
+
+.login-page__forgot {
+  color: #454745;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* ===== 操作区 ===== */
+.login-page__actions {
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.login-page__remember {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 16px;
+}
+
+.login-page__checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #c1cab5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.login-page__checkbox--checked {
+  background: #2f6c00;
+  box-shadow: inset 0 0 0 1px #2f6c00;
+}
+
+/* 选中态对勾（CSS 绘制） */
+.login-page__checkmark {
+  width: 5px;
+  height: 8px;
+  border-right: 1.5px solid #ffffff;
+  border-bottom: 1.5px solid #ffffff;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.login-page__remember-text {
+  margin-left: 8px;
+  color: #454745;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* 《隐私政策》可点击链接：与同行文本样式一致，点击触发跳转 */
+.login-page__agree-link {
+  color: #454745;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.login-page__submit {
+  margin-top: 12px;
+  height: 48px;
+  padding: 12px 0;
+  box-sizing: border-box;
+  background: #9fe870;
+  border-radius: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-page__submit-text {
+  color: #0e0f0c;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+/* ===== 底部注册链接 ===== */
+.login-page__footer {
+  display: flex;
+  justify-content: center;
+}
+
+.login-page__footer-text {
+  color: #454745;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+/* ===== 微信一键登录区 ===== */
+.login-page__wechat {
+  position: relative;
+  z-index: 1;
+  width: 342px;
+  margin-top: 16px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-page__wechat-title {
+  color: #41493a;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.login-page__wechat-btn {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  background: #eeeeee;
+  border-radius: 9999px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-page__wechat-icon {
+  width: 23.33px;
+  height: 23.33px;
+  display: block;
+}
+</style>

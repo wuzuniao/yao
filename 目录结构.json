@@ -61,25 +61,45 @@
         "描述": "源码目录",
         "assets": {
           "描述": "静态资源目录",
+          "design": {
+            "描述": "已清理空目录（原存放 Figma 设计稿参考图，经引用检查均未被项目使用，已于 2026-06-28 删除，备份至项目根目录 design_backup_20260628.zip）"
+          },
           "images": {
             "描述": "图片资源，包含图标、按钮等图片文件"
+          },
+          "styles": {
+            "描述": "全局样式目录",
+            "global.scss": "全局样式文件，定义 CSS 设计令牌（文本色/品牌色/卡片色/阴影/圆角/页面间距等 CSS 变量）与 .u-arrow-right 右箭头工具类"
           }
         },
         "components": {
           "描述": "可复用组件目录",
           "NoticeButton.vue": "通知按钮组件，支持未读状态切换和点击事件",
-          "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项"
+          "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项",
+          "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,支持\\n换行)，用于 notification/profile/help/contact 等页面"
+        },
+        "composables": {
+          "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",
+          "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面"
         },
         "pages": {
           "描述": "页面目录，按业务模块分包",
           "index": {
             "描述": "主包首页",
-            "index.vue": "首页组件"
+            "index.vue": "首页组件",
+            "record.vue": "用药记录页面",
+            "settings.vue": "设置页面",
+            "notification.vue": "通知方式页面，管理提醒接收渠道（站内信/邮件），含'新建通知方式'表单卡（通知名称/接收地址/保存通知，点击'添加新的通知方式'切换显示）",
+            "plan.vue": "制定计划页面，展示已有计划列表，点击'新建计划'入口卡切换为'新建计划详情'表单卡（含名称/备注/日期范围/提醒时间/通知方式）"
           },
           "user": {
             "描述": "分包：用户模块",
-            "profile.vue": "个人信息页面",
-            "settings.vue": "设置页面"
+            "profile.vue": "个人信息页面，含修改签名/修改密码/修改邮箱分组与退出登录（红色危险操作，弹窗二次确认），样式参照设置页分组2",
+            "login.vue": "登录页面，含账号密码登录与微信一键登录",
+            "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单",
+            "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
+            "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
+            "privacy.vue": "隐私政策页面，静态展示七章节政策条款含第三方信息共享表格"
           }
         },
         "App.vue": "应用根组件",

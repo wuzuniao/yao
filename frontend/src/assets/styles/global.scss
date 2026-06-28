@@ -1,0 +1,65 @@
+/* ==========================================================================
+ * 全局样式：设计令牌（Design Tokens）+ 复用工具类
+ * --------------------------------------------------------------------------
+ * 设计令牌以 CSS 自定义属性（CSS Custom Properties）形式定义，
+ * 参考标准：
+ *   - W3C CSS Custom Properties for Cascading Variables: https://www.w3.org/TR/css-variables/
+ *   - 微信小程序 CSS 变量支持：https://developers.weixin.qq.com/miniprogram/dev/framework/view/wxss.html
+ * CSS 变量在 App.vue 全局引入本文件后，所有页面均可直接通过 var(--xxx) 引用，
+ * 避免在多个页面硬编码相同的颜色 / 阴影 / 圆角值，确保设计一致性。
+ * ========================================================================== */
+
+page {
+  /* ----- 页面背景色 ----- */
+  /* 源自 Figma 设计稿 record 页（node-id=1-220）参考图采样 rgb(232, 235, 230)
+   * Figma MCP 报告的 frame 自身填充为白色，但实际画布背景为 #e8ebe6，
+   * 白色卡片悬浮于此背景之上。 */
+  --page-bg-color: #e8ebe6;
+
+  /* ----- 文本色 ----- */
+  --color-text-primary: #0e0f0c;    /* 主文本：标题、卡片正文 */
+  --color-text-secondary: #454745;  /* 次要文本：描述、辅助说明 */
+  --color-text-tertiary: #868685;   /* 占位/弱化文本：placeholder、箭头 */
+
+  /* ----- 品牌色 ----- */
+  --color-brand: #2f6c00;           /* 主品牌绿：主按钮、强调态 */
+  --color-brand-bg: #9fe870;        /* 品牌浅绿：次级按钮、激活徽章背景 */
+  --color-danger: #d03238;          /* 危险红：退出登录、删除等危险操作 */
+
+  /* ----- 卡片 / 容器 ----- */
+  --color-card-bg: #ffffff;
+  --color-card-bg-alt: #f9f9f9;     /* 输入框、次级容器背景 */
+  --color-border: #e8ebe6;          /* 卡片内描边、分隔线 */
+  --color-border-input: #c1cab5;    /* 输入框外描边 */
+
+  /* ----- 阴影 ----- */
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  /* ----- 圆角 ----- */
+  --radius-card: 12px;              /* 普通卡片 */
+  --radius-card-lg: 24px;           /* 大卡片（登录/注册/联系等） */
+  --radius-btn: 9999px;             /* 胶囊按钮 */
+
+  /* ----- 间距：通知按钮（top45px + 高40px = 底部85px）+ 15px 间隙 = 100px ----- */
+  --page-padding-top: 100px;
+}
+
+/* ==========================================================================
+ * 复用工具类
+ * --------------------------------------------------------------------------
+ * 仅抽象在 3 个及以上页面中完全一致的样式片段，避免过度设计。
+ * 命名前缀 `u-`（utility）与页面 BEM 类名（`xxx-page__`）区分。
+ * ========================================================================== */
+
+/* 右箭头（CSS 三角形）
+ * 用于 settings.vue / profile.vue 分组项右侧指示箭头。
+ * 不使用图片资源，纯 CSS border 绘制，参考 MDN border 三角形方案：
+ *   https://developer.mozilla.org/zh-CN/docs/Web/CSS/border#使用边框创建三角形
+ * 颜色取自设计稿 #868685（与占位文本同色），如需变体可通过 color 覆盖 border-left-color。 */
+.u-arrow-right {
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 7.4px solid var(--color-text-tertiary);
+}
