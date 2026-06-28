@@ -2,9 +2,7 @@
   <view class="index-page">
     <view class="index-page__frame">
       <view class="index-page__top-bar">
-        <view class="index-page__notice-button">
-          <image class="index-page__notice-icon" :src="noticeIcon" mode="aspectFit" />
-        </view>
+        <NoticeButton :has-notification="hasNotification" @click="handleNoticeClick" />
       </view>
 
       <view class="index-page__main-canvas">
@@ -39,40 +37,43 @@
         </view>
       </view>
 
-      <view class="index-page__bottom-nav">
-        <view class="index-page__nav-item index-page__nav-item--active">
-          <image class="index-page__nav-icon index-page__nav-icon--home" :src="homeActiveIcon" mode="aspectFit" />
-          <text class="index-page__nav-text index-page__nav-text--active">首页</text>
-        </view>
-
-        <view class="index-page__nav-item">
-          <image class="index-page__nav-icon index-page__nav-icon--record" :src="recordInactiveIcon" mode="aspectFit" />
-          <text class="index-page__nav-text">记录</text>
-        </view>
-
-        <view class="index-page__nav-item">
-          <image class="index-page__nav-icon index-page__nav-icon--settings" :src="settingsInactiveIcon" mode="aspectFit" />
-          <text class="index-page__nav-text">设置</text>
-        </view>
-      </view>
+      <BottomNav active="home" @change="handleNavChange" />
     </view>
   </view>
 </template>
 
 <script setup>
-import noticeInactiveIcon from '../../assets/images/tongzhi_0.png'
-import noticeActiveIcon from '../../assets/images/tongzhi_1.png'
+import NoticeButton from '../../components/NoticeButton.vue'
+import BottomNav from '../../components/BottomNav.vue'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinActiveIcon from '../../assets/images/daka_1.png'
-import homeActiveIcon from '../../assets/images/dh_shouye_1.png'
-import recordInactiveIcon from '../../assets/images/dh_jilu_0.png'
-import settingsInactiveIcon from '../../assets/images/dh_shezhi_0.png'
 
 const hasNotification = false
 const hasCheckedIn = false
 
-const noticeIcon = hasNotification ? noticeActiveIcon : noticeInactiveIcon
 const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
+
+function handleNoticeClick() {
+  uni.navigateTo({
+    url: '/pages/user/settings'
+  })
+}
+
+function handleNavChange(type) {
+  if (type === 'home') {
+    uni.reLaunch({
+      url: '/pages/index/index'
+    })
+  } else if (type === 'record') {
+    uni.navigateTo({
+      url: '/pages/user/profile'
+    })
+  } else if (type === 'settings') {
+    uni.navigateTo({
+      url: '/pages/user/settings'
+    })
+  }
+}
 </script>
 
 <style lang="scss">
@@ -96,20 +97,6 @@ const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
   z-index: 10;
   display: flex;
   align-items: center;
-}
-
-.index-page__notice-button {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.index-page__notice-icon {
-  width: 40px;
-  height: 40px;
-  display: block;
 }
 
 .index-page__main-canvas {
@@ -269,73 +256,5 @@ const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
   font-size: 18px;
   line-height: 24px;
   font-weight: 500;
-}
-
-.index-page__bottom-nav {
-  position: absolute;
-  left: 50%;
-  bottom: 15px;
-  transform: translateX(-50%);
-  width: 351px;
-  height: 86px;
-  padding: 8px 25.5px;
-  box-sizing: border-box;
-  border-radius: 9999px;
-  background: #ffffff;
-  box-shadow:
-    0 4px 6px -4px rgba(0, 0, 0, 0.1),
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px #e2e2e2;
-  display: flex;
-  align-items: center;
-  gap: 35px;
-}
-
-.index-page__nav-item {
-  width: 76px;
-  height: 68px;
-  padding: 12px 24px;
-  box-sizing: border-box;
-  border-radius: 9999px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.index-page__nav-item--active {
-  height: 66px;
-  background: #9fe870;
-}
-
-.index-page__nav-icon {
-  display: block;
-}
-
-.index-page__nav-icon--home {
-  width: 16px;
-  height: 18px;
-}
-
-.index-page__nav-icon--record {
-  width: 18px;
-  height: 20px;
-}
-
-.index-page__nav-icon--settings {
-  width: 21px;
-  height: 24px;
-}
-
-.index-page__nav-text {
-  color: #454745;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 400;
-}
-
-.index-page__nav-text--active {
-  color: #2f6c00;
 }
 </style>
