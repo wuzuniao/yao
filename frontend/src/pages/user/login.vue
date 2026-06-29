@@ -16,13 +16,15 @@
           <text class="login-page__label">用户名或邮箱</text>
           <input
             class="login-page__input"
+            :class="{ 'login-page__input--error': errors.username }"
             v-model="form.username"
             placeholder="请输入用户名或邮箱"
             placeholder-class="login-page__placeholder"
             :placeholder-style="phStyle('username')"
-            @focus="onFocus('username')"
-            @blur="onBlur"
+            @focus="handleFocus('username')"
+            @blur="handleBlur('username')"
           />
+          <text v-if="errors.username" class="login-page__error-text">{{ errors.username }}</text>
         </view>
 
         <!-- 密码 -->
@@ -31,18 +33,20 @@
           <view class="login-page__password-row">
             <input
               class="login-page__input login-page__input--password"
+              :class="{ 'login-page__input--error': errors.password }"
               v-model="form.password"
               :password="!showPassword"
               placeholder="请输入密码"
               placeholder-class="login-page__placeholder"
               :placeholder-style="phStyle('password')"
-              @focus="onFocus('password')"
-              @blur="onBlur"
+              @focus="handleFocus('password')"
+              @blur="handleBlur('password')"
             />
             <view class="login-page__eye" @click="togglePassword">
               <image class="login-page__eye-icon" :src="mimaIcon" mode="aspectFit" />
             </view>
           </view>
+          <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
           <view class="login-page__forgot-row">
             <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
           </view>
@@ -85,6 +89,9 @@
  * --------------------------------------------------------------------------
  * 功能：用户账号密码登录 + 微信一键登录入口
  *  - 账号密码登录：用户名/邮箱 + 密码，支持密码显隐切换、忘记密码、勾选隐私协议
+ *  - 前端验证：用户名/密码非空校验（参照 register.vue）
+ *  - 后端验证：调用 /login 接口验证用户名/邮箱 + 密码
+ *  - 登录成功：写入 Pinia 用户状态 → 跳转 settings.vue
  *  - 微信一键登录：点击微信图标触发（当前为占位 toast，待接入 wx.login）
  *  - 底部提供注册入口，跳转 register.vue
  *  - 《隐私政策》文本可点击跳转 privacy.vue
@@ -93,6 +100,8 @@
 import { reactive, ref } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
+import { loginUser } from '../../api/modules/user'
+import { useUserStore } from '../../store/modules/user'
 import mimaIcon from '../../assets/images/mima_1.png'
 import wxIcon from '../../assets/images/dl_wx.png'
 
@@ -102,9 +111,49 @@ const hasNotification = false
 const form = reactive({ username: '', password: '' })
 const showPassword = ref(false)
 const remember = ref(false)
+const submitting = ref(false)
+const userStore = useUserStore()
+
+// 各字段错误信息（失焦时实时校验并写入，输入时清空）
+const errors = reactive({
+  username: '',
+  password: ''
+})
 
 // 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
+
+// ===== 前端输入校验（参照 register.vue）=====
+function validateUsername(v) {
+  if (!v) return '请输入用户名或邮箱'
+  return ''
+}
+
+function validatePassword(v) {
+  if (!v) return '请输入密码'
+  return ''
+}
+
+// 失焦时校验指定字段并写入 errors（实时反馈）
+function validateField(field) {
+  const map = {
+    username: validateUsername,
+    password: validatePassword
+  }
+  errors[field] = map[field](form[field])
+}
+
+// 失焦处理：先恢复 placeholder 原始色，再触发字段校验
+function handleBlur(field) {
+  onBlur()
+  validateField(field)
+}
+
+// 聚焦处理：记录聚焦字段并清空该字段错误
+function handleFocus(field) {
+  onFocus(field)
+  errors[field] = ''
+}
 
 function togglePassword() {
   showPassword.value = !showPassword.value
@@ -114,16 +163,64 @@ function toggleRemember() {
   remember.value = !remember.value
 }
 
-function handleLogin() {
-  if (!form.username || !form.password) {
-    uni.showToast({ title: '请输入用户名和密码', icon: 'none' })
+// ===== 登录提交：前端校验 → 后端验证 → 写入状态 → 跳转 =====
+async function handleLogin() {
+  if (submitting.value) return
+
+  // 1. 前端字段校验（同步写入 errors 以展示视觉反馈）
+  validateField('username')
+  validateField('password')
+  const firstErr = ['username', 'password'].find((f) => errors[f])
+  if (firstErr) {
+    uni.showToast({ title: errors[firstErr], icon: 'none' })
     return
   }
-  uni.showToast({ title: '登录成功', icon: 'success' })
+
+  // 2. 隐私协议勾选校验：未勾选时显示确认弹窗
+  if (!remember.value) {
+    uni.showModal({
+      title: '提示',
+      content: '请先查看并同意《隐私政策》',
+      confirmText: '确认',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          remember.value = true
+          handleLogin()
+        }
+      }
+    })
+    return
+  }
+
+  // 3. 调用后端登录接口
+  submitting.value = true
+  try {
+    const res = await loginUser({
+      username: form.username,
+      password: form.password
+    })
+    // 4. 写入用户状态
+    userStore.setUser(res.data)
+    uni.showToast({ title: '登录成功', icon: 'success' })
+    // 5. 登录成功后跳转 settings.vue
+    setTimeout(() => {
+      uni.redirectTo({ url: '/pages/index/settings' })
+    }, 1500)
+  } catch (e) {
+    uni.showToast({ title: e.message, icon: 'none' })
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleForgot() {
-  uni.showToast({ title: '找回密码', icon: 'none' })
+  uni.navigateTo({
+    url: '/pages/user/forgot-password',
+    fail: () => {
+      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+    }
+  })
 }
 
 function handleWechatLogin() {
@@ -236,6 +333,19 @@ function goPrivacy() {
   color: #0e0f0c;
   font-size: 16px;
   line-height: 21px;
+}
+
+/* 输入框错误态：红色边框（覆盖默认 #c1cab5） */
+.login-page__input--error {
+  box-shadow: inset 0 0 0 1px #e5484d;
+}
+
+/* 错误提示文字 */
+.login-page__error-text {
+  color: #e5484d;
+  font-size: 12px;
+  line-height: 16px;
+  margin-top: 4px;
 }
 
 .login-page__placeholder {

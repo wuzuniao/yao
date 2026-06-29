@@ -1,13 +1,249 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ...core.database import get_db
+from ...schemas.user import (
+    ChangeEmail,
+    ChangePassword,
+    LoginUser,
+    RegisterUser,
+    ResetPassword,
+    SendChangeEmailNewCode,
+    SendChangeEmailOldCode,
+    SendCode,
+    SendResetCode,
+    UpdateSignature,
+)
+from ...services.user_service import User
 
 router = APIRouter()
 
 
-@router.get("/")
-async def get_users():
-    return {"users": []}
+@router.post("/register")
+async def register(payload: RegisterUser, db: AsyncSession = Depends(get_db)):
+    """
+    用户注册接口
+    - 校验由 Pydantic Schema（字段规则）+ User 业务类（验证码/唯一性）共同完成
+    - 验证码后端二次校验通过后才允许入库
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.register(
+            username=payload.username,
+            password=payload.password,
+            email=payload.email,
+            code=payload.code,
+        )
+    except ValueError as e:
+        # 业务校验失败（验证码/唯一性等）
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        # 邮件发送等运行时异常
+        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "注册成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "email": db_user.email,
+        },
+    }
 
 
-@router.post("/")
-async def create_user():
-    return {"message": "User created"}
+@router.post("/send-code")
+async def send_code(payload: SendCode, db: AsyncSession = Depends(get_db)):
+    """
+    发送注册验证码接口
+    - 将用户填写的邮箱作为收件人，调用 Email 类发送验证邮件
+    """
+    user_service = User(db)
+    try:
+        await user_service.send_code(payload.email)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"code": 0, "msg": "验证码已发送", "data": None}
+
+
+@router.post("/login")
+async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
+    """
+    用户登录接口
+    - 支持用户名或邮箱 + 密码登录
+    - 返回用户信息（id、username、signature、avatar_url）
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.login(
+            username=payload.username,
+            password=payload.password,
+        )
+    except ValueError as e:
+        # 业务校验失败（用户不存在/密码错误）
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "登录成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "signature": db_user.signature or "",
+            "avatar_url": db_user.avatar_url or "",
+        },
+    }
+
+
+@router.post("/send-reset-code")
+async def send_reset_code(payload: SendResetCode, db: AsyncSession = Depends(get_db)):
+    """
+    发送密码找回验证码接口
+    - 仅允许已注册邮箱
+    """
+    user_service = User(db)
+    try:
+        await user_service.send_reset_code(payload.email)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"code": 0, "msg": "验证码已发送", "data": None}
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_db)):
+    """
+    重置密码接口
+    - 验证验证码后更新密码
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.reset_password(
+            email=payload.email,
+            code=payload.code,
+            new_password=payload.new_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "密码重置成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "email": db_user.email,
+        },
+    }
+
+
+@router.put("/update-signature")
+async def update_signature(payload: UpdateSignature, db: AsyncSession = Depends(get_db)):
+    """
+    更新用户签名接口
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.update_signature(
+            user_id=payload.user_id,
+            signature=payload.signature,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "签名更新成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "signature": db_user.signature or "",
+        },
+    }
+
+
+@router.put("/change-password")
+async def change_password(payload: ChangePassword, db: AsyncSession = Depends(get_db)):
+    """
+    修改密码接口
+    - 验证旧密码后更新新密码
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.change_password(
+            user_id=payload.user_id,
+            old_password=payload.old_password,
+            new_password=payload.new_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "密码修改成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+        },
+    }
+
+
+@router.post("/send-change-email-old-code")
+async def send_change_email_old_code(payload: SendChangeEmailOldCode, db: AsyncSession = Depends(get_db)):
+    """
+    发送修改邮箱的旧邮箱验证码接口
+    """
+    user_service = User(db)
+    try:
+        await user_service.send_change_email_old_code(payload.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"code": 0, "msg": "验证码已发送", "data": None}
+
+
+@router.post("/send-change-email-new-code")
+async def send_change_email_new_code(payload: SendChangeEmailNewCode, db: AsyncSession = Depends(get_db)):
+    """
+    发送修改邮箱的新邮箱验证码接口
+    """
+    user_service = User(db)
+    try:
+        await user_service.send_change_email_new_code(payload.new_email)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"code": 0, "msg": "验证码已发送", "data": None}
+
+
+@router.put("/change-email")
+async def change_email(payload: ChangeEmail, db: AsyncSession = Depends(get_db)):
+    """
+    修改邮箱接口
+    - 验证旧邮箱验证码和新邮箱验证码后更新邮箱
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.change_email(
+            user_id=payload.user_id,
+            old_code=payload.old_code,
+            new_email=payload.new_email,
+            new_code=payload.new_code,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "邮箱修改成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "email": db_user.email,
+        },
+    }

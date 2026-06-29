@@ -4,14 +4,14 @@
 
     <view class="settings-page__main">
       <!-- 用户资料卡片 -->
-      <view class="settings-page__profile-card" @click="goLogin">
+      <view class="settings-page__profile-card" @click="goProfileOrLogin">
         <view class="settings-page__profile-card-glow"></view>
         <view class="settings-page__profile-info">
-          <text class="settings-page__profile-name">用户昵称</text>
-          <text class="settings-page__profile-slogan">"保持热爱，奔赴山海，{{'\n'}}每一天都要好好生活。"</text>
+          <text class="settings-page__profile-name">{{ displayName }}</text>
+          <text class="settings-page__profile-slogan">{{ displaySlogan }}</text>
         </view>
         <view class="settings-page__profile-avatar-wrap">
-          <image class="settings-page__profile-avatar" :src="touxiangIcon" mode="aspectFit" />
+          <image class="settings-page__profile-avatar" :src="avatarUrl" mode="aspectFit" />
         </view>
       </view>
 
@@ -68,16 +68,39 @@
  * 设置页（settings.vue）
  * --------------------------------------------------------------------------
  * 功能：应用设置与功能入口聚合页
- *  - 用户资料卡：展示昵称、个性签名、头像，点击跳转登录页（当前未登录态入口）
+ *  - 用户资料卡：展示昵称、个性签名、头像
+ *    - 已登录：显示用户信息，点击跳转 profile.vue
+ *    - 未登录：用户名显示"请登录"，点击跳转 login.vue
  *  - 分组 1（功能入口）：制定计划（含进行中状态徽章 + 绿色箭头）、通知方式
  *  - 分组 2（帮助入口）：帮助中心、联系我们、隐私政策
  *  - 底部固定导航栏（BottomNav），当前激活项为"设置"
  */
+import { computed } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
 import touxiangIcon from '../../assets/images/touxiang.png'
+import { useUserStore } from '../../store/modules/user'
 
 const hasNotification = false
+const userStore = useUserStore()
+
+// 用户名显示：已登录显示 username，未登录显示"请登录"
+const displayName = computed(() => {
+  return userStore.userInfo?.username || '请登录'
+})
+
+// 个性签名显示：已登录显示 signature（可能为空），未登录显示默认文案
+const displaySlogan = computed(() => {
+  if (userStore.userInfo) {
+    return userStore.userInfo.signature != null ? String(userStore.userInfo.signature) : ''
+  }
+  return '"保持热爱，奔赴山海，\n每一天都要好好生活。"'
+})
+
+// 用户头像：已登录显示用户头像，未登录显示默认头像
+const avatarUrl = computed(() => {
+  return userStore.userInfo?.avatar_url || touxiangIcon
+})
 
 function goNotification() {
   uni.navigateTo({ url: '/pages/index/notification' })
@@ -85,6 +108,17 @@ function goNotification() {
 
 function goPlan() {
   uni.navigateTo({ url: '/pages/index/plan' })
+}
+
+// 用户资料卡点击跳转：已登录跳转 profile.vue，未登录跳转 login.vue
+function goProfileOrLogin() {
+  const url = userStore.userInfo ? '/pages/user/profile' : '/pages/user/login'
+  uni.navigateTo({
+    url,
+    fail: () => {
+      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+    }
+  })
 }
 
 // 统一导航辅助函数：失败时 toast 提示，避免静默跳转失败
@@ -95,10 +129,6 @@ function navigate(url) {
       uni.showToast({ title: '页面跳转失败', icon: 'none' })
     }
   })
-}
-
-function goLogin() {
-  navigate('/pages/user/login')
 }
 
 function goHelp() {

@@ -11,7 +11,7 @@
           "v1": {
             "描述": "版本化接口，存放v1版本的API接口定义",
             "__init__.py": "v1路由初始化文件",
-            "users.py": "用户模块API接口"
+            "users.py": "用户模块API接口：注册 register、发送验证码 send-code、登录 login（支持用户名或邮箱 + 密码）"
           }
         },
         "core": {
@@ -28,12 +28,13 @@
         "schemas": {
           "描述": "Pydantic模型，负责请求/响应校验",
           "__init__.py": "Schema包初始化文件",
-          "user.py": "用户相关Schema"
+          "user.py": "用户相关Schema：RegisterUser（注册请求校验）、SendCode（发送验证码请求）、LoginUser（登录请求校验）"
         },
         "services": {
           "描述": "业务逻辑层，供api层调用，与框架无关",
           "__init__.py": "服务包初始化文件",
-          "user_service.py": "用户业务逻辑服务"
+          "user_service.py": "用户业务逻辑服务（User 类：注册/登录/验证码校验）",
+          "email_service.py": "邮箱操作服务（Email 类：SMTP 腾讯企业邮发送验证码邮件）"
         },
         "utils": {
           "描述": "通用工具函数，非业务相关",
@@ -59,6 +60,14 @@
       "描述": "uni-app前端项目目录（HBuilder X打开此目录）",
       "src": {
         "描述": "源码目录",
+        "api": {
+          "描述": "API 请求层，统一封装 uni.request 与后端接口调用",
+          "request.js": "统一请求封装：baseURL 拼接、错误解析（FastAPI 校验错误/HTTPException/业务格式）",
+          "modules": {
+            "描述": "按业务模块拆分的请求函数目录",
+            "user.js": "用户模块接口：发送注册验证码 sendRegisterCode、用户注册 registerUser、用户登录 loginUser"
+          }
+        },
         "assets": {
           "描述": "静态资源目录",
           "design": {
@@ -82,21 +91,29 @@
           "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",
           "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面"
         },
+        "store": {
+          "描述": "Pinia 状态管理目录，管理全局共享状态（用户登录信息等）",
+          "index.js": "Pinia 实例创建与导出，供 main.js 注册",
+          "modules": {
+            "描述": "按业务模块拆分的 Store 目录",
+            "user.js": "用户状态管理：userInfo（id/username/signature/avatar_url）、setUser/clearUser/loadUserFromStorage，支持本地存储持久化"
+          }
+        },
         "pages": {
           "描述": "页面目录，按业务模块分包",
           "index": {
             "描述": "主包首页",
             "index.vue": "首页组件",
             "record.vue": "用药记录页面",
-            "settings.vue": "设置页面",
+            "settings.vue": "设置页面，用户资料卡动态显示登录状态（已登录显示用户信息并跳转 profile.vue，未登录显示'请登录'并跳转 login.vue）",
             "notification.vue": "通知方式页面，管理提醒接收渠道（站内信/邮件），含'新建通知方式'表单卡（通知名称/接收地址/保存通知，点击'添加新的通知方式'切换显示）",
             "plan.vue": "制定计划页面，展示已有计划列表，点击'新建计划'入口卡切换为'新建计划详情'表单卡（含名称/备注/日期范围/提醒时间/通知方式）"
           },
           "user": {
             "描述": "分包：用户模块",
-            "profile.vue": "个人信息页面，含修改签名/修改密码/修改邮箱分组与退出登录（红色危险操作，弹窗二次确认），样式参照设置页分组2",
-            "login.vue": "登录页面，含账号密码登录与微信一键登录",
-            "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单",
+            "profile.vue": "个人信息页面，含修改签名/修改密码/修改邮箱分组与退出登录（红色危险操作，弹窗二次确认，退出时清除用户状态并跳转 settings.vue）",
+            "login.vue": "登录页面，含账号密码登录（前后端双重验证，登录成功写入 Pinia 状态并跳转 settings.vue）与微信一键登录（占位）",
+            "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单（前后端双重验证，失焦实时校验）",
             "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
             "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
             "privacy.vue": "隐私政策页面，静态展示七章节政策条款含第三方信息共享表格"
