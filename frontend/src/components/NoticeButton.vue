@@ -14,11 +14,12 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  // 距顶部偏移：全局统一为 45px，确保各页面顶部留白一致，
-  // 按钮底部落在 85px 处，页面内容 padding-top ≥ 100px 即可避免重叠。
+  // 距顶部偏移：基于设备状态栏高度动态计算，确保各机型顶部留白一致
+  // iPhone 13 mini（statusBarHeight≈50）：top ≈ 45px
+  // iPhone 15 Pro（statusBarHeight≈59）：top ≈ 54px（新机型自动增加约10px）
   top: {
     type: String,
-    default: '45px'
+    default: ''
   }
 })
 
@@ -26,8 +27,21 @@ const iconSrc = computed(() => {
   return props.hasNotification ? noticeActiveIcon : noticeInactiveIcon
 })
 
+// 动态计算 top：若未传入 top，则基于 statusBarHeight 计算
+// 在基础偏移上额外增加 0.6vh（约5px），使用相对单位确保各屏幕尺寸下视觉比例一致
+const computedTop = computed(() => {
+  if (props.top) return props.top
+  try {
+    const sysInfo = uni.getSystemInfoSync()
+    const statusBarHeight = sysInfo.statusBarHeight || 44
+    return `calc(${statusBarHeight - 5}px + 0.6vh)`
+  } catch (e) {
+    return 'calc(45px + 0.6vh)'
+  }
+})
+
 const positionStyle = computed(() => ({
-  top: props.top
+  top: computedTop.value
 }))
 
 // 模内紧耦：点击跳转设置页逻辑封装在组件内部，页面无需重复实现
@@ -41,7 +55,7 @@ function handleClick() {
 <style lang="scss" scoped>
 .notice-button {
   position: absolute;
-  top: 45px;
+  top: calc(45px + 0.6vh);
   left: 24px;
   z-index: 10;
   width: 40px;

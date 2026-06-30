@@ -186,7 +186,8 @@ function handleNextMonth() {
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
-  padding-bottom: 177px;
+  /* padding-bottom 120px：BottomNav 高86px + bottom15px = 101px，留19px余量确保内容不被遮挡 */
+  padding-bottom: 120px;
 }
 
 .record-page__main {

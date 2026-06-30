@@ -19,5 +19,6 @@ class User(Base):
     avatar_url = Column(String(500), nullable=True)
     status = Column(SmallInteger, nullable=False, default=1)
     last_login_at = Column(DateTime, nullable=True)
+    deletion_scheduled_at = Column(DateTime, nullable=True, comment="账号注销计划时间（24小时后自动删除）")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

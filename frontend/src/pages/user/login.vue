@@ -511,16 +511,14 @@ function goPrivacy() {
   width: 48px;
   height: 48px;
   margin: 0 auto;
-  background: #eeeeee;
-  border-radius: 9999px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .login-page__wechat-icon {
-  width: 23.33px;
-  height: 23.33px;
+  width: 48px;
+  height: 48px;
   display: block;
 }
 </style>

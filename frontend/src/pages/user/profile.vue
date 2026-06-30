@@ -7,8 +7,36 @@
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
       <PageHeader title="个人信息" :desc="`管理您的账户资料与安全设置，${'\n'}随时修改个人信息。`" />
 
-      <!-- 分组 1：资料修改（修改签名、修改密码、修改邮箱） -->
+      <!-- 分组 1：资料修改（修改头像、修改签名、修改密码、修改邮箱） -->
       <view class="profile-page__group">
+        <!-- 修改头像 -->
+        <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('avatar')">
+          <text class="profile-page__group-text">修改头像</text>
+          <view class="u-arrow-right"></view>
+        </view>
+        <!-- 修改头像表单（动态显示） -->
+        <view v-if="expandedSections.avatar" class="profile-page__form-section">
+          <view class="profile-page__avatar-list">
+            <view
+              v-for="item in avatarOptions"
+              :key="item.key"
+              class="profile-page__avatar-option"
+              :class="{ 'profile-page__avatar-option--selected': avatarForm.selected === item.key }"
+              @click="avatarForm.selected = item.key"
+            >
+              <image class="profile-page__avatar-image" :src="item.src" mode="aspectFit" />
+            </view>
+          </view>
+          <view class="profile-page__form-actions">
+            <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('avatar')">
+              <text class="profile-page__btn-text">取消</text>
+            </view>
+            <view class="profile-page__btn profile-page__btn--submit" @click="handleUpdateAvatar">
+              <text class="profile-page__btn-text">提交</text>
+            </view>
+          </view>
+        </view>
+
         <!-- 修改签名 -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('signature')">
           <text class="profile-page__group-text">修改签名</text>
@@ -163,10 +191,16 @@
         </view>
       </view>
 
-      <!-- 分组 2：退出登录（危险操作，单独分组并使用红色文字提示） -->
+      <!-- 分组 2：退出登录 + 注销账号（危险操作，单独分组并使用红色文字提示） -->
       <view class="profile-page__group">
-        <view class="profile-page__group-item" @click="handleLogout">
+        <view class="profile-page__group-item profile-page__group-item--bordered" @click="handleLogout">
           <text class="profile-page__group-text profile-page__group-text--danger">退出登录</text>
+          <view class="u-arrow-right"></view>
+        </view>
+        <view class="profile-page__group-item" @click="handleDeletion">
+          <text class="profile-page__group-text profile-page__group-text--danger">
+            {{ isDeletionScheduled ? '取消注销' : '注销账号' }}
+          </text>
           <view class="u-arrow-right"></view>
         </view>
       </view>
@@ -185,7 +219,7 @@
  *  - 退出登录：弹窗二次确认，清除状态并跳转 settings.vue
  * 视觉规范参照 settings.vue 分组卡片，保持应用内设置类页面一致性
  */
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useUserStore } from '../../store/modules/user'
@@ -194,15 +228,53 @@ import {
   changePassword,
   sendChangeEmailOldCode,
   sendChangeEmailNewCode,
-  changeEmail
+  changeEmail,
+  updateAvatar,
+  scheduleDeletion,
+  cancelDeletion
 } from '../../api/modules/user'
+import heiAvatar from '../../assets/images/touxiang/hei.png'
+import hongAvatar from '../../assets/images/touxiang/hong.png'
+import lanAvatar from '../../assets/images/touxiang/lan.png'
 
 const userStore = useUserStore()
 
+// 可选头像列表
+const avatarOptions = [
+  { key: 'hei', src: heiAvatar },
+  { key: 'hong', src: hongAvatar },
+  { key: 'lan', src: lanAvatar }
+]
+
+// 头像 key 与数据库存储值的映射（数据库存储 key，前端通过 key 查找 import 的图片）
+const avatarKeyToDbValue = {
+  hei: 'hei',
+  hong: 'hong',
+  lan: 'lan'
+}
+
+// 数据库值反查 key
+const urlToAvatarKey = (url) => {
+  if (!url) return 'hong'
+  for (const [key, val] of Object.entries(avatarKeyToDbValue)) {
+    if (url === val || url.includes(val)) return key
+  }
+  return 'hong'
+}
+
+// 是否处于注销冷静期
+const isDeletionScheduled = computed(() => !!userStore.userInfo?.deletion_scheduled_at)
+
 const expandedSections = reactive({
+  avatar: false,
   signature: false,
   password: false,
   email: false
+})
+
+// ===== 修改头像 =====
+const avatarForm = reactive({
+  selected: urlToAvatarKey(userStore.userInfo?.avatar_url)
 })
 
 // ===== 修改签名 =====
@@ -217,7 +289,9 @@ function toggleSection(section) {
 }
 
 function resetSection(section) {
-  if (section === 'signature') {
+  if (section === 'avatar') {
+    avatarForm.selected = urlToAvatarKey(userStore.userInfo?.avatar_url)
+  } else if (section === 'signature') {
     signatureForm.value = ''
     signatureError.value = ''
   } else if (section === 'password') {
@@ -239,6 +313,31 @@ function resetSection(section) {
     emailOldCodeText.value = '获取验证码'
     emailNewCodeCounting.value = false
     emailNewCodeText.value = '获取验证码'
+  }
+}
+
+async function handleUpdateAvatar() {
+  const avatarValue = avatarKeyToDbValue[avatarForm.selected]
+  if (!avatarValue) {
+    uni.showToast({ title: '请选择头像', icon: 'none' })
+    return
+  }
+  try {
+    await updateAvatar({
+      user_id: userStore.userInfo.id,
+      avatar_url: avatarValue
+    })
+    // 同步更新本地用户信息
+    userStore.userInfo.avatar_url = avatarValue
+    try {
+      uni.setStorageSync('userInfo', userStore.userInfo)
+    } catch (e) {
+      console.warn('保存本地用户信息失败', e)
+    }
+    uni.showToast({ title: '头像更新成功', icon: 'success' })
+    toggleSection('avatar')
+  } catch (e) {
+    uni.showToast({ title: e.message, icon: 'none' })
   }
 }
 
@@ -436,6 +535,57 @@ async function handleChangeEmail() {
   }
 }
 
+// ===== 注销账号 =====
+function handleDeletion() {
+  if (isDeletionScheduled.value) {
+    // 处于冷静期，执行取消注销
+    uni.showModal({
+      title: '提示',
+      content: '确定要取消账号注销吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await cancelDeletion(userStore.userInfo.id)
+            userStore.userInfo.deletion_scheduled_at = null
+            try {
+              uni.setStorageSync('userInfo', userStore.userInfo)
+            } catch (e) {
+              console.warn('保存本地用户信息失败', e)
+            }
+            uni.showToast({ title: '账号注销已取消', icon: 'success' })
+          } catch (e) {
+            uni.showToast({ title: e.message, icon: 'none' })
+          }
+        }
+      }
+    })
+  } else {
+    // 未处于冷静期，执行注销
+    uni.showModal({
+      title: '注销账号',
+      content: '账号将在一天后自动删除，且无法恢复，请保留个人数据',
+      confirmText: '确认注销',
+      cancelText: '取消',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            const result = await scheduleDeletion(userStore.userInfo.id)
+            userStore.userInfo.deletion_scheduled_at = result.data.deletion_scheduled_at
+            try {
+              uni.setStorageSync('userInfo', userStore.userInfo)
+            } catch (e) {
+              console.warn('保存本地用户信息失败', e)
+            }
+            uni.showToast({ title: '已计划注销，24小时后自动删除', icon: 'none' })
+          } catch (e) {
+            uni.showToast({ title: e.message, icon: 'none' })
+          }
+        }
+      }
+    })
+  }
+}
+
 // ===== 退出登录 =====
 function handleLogout() {
   uni.showModal({
@@ -614,5 +764,35 @@ function handleLogout() {
   font-size: 14px;
   line-height: 20px;
   font-weight: 400;
+}
+
+/* ===== 头像选择列表 ===== */
+.profile-page__avatar-list {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.profile-page__avatar-option {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f5f5f5;
+}
+
+.profile-page__avatar-option--selected {
+  border-color: #9fe870;
+  background: #e2f6d5;
+}
+
+.profile-page__avatar-image {
+  width: 56px;
+  height: 56px;
 }
 </style>

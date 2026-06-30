@@ -24,6 +24,7 @@ CREATE TABLE `users` (
   `avatar_url` VARCHAR(500) NULL COMMENT '头像URL',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常，0-禁用（软删除）',
   `last_login_at` DATETIME NULL COMMENT '最后登录时间',
+  `deletion_scheduled_at` DATETIME NULL COMMENT '账号注销计划时间（24小时后自动删除）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
   PRIMARY KEY (`id`),

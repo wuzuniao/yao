@@ -137,3 +137,41 @@ export function changeEmail({ user_id, old_code, new_email, new_code }) {
     data: { user_id, old_code, new_email, new_code }
   })
 }
+
+/**
+ * 更新用户头像
+ * @param {Object} param0 更新头像数据
+ * @param {number} param0.user_id 用户ID
+ * @param {string} param0.avatar_url 头像地址
+ */
+export function updateAvatar({ user_id, avatar_url }) {
+  return request({
+    url: '/api/v1/users/update-avatar',
+    method: 'PUT',
+    data: { user_id, avatar_url }
+  })
+}
+
+/**
+ * 计划注销账号（24小时后自动删除）
+ * @param {number} user_id 用户ID
+ */
+export function scheduleDeletion(user_id) {
+  return request({
+    url: '/api/v1/users/schedule-deletion',
+    method: 'POST',
+    data: { user_id }
+  })
+}
+
+/**
+ * 取消账号注销计划
+ * @param {number} user_id 用户ID
+ */
+export function cancelDeletion(user_id) {
+  return request({
+    url: '/api/v1/users/cancel-deletion',
+    method: 'POST',
+    data: { user_id }
+  })
+}

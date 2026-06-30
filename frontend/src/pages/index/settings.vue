@@ -78,11 +78,20 @@
 import { computed } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
-import touxiangIcon from '../../assets/images/touxiang.png'
+import touxiangHei from '../../assets/images/touxiang/hei.png'
+import touxiangHong from '../../assets/images/touxiang/hong.png'
+import touxiangLan from '../../assets/images/touxiang/lan.png'
 import { useUserStore } from '../../store/modules/user'
 
 const hasNotification = false
 const userStore = useUserStore()
+
+// 头像 key 与图片资源的映射
+const avatarMap = {
+  hei: touxiangHei,
+  hong: touxiangHong,
+  lan: touxiangLan
+}
 
 // 用户名显示：已登录显示 username，未登录显示"请登录"
 const displayName = computed(() => {
@@ -97,9 +106,13 @@ const displaySlogan = computed(() => {
   return '"保持热爱，奔赴山海，\n每一天都要好好生活。"'
 })
 
-// 用户头像：已登录显示用户头像，未登录显示默认头像
+// 用户头像：根据数据库存储的 key 映射到对应图片，未登录或无匹配时显示默认头像
 const avatarUrl = computed(() => {
-  return userStore.userInfo?.avatar_url || touxiangIcon
+  const key = userStore.userInfo?.avatar_url
+  if (key && avatarMap[key]) {
+    return avatarMap[key]
+  }
+  return touxiangHong
 })
 
 function goNotification() {

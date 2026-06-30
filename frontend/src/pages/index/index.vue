@@ -84,7 +84,7 @@ const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 113px;
+  gap: 66px;
 }
 
 .index-page__hero {
@@ -96,7 +96,7 @@ const checkinIcon = hasCheckedIn ? checkinActiveIcon : checkinInactiveIcon
 .index-page__primary-card {
   position: relative;
   width: 342px;
-  height: 94px;
+  height: 141px;
   padding: 16px;
   box-sizing: border-box;
   border-radius: 32px;

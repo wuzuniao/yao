@@ -25,7 +25,7 @@
   },
   "quickapp": {},
   "mp-weixin": {
-    "appid": "",
+    "appid": "wx3101dc47c535111e",
     "setting": {
       "urlCheck": false
     },
@@ -50,7 +50,7 @@
         }
       }
     },
-    "title": "My App"
+    "title": "无足鸟按时吃药打卡"
   },
   "uniStatistics": {
     "enable": false

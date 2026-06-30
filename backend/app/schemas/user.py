@@ -213,3 +213,25 @@ class ChangeEmail(BaseModel):
         if not _CODE_RE.match(v):
             raise ValueError("新邮箱验证码为 6 位数字")
         return v
+
+
+class UpdateAvatar(BaseModel):
+    """更新头像请求 Schema"""
+
+    user_id: int
+    avatar_url: str
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validate_avatar_url(cls, v: str) -> str:
+        if not v:
+            raise ValueError("头像地址不能为空")
+        if len(v) > 500:
+            raise ValueError("头像地址长度不能超过 500 个字符")
+        return v
+
+
+class ScheduleDeletion(BaseModel):
+    """计划注销账号请求 Schema"""
+
+    user_id: int

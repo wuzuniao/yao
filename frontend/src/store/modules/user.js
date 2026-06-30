@@ -31,7 +31,8 @@ export const useUserStore = defineStore('user', () => {
       id: data.id,
       username: data.username,
       signature: data.signature != null ? String(data.signature) : '',
-      avatar_url: data.avatar_url || ''
+      avatar_url: data.avatar_url || '',
+      deletion_scheduled_at: data.deletion_scheduled_at || null
     }
     try {
       uni.setStorageSync('userInfo', userInfo.value)

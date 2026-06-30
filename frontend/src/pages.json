@@ -12,7 +12,7 @@
       "path": "pages/index/record",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "用药记录",
+        "navigationBarTitleText": "记录",
         "backgroundColor": "#FFFFFF"
       }
     },
@@ -105,7 +105,7 @@
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "My App",
+    "navigationBarTitleText": "无足鸟按时吃药打卡",
     "navigationBarBackgroundColor": "#F8F8F8",
     "backgroundColor": "#F8F8F8"
   }

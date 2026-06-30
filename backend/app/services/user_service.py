@@ -1,5 +1,6 @@
 import secrets
 import time
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -277,6 +278,52 @@ class User:
             raise ValueError("该邮箱已被注册")
         # 5. 更新邮箱
         user.email = new_email
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def update_avatar(self, user_id: int, avatar_url: str) -> UserModel:
+        """
+        更新用户头像
+        :param user_id: 用户ID
+        :param avatar_url: 头像地址
+        :return: UserModel（更新后的用户对象）
+        :raises ValueError: 用户不存在
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise ValueError("用户不存在")
+        user.avatar_url = avatar_url
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def schedule_deletion(self, user_id: int) -> UserModel:
+        """
+        计划注销账号：设置24小时后自动删除
+        :param user_id: 用户ID
+        :return: UserModel（更新后的用户对象）
+        :raises ValueError: 用户不存在
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise ValueError("用户不存在")
+        user.deletion_scheduled_at = datetime.now() + timedelta(hours=24)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def cancel_deletion(self, user_id: int) -> UserModel:
+        """
+        取消账号注销计划
+        :param user_id: 用户ID
+        :return: UserModel（更新后的用户对象）
+        :raises ValueError: 用户不存在
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise ValueError("用户不存在")
+        user.deletion_scheduled_at = None
         await self.db.commit()
         await self.db.refresh(user)
         return user

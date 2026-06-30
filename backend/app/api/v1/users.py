@@ -8,10 +8,12 @@ from ...schemas.user import (
     LoginUser,
     RegisterUser,
     ResetPassword,
+    ScheduleDeletion,
     SendChangeEmailNewCode,
     SendChangeEmailOldCode,
     SendCode,
     SendResetCode,
+    UpdateAvatar,
     UpdateSignature,
 )
 from ...services.user_service import User
@@ -91,6 +93,9 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
             "username": db_user.username,
             "signature": db_user.signature or "",
             "avatar_url": db_user.avatar_url or "",
+            "deletion_scheduled_at": db_user.deletion_scheduled_at.isoformat()
+            if db_user.deletion_scheduled_at
+            else None,
         },
     }
 
@@ -245,5 +250,72 @@ async def change_email(payload: ChangeEmail, db: AsyncSession = Depends(get_db))
             "id": db_user.id,
             "username": db_user.username,
             "email": db_user.email,
+        },
+    }
+
+
+@router.put("/update-avatar")
+async def update_avatar(payload: UpdateAvatar, db: AsyncSession = Depends(get_db)):
+    """
+    更新用户头像接口
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.update_avatar(
+            user_id=payload.user_id,
+            avatar_url=payload.avatar_url,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "头像更新成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "avatar_url": db_user.avatar_url or "",
+        },
+    }
+
+
+@router.post("/schedule-deletion")
+async def schedule_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(get_db)):
+    """
+    计划注销账号接口
+    - 设置24小时后自动删除
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.schedule_deletion(payload.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "账号将在一天后自动删除，且无法恢复，请保留个人数据",
+        "data": {
+            "id": db_user.id,
+            "deletion_scheduled_at": db_user.deletion_scheduled_at.isoformat()
+            if db_user.deletion_scheduled_at
+            else None,
+        },
+    }
+
+
+@router.post("/cancel-deletion")
+async def cancel_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(get_db)):
+    """
+    取消账号注销接口
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.cancel_deletion(payload.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "账号注销已取消",
+        "data": {
+            "id": db_user.id,
+            "deletion_scheduled_at": None,
         },
     }

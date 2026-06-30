@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str
-    PROJECT_NAME: str = "My Project"
+    PROJECT_NAME: str = "无足鸟按时吃药打卡"
     API_V1_STR: str = "/api/v1"
 
     # 腾讯企业邮 SMTP 配置（发送注册验证码邮件，账号密码从环境变量读取）
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 465
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_SENDER_NAME: str = "按时打卡"
+    SMTP_SENDER_NAME: str = "无足鸟"
 
     class Config:
         @staticmethod
