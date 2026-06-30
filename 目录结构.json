@@ -23,7 +23,8 @@
         "models": {
           "描述": "SQLAlchemy ORM模型，对应数据库表结构",
           "__init__.py": "模型包初始化文件",
-          "user.py": "用户数据表模型"
+          "user.py": "用户数据表模型",
+          "user_miniapp_account.py": "用户-小程序绑定关系表模型（存储openid和session_key）"
         },
         "schemas": {
           "描述": "Pydantic模型，负责请求/响应校验",

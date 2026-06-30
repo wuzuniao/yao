@@ -175,3 +175,16 @@ export function cancelDeletion(user_id) {
     data: { user_id }
   })
 }
+
+/**
+ * 微信一键登录
+ * @param {string} code wx.login() 获取的临时登录凭证
+ */
+export function wechatLogin(code) {
+  return request({
+    url: '/api/v1/users/wechat-login',
+    method: 'POST',
+    data: { code },
+    timeout: 10000
+  })
+}

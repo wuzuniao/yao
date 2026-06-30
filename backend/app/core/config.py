@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_SENDER_NAME: str = "无足鸟"
 
+    # 微信小程序配置（用于微信一键登录）
+    WX_APPID: str = ""
+    WX_APP_SECRET: str = ""
+
     class Config:
         @staticmethod
         def get_env_file():

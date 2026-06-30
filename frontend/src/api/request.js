@@ -9,13 +9,14 @@
  */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
-export function request({ url, method = 'GET', data, header }) {
+export function request({ url, method = 'GET', data, header, timeout }) {
   return new Promise((resolve, reject) => {
     uni.request({
       url: BASE_URL + url,
       method,
       data,
       header: { 'Content-Type': 'application/json', ...header },
+      timeout,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)

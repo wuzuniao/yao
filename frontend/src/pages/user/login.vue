@@ -100,7 +100,7 @@
 import { reactive, ref } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
-import { loginUser } from '../../api/modules/user'
+import { loginUser, wechatLogin } from '../../api/modules/user'
 import { useUserStore } from '../../store/modules/user'
 import mimaIcon from '../../assets/images/mima_1.png'
 import wxIcon from '../../assets/images/dl_wx.png'
@@ -223,8 +223,69 @@ function handleForgot() {
   })
 }
 
+// ===== 微信一键登录：wx.login 获取 code → 后端换取 openid → 写入状态 → 跳转 =====
+// 使用 callback 风格调用 uni.login + 超时安全网覆盖整个流程（含后端请求）
 function handleWechatLogin() {
-  uni.showToast({ title: '微信登录', icon: 'none' })
+  if (submitting.value) return
+  submitting.value = true
+  uni.showLoading({ title: '微信登录中...', mask: true })
+
+  // 超时安全网：覆盖整个登录流程（uni.login + 后端请求），15秒后自动重置
+  // 注意：不在 uni.login success 中清除，等后端请求完成后才清除
+  const timeoutId = setTimeout(() => {
+    submitting.value = false
+    uni.hideLoading()
+    setTimeout(() => {
+      uni.showToast({ title: '登录超时，请检查网络或后端服务', icon: 'none' })
+    }, 200)
+  }, 15000)
+
+  uni.login({
+    success: async (loginRes) => {
+      if (!loginRes || !loginRes.code) {
+        clearTimeout(timeoutId)
+        uni.hideLoading()
+        setTimeout(() => {
+          uni.showToast({ title: '获取微信登录凭证失败', icon: 'none' })
+        }, 200)
+        submitting.value = false
+        return
+      }
+      try {
+        const res = await wechatLogin(loginRes.code)
+        clearTimeout(timeoutId)
+        uni.hideLoading()
+        userStore.setUser(res.data)
+        uni.showToast({ title: '登录成功', icon: 'success' })
+        setTimeout(() => {
+          uni.redirectTo({ url: '/pages/index/settings' })
+        }, 1500)
+      } catch (e) {
+        clearTimeout(timeoutId)
+        uni.hideLoading()
+        // 延迟 200ms 显示 toast，避免与 hideLoading 冲突
+        setTimeout(() => {
+          const msg = e.message || '微信登录失败'
+          uni.showToast({ title: msg, icon: 'none' })
+        }, 200)
+      } finally {
+        submitting.value = false
+      }
+    },
+    fail: (err) => {
+      clearTimeout(timeoutId)
+      uni.hideLoading()
+      setTimeout(() => {
+        const msg = (err && err.errMsg) || ''
+        if (msg.includes('cancel') || msg.includes('auth deny')) {
+          uni.showToast({ title: '已取消微信登录', icon: 'none' })
+        } else {
+          uni.showToast({ title: '微信登录失败', icon: 'none' })
+        }
+      }, 200)
+      submitting.value = false
+    }
+  })
 }
 
 function goRegister() {

@@ -235,3 +235,16 @@ class ScheduleDeletion(BaseModel):
     """计划注销账号请求 Schema"""
 
     user_id: int
+
+
+class WeChatLogin(BaseModel):
+    """微信登录请求 Schema"""
+
+    code: str
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        if not v:
+            raise ValueError("微信登录凭证 code 不能为空")
+        return v

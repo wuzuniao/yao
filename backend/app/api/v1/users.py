@@ -15,6 +15,7 @@ from ...schemas.user import (
     SendResetCode,
     UpdateAvatar,
     UpdateSignature,
+    WeChatLogin,
 )
 from ...services.user_service import User
 
@@ -317,5 +318,36 @@ async def cancel_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(
         "data": {
             "id": db_user.id,
             "deletion_scheduled_at": None,
+        },
+    }
+
+
+@router.post("/wechat-login")
+async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db)):
+    """
+    微信一键登录接口
+    - 接收前端 wx.login() 获取的 code
+    - 调用微信 jscode2session 接口换取 openid 和 session_key
+    - 查找或创建用户，session_key 安全存储于后端（不下发到前端）
+    - 返回用户信息（id、username、signature、avatar_url）
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.wechat_login(payload.code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"微信登录服务异常：{e}")
+    return {
+        "code": 0,
+        "msg": "登录成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username or "",
+            "signature": db_user.signature or "",
+            "avatar_url": db_user.avatar_url or "",
+            "deletion_scheduled_at": db_user.deletion_scheduled_at.isoformat()
+            if db_user.deletion_scheduled_at
+            else None,
         },
     }

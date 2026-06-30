@@ -2,11 +2,14 @@ import secrets
 import time
 from datetime import datetime, timedelta
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.config import settings
 from ..core.security import get_password_hash, verify_password
 from ..models.user import User as UserModel
+from ..models.user_miniapp_account import UserMiniappAccount
 from .email_service import Email
 
 
@@ -324,6 +327,80 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         user.deletion_scheduled_at = None
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def _code2session(self, code: str) -> dict:
+        """
+        调用微信 jscode2session 接口，用 code 换取 openid 和 session_key
+        :param code: 前端 wx.login() 获取的临时登录凭证
+        :return: {"openid": str, "session_key": str, ...}
+        :raises ValueError: 微信接口调用失败
+        """
+        url = "https://api.weixin.qq.com/sns/jscode2session"
+        params = {
+            "appid": settings.WX_APPID,
+            "secret": settings.WX_APP_SECRET,
+            "js_code": code,
+            "grant_type": "authorization_code",
+        }
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, params=params, timeout=10)
+            data = resp.json()
+        if data.get("errcode", 0) != 0:
+            raise ValueError(f"微信登录失败：{data.get('errmsg', '未知错误')}")
+        return data
+
+    async def wechat_login(self, code: str) -> UserModel:
+        """
+        微信一键登录：code → openid → 查找/创建用户 → 返回用户信息
+        :param code: 前端 wx.login() 获取的临时登录凭证
+        :return: UserModel
+        :raises ValueError: 微信接口调用失败
+        """
+        # 1. 调用微信接口获取 openid 和 session_key
+        wx_data = await self._code2session(code)
+        openid = wx_data["openid"]
+        session_key = wx_data["session_key"]
+        app_id = settings.WX_APPID
+
+        # 2. 查询 user_miniapp_accounts 是否已有该 openid 的绑定记录
+        result = await self.db.execute(
+            select(UserMiniappAccount).where(
+                UserMiniappAccount.app_id == app_id,
+                UserMiniappAccount.openid == openid,
+            )
+        )
+        miniapp_account = result.scalar_one_or_none()
+
+        if miniapp_account:
+            # 2a. 已绑定：更新 session_key，获取关联用户
+            miniapp_account.session_key = session_key
+            user = await self.get_by_id(miniapp_account.user_id)
+            if not user:
+                raise ValueError("用户数据异常，请联系管理员")
+        else:
+            # 2b. 未绑定：创建新用户（微信登录用户 username/email/password 均为空）
+            user = UserModel(
+                username=None,
+                email=None,
+                password_hash=None,
+                avatar_url="",
+                status=1,
+            )
+            self.db.add(user)
+            await self.db.flush()
+            miniapp_account = UserMiniappAccount(
+                user_id=user.id,
+                app_id=app_id,
+                openid=openid,
+                session_key=session_key,
+            )
+            self.db.add(miniapp_account)
+
+        # 3. 更新最后登录时间
+        user.last_login_at = datetime.now()
         await self.db.commit()
         await self.db.refresh(user)
         return user
