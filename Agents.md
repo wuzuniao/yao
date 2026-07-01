@@ -114,7 +114,7 @@
 - **Python 3.14.2**，遵循 PEP 8，使用 `black`（行宽 100）和 `isort` 格式化。
 - **类型注解**：所有函数参数和返回值必须添加类型注解（`typing` 模块或 `from __future__ import annotations`）。
 - **异步**：使用 `async/await`（FastAPI 原生支持）。数据库驱动使用 `asyncmy`（开发环境）或 `mariadb` 异步版（生产）。
-- **配置管理**：`pydantic-settings`，通过 `.env.dev`/`.env.prod` 和环境变量 `ENV` 切换。
+- **配置管理**：`pydantic-settings`，统一从 `.env` 文件读取（`.env.template` 为参数模板，提交 Git；`.env` 为实际配置，不提交 Git）。
 - **异常处理**：自定义业务异常，使用 `HTTPException` 抛出，全局异常处理器统一返回 `{"code": int, "msg": str, "data": any}`。
 - **日志**：`logging` 模块，输出到 `backend/logs/`，格式包含时间、级别、模块、行号。
 - **SQLAlchemy**：
@@ -159,15 +159,15 @@
 - **认证**：JWT Bearer Token，过期 7 天，刷新待定。
 - **错误码**：非 0 表示错误，msg 不暴露敏感信息。
 
-## 8. 环境配置与切换
+## 8. 环境配置
 
-- **开发（Windows）**：
-  - 后端 `.env.dev`：`DATABASE_URL=mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4`
-  - 前端 `.env.dev`：`VITE_API_BASE_URL=http://localhost:8000`
-
-- **生产（Rocky Linux + Docker 容器）**：
-  - 后端 `.env.prod`：`DATABASE_URL=mysql+asyncmy://root:生产密码@mariadb:3306/wuzuniao_yao?charset=utf8mb4`（若使用 Docker Compose 服务名）或替换为内网 IP。
-  - 前端 `.env.prod`：生产域名（构建时注入）
+- **统一配置文件 `.env`**：开发与生产环境均使用 `.env` 文件（位于 `backend/` 与 `frontend/` 下），该文件不提交 Git。`.env.template` 为参数模板（提交 Git），新环境部署时复制为 `.env` 并填入实际值。
+- **开发（Windows）参考值**：
+  - 后端 `backend/.env`：`DATABASE_URL=mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4`
+  - 前端 `frontend/.env`：`VITE_API_BASE_URL=http://localhost:8000`
+- **生产（Rocky Linux + Docker 容器）参考值**：
+  - 后端 `backend/.env`：`DATABASE_URL=mysql+asyncmy://root:生产密码@mariadb:3306/wuzuniao_yao?charset=utf8mb4`（若使用 Docker Compose 服务名）或替换为内网 IP。
+  - 前端 `frontend/.env`：生产域名（如 `https://your-api-domain.com`）
 
 - **启动命令**：
   - 后端：`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`（开发），生产使用容器启动。
@@ -205,7 +205,7 @@
 
 ## 12. 提交与版本控制
 
-- Git 忽略：`__pycache__/`、`*.pyc`、`node_modules/`、`unpackage/`、`logs/`、`.env.prod`。
+- Git 忽略：`__pycache__/`、`*.pyc`、`node_modules/`、`unpackage/`、`logs/`、`.env`（实际配置文件）；`.env.template` 可提交 Git。
 - 提交信息格式：`<type>(<scope>): <subject>`，type 包括 `feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`chore`。
 
 

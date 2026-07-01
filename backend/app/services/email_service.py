@@ -10,9 +10,8 @@ class Email:
     """
     邮箱操作类（封装邮件发送功能）
     --------------------------------------------------------------------------
-    - 使用 SMTP 协议经腾讯企业邮（smtp.exmail.qq.com:465 SSL）发送邮件
-    - 源邮箱地址、授权码从环境变量读取（SMTP_USER / SMTP_PASSWORD）
-    - 当前主要用途：注册时向用户邮箱发送验证码
+    - send_verification_code：使用系统腾讯企业邮（smtp.exmail.qq.com:465 SSL）发送验证码
+    - send_notification：使用用户自配 SMTP（notification_channels.channel_value）发送打卡通知
     """
 
     def __init__(self) -> None:
@@ -54,4 +53,43 @@ class Email:
             logger.info(f"验证码邮件发送成功：{to_email}")
         except Exception as e:
             logger.error(f"验证码邮件发送失败：{to_email}，错误：{e}")
+            raise RuntimeError(f"邮件发送失败：{e}")
+
+    def send_notification(
+        self,
+        to_email: str,
+        subject: str,
+        content: str,
+        smtp_host: str,
+        smtp_port: int,
+        from_email: str,
+        smtp_password: str,
+    ) -> None:
+        """
+        使用用户自配 SMTP 发送打卡通知邮件（供 SchedulerService 调用）
+        - 发件人 = from_email（channel_value.email，即 SMTP 登录账号）
+        - 收件人 = to_email（users.email，即用户绑定的邮箱）
+        - 端口 465 走 SSL，其他端口走 STARTTLS（兼容主流邮箱）
+        :raises RuntimeError: SMTP 连接或发送失败
+        """
+        msg = MIMEText(content, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = formataddr((self.sender_name, from_email))
+        msg["To"] = to_email
+
+        try:
+            if smtp_port == 465:
+                # SSL 直连（如腾讯企业邮、QQ 邮箱）
+                with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
+                    server.login(from_email, smtp_password)
+                    server.sendmail(from_email, [to_email], msg.as_string())
+            else:
+                # STARTTLS（如 Gmail 587、Outlook 587）
+                with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                    server.starttls()
+                    server.login(from_email, smtp_password)
+                    server.sendmail(from_email, [to_email], msg.as_string())
+            logger.info(f"打卡通知邮件发送成功：{from_email} -> {to_email}")
+        except Exception as e:
+            logger.error(f"打卡通知邮件发送失败：{from_email} -> {to_email}，错误：{e}")
             raise RuntimeError(f"邮件发送失败：{e}")

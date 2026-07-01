@@ -1,5 +1,8 @@
-import os
+from pathlib import Path
 from pydantic_settings import BaseSettings
+
+# backend/ 目录（config.py 位于 backend/app/core/），用于按绝对路径定位 .env 文件
+_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -18,14 +21,12 @@ class Settings(BaseSettings):
     WX_APPID: str = ""
     WX_APP_SECRET: str = ""
 
-    class Config:
-        @staticmethod
-        def get_env_file():
-            if os.getenv("ENV") == "prod":
-                return ".env.prod"
-            return ".env.dev"
+    # 数据加密密钥（AES-256-GCM，base64 编码的 32 字节密钥）
+    # 用于加密邮件客户端专用密码等敏感信息
+    ENCRYPTION_SECRET_KEY: str = ""
 
-        env_file = get_env_file.__func__()
+    class Config:
+        env_file = str(_BASE_DIR / ".env")
         extra = "allow"
 
 

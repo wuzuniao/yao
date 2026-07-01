@@ -63,3 +63,29 @@ page {
   border-bottom: 6px solid transparent;
   border-left: 7.4px solid var(--color-text-tertiary);
 }
+
+/* ==========================================================================
+ * 输入框字符限制提示（input-limit-hint）
+ * --------------------------------------------------------------------------
+ * 用于 login/register/forgot-password/profile/plan/notification 等含输入框页面，
+ * 配合 composables/useInputLimit.js 使用。
+ * - 默认态：不显示（hint 文案为空时 v-if 不渲染）
+ * --near：接近限制时（剩余字符数 ≤ 阈值），橙色提示
+ * --full：达到限制时，红色提示
+ * 字号 12px 确保在各种屏幕尺寸下清晰可见，不占用过多空间。
+ * ========================================================================== */
+.input-limit-hint {
+  margin-top: 4px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: right;
+}
+
+.input-limit-hint--near {
+  color: #d97706;
+}
+
+.input-limit-hint--full {
+  color: var(--color-danger);
+}

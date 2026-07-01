@@ -21,9 +21,15 @@
             placeholder="请输入邮箱地址"
             placeholder-class="forgot-password-page__placeholder"
             :placeholder-style="phStyle('email')"
+            :maxlength="emailLimit.max"
+            @input="e => form.email = emailLimit.handleInput(e)"
             @focus="handleFocus('email')"
             @blur="handleBlur('email')"
           />
+          <text
+            v-if="emailLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': emailLimit.isNear.value, 'input-limit-hint--full': emailLimit.isFull.value }]"
+          >{{ emailLimit.hint.value }}</text>
           <text v-if="errors.email" class="forgot-password-page__error-text">{{ errors.email }}</text>
         </view>
 
@@ -38,6 +44,8 @@
               placeholder="请输入验证码"
               placeholder-class="forgot-password-page__placeholder"
               :placeholder-style="phStyle('code')"
+              :maxlength="codeLimit.max"
+              @input="e => form.code = codeLimit.handleInput(e)"
               @focus="handleFocus('code')"
               @blur="handleBlur('code')"
             />
@@ -45,6 +53,10 @@
               <text class="forgot-password-page__code-btn-text">{{ codeText }}</text>
             </view>
           </view>
+          <text
+            v-if="codeLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': codeLimit.isNear.value, 'input-limit-hint--full': codeLimit.isFull.value }]"
+          >{{ codeLimit.hint.value }}</text>
           <text v-if="errors.code" class="forgot-password-page__error-text">{{ errors.code }}</text>
         </view>
 
@@ -67,9 +79,15 @@
             placeholder="请设置强密码"
             placeholder-class="forgot-password-page__placeholder"
             :placeholder-style="phStyle('newPassword')"
+            :maxlength="newPwdLimit.max"
+            @input="e => form.newPassword = newPwdLimit.handleInput(e)"
             @focus="handleFocus('newPassword')"
             @blur="handleBlur('newPassword')"
           />
+          <text
+            v-if="newPwdLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': newPwdLimit.isNear.value, 'input-limit-hint--full': newPwdLimit.isFull.value }]"
+          >{{ newPwdLimit.hint.value }}</text>
           <text v-if="errors.newPassword" class="forgot-password-page__error-text">{{ errors.newPassword }}</text>
         </view>
 
@@ -84,9 +102,15 @@
             placeholder="请再次输入密码"
             placeholder-class="forgot-password-page__placeholder"
             :placeholder-style="phStyle('confirmPassword')"
+            :maxlength="confirmPwdLimit.max"
+            @input="e => form.confirmPassword = confirmPwdLimit.handleInput(e)"
             @focus="handleFocus('confirmPassword')"
             @blur="handleBlur('confirmPassword')"
           />
+          <text
+            v-if="confirmPwdLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': confirmPwdLimit.isNear.value, 'input-limit-hint--full': confirmPwdLimit.isFull.value }]"
+          >{{ confirmPwdLimit.hint.value }}</text>
           <text v-if="errors.confirmPassword" class="forgot-password-page__error-text">{{ errors.confirmPassword }}</text>
         </view>
 
@@ -118,6 +142,7 @@
 import { reactive, ref } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
+import { useInputLimit } from '../../composables/useInputLimit'
 import { sendResetCode, resetPassword } from '../../api/modules/user'
 
 const step = ref(1)
@@ -138,6 +163,12 @@ const counting = ref(false)
 const submitting = ref(false)
 
 const { onFocus, onBlur, phStyle } = usePlaceholder()
+
+// 输入框字符限制（与后端字段长度严格匹配）
+const emailLimit = useInputLimit(254)
+const codeLimit = useInputLimit(6, /^\d$/)
+const newPwdLimit = useInputLimit(20)
+const confirmPwdLimit = useInputLimit(20)
 
 // ===== 前端输入校验（参照 register.vue）=====
 function validateEmail(v) {
@@ -287,7 +318,7 @@ function goLogin() {
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
-  padding: 100px 24px 36px;
+  padding: 105px 24px 36px;
   display: flex;
   flex-direction: column;
   justify-content: center;

@@ -12,13 +12,15 @@ class User(Base):
     __table_args__ = {"schema": "wuzuniao_yonghu"}
 
     id = Column(BigInteger, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True, nullable=True)
+    # 用户名长度限制：基于 settings.vue 资料卡文本区（约191px，28px字体）可视字符约9个 × 1.5 ≈ 15
+    username = Column(String(15), unique=True, index=True, nullable=True)
     email = Column(String(100), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=True)
-    signature = Column(String(255), nullable=True)
+    # 签名长度限制：基于 settings.vue 资料卡3行文本区（约191px，16px字体）可视字符约46个 × 1.5 ≈ 70
+    signature = Column(String(70), nullable=True)
     avatar_url = Column(String(500), nullable=True)
-    status = Column(SmallInteger, nullable=False, default=1)
+    # status：1-正常，0-待删除（用户确认删除后置0，后台任务1分钟后清理）
+    status = Column(SmallInteger, nullable=False, default=1, comment="状态：1-正常，0-待删除（后台任务1分钟后清理）")
     last_login_at = Column(DateTime, nullable=True)
-    deletion_scheduled_at = Column(DateTime, nullable=True, comment="账号注销计划时间（24小时后自动删除）")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

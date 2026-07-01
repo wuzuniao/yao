@@ -17,14 +17,13 @@ USE `wuzuniao_yonghu`;
 -- ------------------------------------------------------
 CREATE TABLE `users` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户内部ID（自增主键）',
-  `username` VARCHAR(50) NULL COMMENT '展示昵称（可为空，前端自行处理占位）',
+  `username` VARCHAR(15) NULL COMMENT '展示昵称（可为空，前端自行处理占位）',
   `email` VARCHAR(100) NULL COMMENT '邮箱（跨小程序唯一主账号，业务层已验证）',
   `password_hash` VARCHAR(255) NULL COMMENT '密码哈希（微信登录用户为空）',
-  `signature` VARCHAR(255) NULL COMMENT '个性签名',
+  `signature` VARCHAR(70) NULL COMMENT '个性签名',
   `avatar_url` VARCHAR(500) NULL COMMENT '头像URL',
-  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常，0-禁用（软删除）',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常，0-待删除（后台任务1分钟后清理）',
   `last_login_at` DATETIME NULL COMMENT '最后登录时间',
-  `deletion_scheduled_at` DATETIME NULL COMMENT '账号注销计划时间（24小时后自动删除）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
   PRIMARY KEY (`id`),

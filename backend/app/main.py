@@ -1,10 +1,26 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .api import v1
+from .services.scheduler_service import SchedulerService
 
-app = FastAPI(title=settings.PROJECT_NAME)
+# 全局定时任务调度服务实例
+_scheduler = SchedulerService()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动全部后台定时任务循环（账号清理/计划关闭/通知派发）
+    await _scheduler.start_all()
+    yield
+    # 应用关闭时停止全部后台任务
+    await _scheduler.stop_all()
+
+
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

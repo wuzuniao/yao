@@ -5,11 +5,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useUserStore } from '../store/modules/user'
 import noticeInactiveIcon from '../assets/images/tongzhi_0.png'
 import noticeActiveIcon from '../assets/images/tongzhi_1.png'
 
 const props = defineProps({
+  // hasNotification 已废弃：图标现由全局未读站内信数量（userStore.unreadCount）驱动
+  // 保留 prop 定义以兼容各页面历史调用，实际不再使用
   hasNotification: {
     type: Boolean,
     default: false
@@ -23,8 +26,16 @@ const props = defineProps({
   }
 })
 
+const userStore = useUserStore()
+
+// 图标由全局未读数量驱动：有未读显示 tongzhi_1.png，无消息/全部已读显示 tongzhi_0.png
 const iconSrc = computed(() => {
-  return props.hasNotification ? noticeActiveIcon : noticeInactiveIcon
+  return userStore.unreadCount > 0 ? noticeActiveIcon : noticeInactiveIcon
+})
+
+// 组件挂载时拉取未读数量（store 内置 10 秒节流与登录校验，未登录时不请求）
+onMounted(() => {
+  userStore.loadUnreadCount()
 })
 
 // 动态计算 top：若未传入 top，则基于 statusBarHeight 计算
@@ -44,10 +55,10 @@ const positionStyle = computed(() => ({
   top: computedTop.value
 }))
 
-// 模内紧耦：点击跳转设置页逻辑封装在组件内部，页面无需重复实现
+// 模内紧耦：点击直达站内信页，逻辑封装在组件内部，页面无需重复实现
 function handleClick() {
   uni.reLaunch({
-    url: '/pages/index/settings'
+    url: '/pages/user/messages'
   })
 }
 </script>

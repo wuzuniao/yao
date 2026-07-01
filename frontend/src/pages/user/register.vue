@@ -24,9 +24,15 @@
               placeholder="请输入用户名"
               placeholder-class="register-page__placeholder"
               :placeholder-style="phStyle('username')"
+              :maxlength="usernameLimit.max"
+              @input="e => form.username = usernameLimit.handleInput(e)"
               @focus="handleFocus('username')"
               @blur="handleBlur('username')"
             />
+            <text
+              v-if="usernameLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': usernameLimit.isNear.value, 'input-limit-hint--full': usernameLimit.isFull.value }]"
+            >{{ usernameLimit.hint.value }}</text>
             <text v-if="errors.username" class="register-page__error-text">{{ errors.username }}</text>
           </view>
 
@@ -41,9 +47,15 @@
               placeholder="请设置强密码"
               placeholder-class="register-page__placeholder"
               :placeholder-style="phStyle('password')"
+              :maxlength="passwordLimit.max"
+              @input="e => form.password = passwordLimit.handleInput(e)"
               @focus="handleFocus('password')"
               @blur="handleBlur('password')"
             />
+            <text
+              v-if="passwordLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': passwordLimit.isNear.value, 'input-limit-hint--full': passwordLimit.isFull.value }]"
+            >{{ passwordLimit.hint.value }}</text>
             <text v-if="errors.password" class="register-page__error-text">{{ errors.password }}</text>
           </view>
 
@@ -58,9 +70,15 @@
               placeholder="请再次输入密码"
               placeholder-class="register-page__placeholder"
               :placeholder-style="phStyle('confirmPassword')"
+              :maxlength="confirmPwdLimit.max"
+              @input="e => form.confirmPassword = confirmPwdLimit.handleInput(e)"
               @focus="handleFocus('confirmPassword')"
               @blur="handleBlur('confirmPassword')"
             />
+            <text
+              v-if="confirmPwdLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': confirmPwdLimit.isNear.value, 'input-limit-hint--full': confirmPwdLimit.isFull.value }]"
+            >{{ confirmPwdLimit.hint.value }}</text>
             <text v-if="errors.confirmPassword" class="register-page__error-text">{{ errors.confirmPassword }}</text>
           </view>
 
@@ -74,9 +92,15 @@
               placeholder="请输入邮箱地址"
               placeholder-class="register-page__placeholder"
               :placeholder-style="phStyle('email')"
+              :maxlength="emailLimit.max"
+              @input="e => form.email = emailLimit.handleInput(e)"
               @focus="handleFocus('email')"
               @blur="handleBlur('email')"
             />
+            <text
+              v-if="emailLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': emailLimit.isNear.value, 'input-limit-hint--full': emailLimit.isFull.value }]"
+            >{{ emailLimit.hint.value }}</text>
             <text v-if="errors.email" class="register-page__error-text">{{ errors.email }}</text>
           </view>
 
@@ -91,6 +115,8 @@
                 placeholder="请输入验证码"
                 placeholder-class="register-page__placeholder"
                 :placeholder-style="phStyle('code')"
+                :maxlength="codeLimit.max"
+                @input="e => form.code = codeLimit.handleInput(e)"
                 @focus="handleFocus('code')"
                 @blur="handleBlur('code')"
               />
@@ -98,6 +124,10 @@
                 <text class="register-page__code-btn-text">{{ codeText }}</text>
               </view>
             </view>
+            <text
+              v-if="codeLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': codeLimit.isNear.value, 'input-limit-hint--full': codeLimit.isFull.value }]"
+            >{{ codeLimit.hint.value }}</text>
             <text v-if="errors.code" class="register-page__error-text">{{ errors.code }}</text>
           </view>
 
@@ -132,7 +162,7 @@
  * 功能：新用户账号注册（前端 + 后端双重校验）
  *  - 表单字段：用户名、密码、确认密码、电子邮箱、验证码
  *  - 输入校验（前端）：
- *      · 用户名：仅中文/英文/数字，长度 2-50
+ *      · 用户名：仅中文/英文/数字，长度 2-15
  *      · 密码：8-20 位，大小写字母/数字/特殊符号至少三种
  *      · 邮箱：标准邮箱格式
  *      · 验证码：6 位数字，需通过后端发送并匹配（后端二次校验）
@@ -147,6 +177,7 @@
 import { reactive, ref } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
+import { useInputLimit } from '../../composables/useInputLimit'
 import { sendRegisterCode, registerUser } from '../../api/modules/user'
 
 // 设计稿顶栏铃铛为绿色无红点态
@@ -177,10 +208,17 @@ const submitting = ref(false)
 // 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
 
+// 输入框字符限制（与后端字段长度严格匹配）
+const usernameLimit = useInputLimit(15, /^[\u4e00-\u9fa5a-zA-Z0-9]$/)
+const passwordLimit = useInputLimit(20)
+const confirmPwdLimit = useInputLimit(20)
+const emailLimit = useInputLimit(254)
+const codeLimit = useInputLimit(6, /^\d$/)
+
 // ===== 前端输入校验（与后端规则保持一致）=====
 function validateUsername(v) {
   if (!v) return '请输入用户名'
-  if (v.length < 2 || v.length > 50) return '用户名长度需为 2-50 个字符'
+  if (v.length < 2 || v.length > 15) return '用户名长度需为 2-15 个字符'
   if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(v)) return '用户名仅允许中文、英文及数字字符'
   return ''
 }
@@ -379,8 +417,8 @@ function goPrivacy() {
 }
 
 .register-page__canvas {
-  /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与卡片重叠 */
-  padding: 100px 24px 36px;
+  /* padding-top 105px：通知按钮 top约50px + 高40px = 底部约90px，留 15px 间隙避免与卡片重叠 */
+  padding: 105px 24px 36px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

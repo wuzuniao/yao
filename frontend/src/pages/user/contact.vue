@@ -79,7 +79,7 @@ const hasNotification = false
 /* ===== 主内容画布（对应设计稿 Main Content Canvas）===== */
 .contact-page__canvas {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 100px 24px 32px;
+  padding: 105px 24px 32px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

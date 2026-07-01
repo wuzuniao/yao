@@ -85,6 +85,14 @@
           }
         },
         {
+          "path": "messages",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "站内信",
+            "backgroundColor": "#FFFFFF"
+          }
+        },
+        {
           "path": "privacy",
           "style": {
             "navigationStyle": "custom",

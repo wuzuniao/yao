@@ -8,7 +8,18 @@
           <view class="record-page__calendar-arrow-btn" @click="handlePrevMonth">
             <view class="record-page__calendar-arrow record-page__calendar-arrow--left"></view>
           </view>
-          <text class="record-page__calendar-month">2026年6月</text>
+          <view class="record-page__calendar-title-group">
+            <picker mode="selector" :range="years" :value="yearIndex" @change="handleYearChange">
+              <view class="record-page__calendar-title-picker">
+                <text class="record-page__calendar-year">{{ currentYear }}年</text>
+              </view>
+            </picker>
+            <picker mode="selector" :range="months" :value="monthIndex" @change="handleMonthChange">
+              <view class="record-page__calendar-title-picker">
+                <text class="record-page__calendar-month">{{ currentMonth }}月</text>
+              </view>
+            </picker>
+          </view>
           <view class="record-page__calendar-arrow-btn" @click="handleNextMonth">
             <view class="record-page__calendar-arrow record-page__calendar-arrow--right"></view>
           </view>
@@ -35,8 +46,9 @@
               <view
                 v-if="day.isToday"
                 class="record-page__calendar-today"
+                :class="{ 'record-page__calendar-today--active': day.isSelected }"
               >
-                <text class="record-page__calendar-day-num">{{ day.date }}</text>
+                <text class="record-page__calendar-day-num record-page__calendar-day-num--selected">{{ day.date }}</text>
               </view>
               <view
                 v-else-if="day.isSelected"
@@ -54,36 +66,54 @@
         </view>
       </view>
 
-      <view class="record-page__list">
+      <!-- 当天打卡详情卡片（点击有打卡记录的日期时显示） -->
+      <view v-if="selectedDayDetail" class="record-page__list">
         <view class="record-page__list-header">
           <image class="record-page__list-icon" :src="jiluXqIcon" mode="aspectFit" />
-          <text class="record-page__list-title">{{ selectedDate }}</text>
+          <text class="record-page__list-title">{{ selectedDateText }}</text>
         </view>
 
-        <view class="record-page__list-items">
+        <!-- 加载中状态：异步查询数据库时显示视觉反馈 -->
+        <view v-if="isLoadingDay" class="record-page__list-loading">
+          <text class="record-page__list-loading-text">加载中...</text>
+        </view>
+        <!-- 加载失败状态：点击重试重新发起查询 -->
+        <view v-else-if="hasLoadError" class="record-page__list-error" @click="retryLoadDay">
+          <text class="record-page__list-error-text">加载失败，点击重试</text>
+        </view>
+        <!-- 有数据：列出当天所有打卡记录 -->
+        <view v-else-if="dayRecords.length > 0" class="record-page__list-items">
           <view
-            v-for="(item, index) in checkInItems"
+            v-for="(item, index) in dayRecords"
             :key="index"
             class="record-page__list-item"
-            :class="{ 'record-page__list-item--bordered': index < checkInItems.length - 1 }"
+            :class="{ 'record-page__list-item--bordered': index < dayRecords.length - 1 }"
           >
             <view class="record-page__list-item-marker">
               <view
                 class="record-page__list-item-dot"
-                :class="{ 'record-page__list-item-dot--completed': item.completed }"
+                :class="{ 'record-page__list-item-dot--completed': item.checked }"
               ></view>
             </view>
             <view class="record-page__list-item-content">
-              <text class="record-page__list-item-time">{{ item.time }}</text>
-              <text class="record-page__list-item-desc">{{ item.desc }}</text>
+              <view class="record-page__list-item-time-row">
+                <text class="record-page__list-item-time">{{ item.notification_time }}</text>
+                <text v-if="item.checked && item.actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.actual_time) }}</text>
+              </view>
+              <text class="record-page__list-item-name">{{ item.plan_name }}</text>
+              <text v-if="item.plan_remark" class="record-page__list-item-remark">{{ item.plan_remark }}</text>
             </view>
             <image
-              v-if="item.completed"
+              v-if="item.checked"
               class="record-page__list-item-check"
               :src="jiluWcIcon"
               mode="aspectFit"
             />
           </view>
+        </view>
+        <!-- 无数据 -->
+        <view v-else class="record-page__list-empty">
+          <text class="record-page__list-empty-text">当天暂无打卡记录</text>
         </view>
       </view>
     </view>
@@ -98,86 +128,218 @@
  * --------------------------------------------------------------------------
  * 功能：展示用户当月打卡日历与当日打卡明细
  *  - 顶部通知按钮（NoticeButton）
- *  - 月历：展示当月每日打卡状态（已打卡/未打卡/今日/选中），支持日期选中切换
- *  - 当日明细：列出选中日期的打卡项目（时间 + 备注 + 完成状态图标）
+ *  - 月历：
+ *    - 年份选择器（picker，默认当前年份）
+ *    - 月份选择器（picker，默认当前月份）
+ *    - 动态生成当月日期（含月初前空格占位）
+ *    - 已打卡日期下方显示小绿点
+ *    - 点击日期选中，点击有打卡记录的日期显示详情卡片
+ *  - 当日明细：列出当天所有进行中计划的提醒时间及打卡状态
+ *    - 页面加载时（onShow）自动查询并展示当天打卡详情（仅当已登录且查看当前月份时）
+ *    - 其他日期需用户点击日期单元格才触发查询
+ *    - 加载中显示"加载中..."，加载失败显示"加载失败，点击重试"
+ *    - 已打卡：绿点 + 提醒时间 + 实际打卡时间（→ HH:MM，绿色小字） + 计划名称/备注 + jilu_wc.png 图标
+ *    - 未打卡：灰点 + 提醒时间 + 计划名称/备注（无图标）
  *  - 底部固定导航栏（BottomNav），当前激活项为"记录"
  */
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
+import { useUserStore } from '../../store/modules/user'
+import { listMonthCheckins, listDayCheckins } from '../../api/modules/checkin'
 import jiluXqIcon from '../../assets/images/jilu_xq.png'
 import jiluWcIcon from '../../assets/images/jilu_wc.png'
 
 const hasNotification = false
+const userStore = useUserStore()
 
-const checkInItems = ref([
-  { time: '09:05', desc: '饭后半小时服用', completed: true },
-  { time: '19:30', desc: '睡前服用', completed: false }
-])
+// 当前显示的年份和月份（默认当前）
+const now = new Date()
+const currentYear = ref(now.getFullYear())
+const currentMonth = ref(now.getMonth() + 1)
 
-const calendarDays = ref([
-  null,
-  { date: 1, isToday: false, isSelected: false, checked: false },
-  { date: 2, isToday: false, isSelected: false, checked: false },
-  { date: 3, isToday: false, isSelected: false, checked: true },
-  { date: 4, isToday: false, isSelected: false, checked: false },
-  { date: 5, isToday: false, isSelected: false, checked: true },
-  { date: 6, isToday: false, isSelected: false, checked: false },
-  { date: 7, isToday: false, isSelected: false, checked: false },
-  { date: 8, isToday: false, isSelected: false, checked: true },
-  { date: 9, isToday: false, isSelected: false, checked: false },
-  { date: 10, isToday: false, isSelected: false, checked: true },
-  { date: 11, isToday: false, isSelected: false, checked: false },
-  { date: 12, isToday: false, isSelected: false, checked: true },
-  { date: 13, isToday: false, isSelected: false, checked: false },
-  { date: 14, isToday: false, isSelected: false, checked: false },
-  { date: 15, isToday: true, isSelected: false, checked: true },
-  { date: 16, isToday: false, isSelected: true, checked: false },
-  { date: 17, isToday: false, isSelected: false, checked: false },
-  { date: 18, isToday: false, isSelected: false, checked: false },
-  { date: 19, isToday: false, isSelected: false, checked: false },
-  { date: 20, isToday: false, isSelected: false, checked: false },
-  { date: 21, isToday: false, isSelected: false, checked: false },
-  { date: 22, isToday: false, isSelected: false, checked: false },
-  { date: 23, isToday: false, isSelected: false, checked: false },
-  { date: 24, isToday: false, isSelected: false, checked: false },
-  { date: 25, isToday: false, isSelected: false, checked: false },
-  { date: 26, isToday: false, isSelected: false, checked: false },
-  { date: 27, isToday: false, isSelected: false, checked: false },
-  { date: 28, isToday: false, isSelected: false, checked: false },
-  { date: 29, isToday: false, isSelected: false, checked: false },
-  { date: 30, isToday: false, isSelected: false, checked: false },
-  null,
-  null,
-  null,
-  null
-])
+// 年份选择器数据（2020-2040，共21年）
+const years = ref([...Array(21)].map((_, i) => 2020 + i))
+const yearIndex = computed(() => years.value.indexOf(currentYear.value))
 
-function handlePrevMonth() {
-  uni.showToast({ title: '上一月', icon: 'none' })
+// 月份选择器数据（1-12）
+const months = ref([...Array(12)].map((_, i) => i + 1))
+const monthIndex = computed(() => months.value.indexOf(currentMonth.value))
+
+// 当月有打卡记录的日期列表（从数据库加载）
+const checkedDays = ref([])
+// 当前选中的日期（day of month）
+const selectedDay = ref(null)
+// 当天打卡详情记录列表
+const dayRecords = ref([])
+// 是否正在加载当日打卡详情（加载中显示"加载中..."反馈）
+const isLoadingDay = ref(false)
+// 当日打卡详情加载是否失败（失败时显示"加载失败，点击重试"）
+const hasLoadError = ref(false)
+
+// 是否显示详情卡片（选中日期后显示）
+const selectedDayDetail = computed(() => selectedDay.value !== null)
+
+// 选中日期的标题文本
+const selectedDateText = computed(() => {
+  if (selectedDay.value === null) return ''
+  return `${currentMonth.value}月${selectedDay.value}日`
+})
+
+// 动态生成日历日期（含月初前空格占位）
+const calendarDays = computed(() => {
+  const firstDayOfWeek = new Date(currentYear.value, currentMonth.value - 1, 1).getDay()  // 0=周日
+  const daysInMonth = new Date(currentYear.value, currentMonth.value, 0).getDate()
+  const today = new Date()
+  const isCurrentMonthToday =
+    today.getFullYear() === currentYear.value && today.getMonth() + 1 === currentMonth.value
+  const todayDate = today.getDate()
+
+  const days = []
+  // 月初前的空格占位
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    days.push(null)
+  }
+  // 当月日期
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push({
+      date: d,
+      isToday: isCurrentMonthToday && d === todayDate,
+      isSelected: d === selectedDay.value,
+      checked: checkedDays.value.includes(d),
+    })
+  }
+  return days
+})
+
+// ===== 数据加载 =====
+
+// 加载当月打卡记录（获取有打卡的日期列表）
+async function loadMonthCheckins() {
+  if (!userStore.userInfo) {
+    checkedDays.value = []
+    return
+  }
+  try {
+    const res = await listMonthCheckins(userStore.userInfo.id, currentYear.value, currentMonth.value)
+    if (res.code === 0 && res.data) {
+      checkedDays.value = res.data.checked_days || []
+    }
+  } catch (e) {
+    console.warn('加载月度打卡记录失败', e)
+    checkedDays.value = []
+  }
 }
 
-// 当前选中日期文本：与日历 isSelected 状态联动，初始匹配 calendarDays 中 isSelected=true 的 16 日
-const selectedDate = ref('6月16日')
+// 加载某天的打卡详情（含加载状态与错误处理，异步不阻塞界面）
+async function loadDayCheckins(day) {
+  if (!userStore.userInfo) return
+  const dateStr = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  isLoadingDay.value = true
+  hasLoadError.value = false
+  try {
+    const res = await listDayCheckins(userStore.userInfo.id, dateStr)
+    if (res.code === 0 && res.data) {
+      dayRecords.value = res.data
+    } else {
+      dayRecords.value = []
+    }
+  } catch (e) {
+    // 数据库连接或查询异常：记录日志并标记失败状态，界面显示重试入口
+    console.warn('加载当日打卡详情失败', e)
+    dayRecords.value = []
+    hasLoadError.value = true
+  } finally {
+    isLoadingDay.value = false
+  }
+}
 
-/**
- * 日历单元格点击选中处理
- * - day 为 null（月首尾占位空格）直接返回，不处理
- * - 清除所有日期的 isSelected，将点击日期置为选中
- * - 同步更新列表标题为"6月{date}日"
- */
+// 重试加载当日打卡详情（加载失败时用户点击重试触发）
+function retryLoadDay() {
+  if (selectedDay.value !== null) {
+    loadDayCheckins(selectedDay.value)
+  }
+}
+
+// ===== 工具函数 =====
+
+// 格式化实际打卡时间（ISO 字符串 → HH:MM）
+// 后端返回上海时间字符串（如 "2026-07-02T14:30:00"），直接提取 HH:MM 部分
+// 避免使用 new Date() 产生时区转换
+function formatActualTime(isoStr) {
+  if (!isoStr) return ''
+  const match = isoStr.match(/T(\d{2}:\d{2})/)
+  return match ? match[1] : ''
+}
+
+// ===== 事件处理 =====
+
+// 年份选择
+function handleYearChange(e) {
+  const idx = e.detail.value
+  currentYear.value = years.value[idx]
+  selectedDay.value = null
+  dayRecords.value = []
+  loadMonthCheckins()
+}
+
+// 月份选择
+function handleMonthChange(e) {
+  const idx = e.detail.value
+  currentMonth.value = months.value[idx]
+  selectedDay.value = null
+  dayRecords.value = []
+  loadMonthCheckins()
+}
+
+// 上一月
+function handlePrevMonth() {
+  if (currentMonth.value === 1) {
+    currentMonth.value = 12
+    currentYear.value -= 1
+  } else {
+    currentMonth.value -= 1
+  }
+  selectedDay.value = null
+  dayRecords.value = []
+  loadMonthCheckins()
+}
+
+// 下一月
+function handleNextMonth() {
+  if (currentMonth.value === 12) {
+    currentMonth.value = 1
+    currentYear.value += 1
+  } else {
+    currentMonth.value += 1
+  }
+  selectedDay.value = null
+  dayRecords.value = []
+  loadMonthCheckins()
+}
+
+// 点击日期：选中并加载当天详情
 function handleSelectDay(day) {
   if (!day) return
-  calendarDays.value.forEach((d) => {
-    if (d) d.isSelected = false
-  })
-  day.isSelected = true
-  selectedDate.value = `6月${day.date}日`
+  selectedDay.value = day.date
+  loadDayCheckins(day.date)
 }
 
-function handleNextMonth() {
-  uni.showToast({ title: '下一月', icon: 'none' })
-}
+// ===== 生命周期 =====
+
+onShow(() => {
+  loadMonthCheckins()
+  // 页面加载时自动查询并展示当天打卡详情（仅当已登录且查看当前月份时）
+  // 其他日期需用户点击日期单元格才触发查询
+  if (userStore.userInfo) {
+    const today = new Date()
+    if (currentYear.value === today.getFullYear() && currentMonth.value === today.getMonth() + 1) {
+      selectedDay.value = today.getDate()
+      loadDayCheckins(today.getDate())
+    }
+  }
+})
 </script>
 
 <style lang="scss">
@@ -192,7 +354,7 @@ function handleNextMonth() {
 
 .record-page__main {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 100px 24px 0;
+  padding: 105px 24px 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -242,6 +404,26 @@ function handleNextMonth() {
 
 .record-page__calendar-arrow--right {
   border-left: 7.4px solid #0e0f0c;
+}
+
+/* 年月选择器标题组 */
+.record-page__calendar-title-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.record-page__calendar-title-picker {
+  display: flex;
+  align-items: center;
+}
+
+.record-page__calendar-year {
+  color: #0e0f0c;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  text-align: center;
 }
 
 .record-page__calendar-month {
@@ -298,10 +480,16 @@ function handleNextMonth() {
   width: 36px;
   height: 36px;
   border-radius: 9999px;
+  /* 绿色内边框始终区分"今天"；浅绿色背景仅在 today 被选中时通过 --active 修饰符叠加 */
   box-shadow: inset 0 0 0 2px #2f6c00;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 修饰符：今天被选中时叠加浅绿色背景，与其他日期选中态视觉一致 */
+.record-page__calendar-today--active {
+  background: #e2f6d5;
 }
 
 .record-page__calendar-selected {
@@ -323,6 +511,7 @@ function handleNextMonth() {
   background: #2ead4b;
 }
 
+/* ===== 当天打卡详情卡片 ===== */
 .record-page__list {
   width: 100%;
   padding: 24px;
@@ -396,9 +585,17 @@ function handleNextMonth() {
 
 .record-page__list-item-content {
   flex: 1;
+  /* min-width:0 允许 flex 子项收缩，使文本截断生效 */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.record-page__list-item-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .record-page__list-item-time {
@@ -408,11 +605,33 @@ function handleNextMonth() {
   font-weight: 500;
 }
 
-.record-page__list-item-desc {
-  color: #454745;
+.record-page__list-item-actual-time {
+  color: #2ead4b;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.record-page__list-item-name {
+  color: #0e0f0c;
   font-size: 16px;
   line-height: 24px;
+  font-weight: 500;
+  /* 动态截断：占满可用宽度后省略号截断 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-page__list-item-remark {
+  color: #454745;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 400;
+  /* 动态截断：占满可用宽度后省略号截断 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .record-page__list-item-check {
@@ -420,5 +639,47 @@ function handleNextMonth() {
   height: 20px;
   display: block;
   margin-top: 2px;
+}
+
+.record-page__list-empty {
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-page__list-empty-text {
+  color: #888888;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.record-page__list-loading {
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-page__list-loading-text {
+  color: #888888;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.record-page__list-error {
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-page__list-error-text {
+  color: #e8553a;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
 }
 </style>

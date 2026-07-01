@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...schemas.user import (
+    BindEmail,
     ChangeEmail,
     ChangePassword,
     LoginUser,
@@ -13,8 +14,10 @@ from ...schemas.user import (
     SendChangeEmailOldCode,
     SendCode,
     SendResetCode,
+    SetPassword,
     UpdateAvatar,
     UpdateSignature,
+    UpdateUsername,
     WeChatLogin,
 )
 from ...services.user_service import User
@@ -91,12 +94,12 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
         "msg": "登录成功",
         "data": {
             "id": db_user.id,
-            "username": db_user.username,
+            "username": db_user.username or "",
             "signature": db_user.signature or "",
             "avatar_url": db_user.avatar_url or "",
-            "deletion_scheduled_at": db_user.deletion_scheduled_at.isoformat()
-            if db_user.deletion_scheduled_at
-            else None,
+            "email": db_user.email or "",
+            "has_password": bool(db_user.password_hash),
+            "status": db_user.status,
         },
     }
 
@@ -218,7 +221,7 @@ async def send_change_email_new_code(payload: SendChangeEmailNewCode, db: AsyncS
     """
     user_service = User(db)
     try:
-        await user_service.send_change_email_new_code(payload.new_email)
+        await user_service.send_change_email_new_code(payload.new_email, payload.allow_existing)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -282,8 +285,8 @@ async def update_avatar(payload: UpdateAvatar, db: AsyncSession = Depends(get_db
 @router.post("/schedule-deletion")
 async def schedule_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(get_db)):
     """
-    计划注销账号接口
-    - 设置24小时后自动删除
+    计划删除账号接口
+    - 将 status 置为 0，后台任务在 updated_at 1分钟后自动清理
     """
     user_service = User(db)
     try:
@@ -292,12 +295,10 @@ async def schedule_deletion(payload: ScheduleDeletion, db: AsyncSession = Depend
         raise HTTPException(status_code=400, detail=str(e))
     return {
         "code": 0,
-        "msg": "账号将在一天后自动删除，且无法恢复，请保留个人数据",
+        "msg": "账号将在1分钟后自动删除，且无法恢复，请保留个人数据",
         "data": {
             "id": db_user.id,
-            "deletion_scheduled_at": db_user.deletion_scheduled_at.isoformat()
-            if db_user.deletion_scheduled_at
-            else None,
+            "status": db_user.status,
         },
     }
 
@@ -305,7 +306,7 @@ async def schedule_deletion(payload: ScheduleDeletion, db: AsyncSession = Depend
 @router.post("/cancel-deletion")
 async def cancel_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(get_db)):
     """
-    取消账号注销接口
+    取消账号删除接口
     """
     user_service = User(db)
     try:
@@ -314,10 +315,113 @@ async def cancel_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(
         raise HTTPException(status_code=400, detail=str(e))
     return {
         "code": 0,
-        "msg": "账号注销已取消",
+        "msg": "账号删除已取消",
         "data": {
             "id": db_user.id,
-            "deletion_scheduled_at": None,
+            "status": db_user.status,
+        },
+    }
+
+
+@router.put("/update-username")
+async def update_username(payload: UpdateUsername, db: AsyncSession = Depends(get_db)):
+    """
+    更新用户名接口
+    - 含用户名唯一性校验
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.update_username(
+            user_id=payload.user_id,
+            new_username=payload.new_username,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "用户名修改成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username or "",
+        },
+    }
+
+
+@router.put("/set-password")
+async def set_password(payload: SetPassword, db: AsyncSession = Depends(get_db)):
+    """
+    设置密码接口（用于无密码用户首次设置密码）
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.set_password(
+            user_id=payload.user_id,
+            new_password=payload.new_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "密码设置成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username or "",
+        },
+    }
+
+
+@router.put("/bind-email")
+async def bind_email(payload: BindEmail, db: AsyncSession = Depends(get_db)):
+    """
+    绑定邮箱接口（用于无邮箱用户首次绑定邮箱）
+    - 验证新邮箱验证码后绑定邮箱
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.bind_email(
+            user_id=payload.user_id,
+            new_email=payload.new_email,
+            new_code=payload.new_code,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "邮箱绑定成功",
+        "data": {
+            "id": db_user.id,
+            "username": db_user.username or "",
+            "signature": db_user.signature or "",
+            "avatar_url": db_user.avatar_url or "",
+            "email": db_user.email or "",
+            "has_password": bool(db_user.password_hash),
+            "status": db_user.status,
+        },
+    }
+
+
+@router.get("/{user_id}/info")
+async def get_user_info(user_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    获取用户信息接口
+    - 用于前端验证账号是否存在（如账号删除后状态同步）
+    - 返回与登录接口一致的用户信息格式
+    """
+    user_service = User(db)
+    user = await user_service.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return {
+        "code": 0,
+        "msg": "success",
+        "data": {
+            "id": user.id,
+            "username": user.username or "",
+            "signature": user.signature or "",
+            "avatar_url": user.avatar_url or "",
+            "email": user.email or "",
+            "has_password": bool(user.password_hash),
+            "status": user.status,
         },
     }
 
@@ -346,8 +450,8 @@ async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db))
             "username": db_user.username or "",
             "signature": db_user.signature or "",
             "avatar_url": db_user.avatar_url or "",
-            "deletion_scheduled_at": db_user.deletion_scheduled_at.isoformat()
-            if db_user.deletion_scheduled_at
-            else None,
+            "email": db_user.email or "",
+            "has_password": bool(db_user.password_hash),
+            "status": db_user.status,
         },
     }

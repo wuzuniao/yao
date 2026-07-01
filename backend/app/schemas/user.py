@@ -41,8 +41,8 @@ class RegisterUser(BaseModel):
     def validate_username(cls, v: str) -> str:
         if not v:
             raise ValueError("用户名不能为空")
-        if len(v) < 2 or len(v) > 50:
-            raise ValueError("用户名长度需为 2-50 个字符")
+        if len(v) < 2 or len(v) > 15:
+            raise ValueError("用户名长度需为 2-15 个字符")
         if not _USERNAME_RE.match(v):
             raise ValueError("用户名仅允许中文、英文及数字字符")
         return v
@@ -149,8 +149,8 @@ class UpdateSignature(BaseModel):
     @field_validator("signature")
     @classmethod
     def validate_signature(cls, v: str) -> str:
-        if len(v) > 255:
-            raise ValueError("签名长度不能超过 255 个字符")
+        if len(v) > 70:
+            raise ValueError("签名长度不能超过 70 个字符")
         return v
 
 
@@ -187,9 +187,11 @@ class SendChangeEmailOldCode(BaseModel):
 
 
 class SendChangeEmailNewCode(BaseModel):
-    """发送修改邮箱新邮箱验证码请求 Schema"""
+    """发送修改/绑定邮箱新邮箱验证码请求 Schema"""
 
     new_email: EmailStr
+    # 是否允许邮箱已存在（绑定邮箱触发账号合并场景需允许，修改邮箱场景禁止）
+    allow_existing: bool = False
 
 
 class ChangeEmail(BaseModel):
@@ -232,7 +234,7 @@ class UpdateAvatar(BaseModel):
 
 
 class ScheduleDeletion(BaseModel):
-    """计划注销账号请求 Schema"""
+    """计划删除账号请求 Schema"""
 
     user_id: int
 
@@ -247,4 +249,62 @@ class WeChatLogin(BaseModel):
     def validate_code(cls, v: str) -> str:
         if not v:
             raise ValueError("微信登录凭证 code 不能为空")
+        return v
+
+
+class UpdateUsername(BaseModel):
+    """更新用户名请求 Schema"""
+
+    user_id: int
+    new_username: str
+
+    @field_validator("new_username")
+    @classmethod
+    def validate_new_username(cls, v: str) -> str:
+        if not v:
+            raise ValueError("用户名不能为空")
+        if len(v) < 2 or len(v) > 15:
+            raise ValueError("用户名长度需为 2-15 个字符")
+        if not _USERNAME_RE.match(v):
+            raise ValueError("用户名仅允许中文、英文及数字字符")
+        return v
+
+
+class SetPassword(BaseModel):
+    """设置密码请求 Schema（用于无密码用户首次设置密码）"""
+
+    user_id: int
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 8 or len(v) > 20:
+            raise ValueError("密码长度需为 8-20 位")
+        categories = 0
+        if re.search(r"[a-z]", v):
+            categories += 1
+        if re.search(r"[A-Z]", v):
+            categories += 1
+        if re.search(r"[0-9]", v):
+            categories += 1
+        if re.search(r"[^a-zA-Z0-9]", v):
+            categories += 1
+        if categories < 3:
+            raise ValueError("密码需包含大小写字母、数字、特殊符号中的至少三种")
+        return v
+
+
+class BindEmail(BaseModel):
+    """绑定邮箱请求 Schema（用于无邮箱用户首次绑定邮箱）"""
+
+    user_id: int
+    new_email: EmailStr
+    new_code: str
+
+    @field_validator("new_code")
+    @classmethod
+    def validate_new_code(cls, v: str) -> str:
+        if not _CODE_RE.match(v):
+            raise ValueError("邮箱验证码为 6 位数字")
         return v

@@ -12,40 +12,48 @@
         <!-- Card 1 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">如何修改打卡时间？</text>
-            <text class="help-page__card-text">在首页点击对应的习惯卡片进入详情页。点{{ '\n' }}击右上角的“设置”图标，即可在“打卡时间”选{{ '\n' }}项中重新设定您的专属时间。</text>
+            <text class="help-page__card-title">小程序的主要用途是什么？</text>
+            <text class="help-page__card-text">一个通用任务的定时打卡提醒小程序。</text>
           </view>
         </view>
 
         <!-- Card 2 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">如何添加多个时间段？</text>
-            <text class="help-page__card-text">创建或编辑习惯时，在时间设置模块下方点{{ '\n' }}击“+ 添加时间段”按钮。您可以为同一个习{{ '\n' }}惯（例如：喝水）设定早、中、晚多个独立{{ '\n' }}提醒。</text>
+            <text class="help-page__card-title">邮件通知怎么填写？</text>
+            <text class="help-page__card-text">参考文章：QQ邮箱中开通SMTP服务并获取授权码{{ '\n' }}</text>
           </view>
         </view>
 
         <!-- Card 3 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">通知收不到怎么办？</text>
-            <text class="help-page__card-text">首先，请确保在手机系统的“设置”中已允许{{ '\n' }}本应用发送通知。其次，进入应用内的“设置{{ '\n' }}> 通知中心”，检查是否开启了总开关及对应{{ '\n' }}习惯的提醒开关。</text>
+            <text class="help-page__card-title">邮件通知怎么第一时间知道？</text>
+            <text class="help-page__card-text">微信搜索“QQ邮箱提醒”，绑定自己的邮件后，有邮件会弹消息。</text>
           </view>
         </view>
 
         <!-- Card 4 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">可以恢复误删的记录吗？</text>
-            <text class="help-page__card-text">非常抱歉，出于严格的隐私保护机制，一旦{{ '\n' }}您确认删除单条打卡记录，数据将从本地和{{ '\n' }}云端永久抹除，无法进行恢复操作。</text>
+            <text class="help-page__card-title">为什么邮件通知要配置自己的邮箱客户端专用密码？</text>
+            <text class="help-page__card-text">因为要用你的邮箱给你自己发信，保证邮件内容安全，还可以避免邮件被当垃圾邮件拦截。{{ '\n' }}邮箱客户端专用密码在数据库中已被再次加密存储，且不会通过接口返回给前端。</text>
           </view>
         </view>
 
         <!-- Card 5 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">如何导出我的历史数据？</text>
-            <text class="help-page__card-text">前往应用的“设置”页面，找到“数据与隐私”选{{ '\n' }}项卡。点击“导出数据报表”，系统将打包您{{ '\n' }}的所有记录，并发送至您绑定的电子邮箱。</text>
+            <text class="help-page__card-title">打卡逻辑如何设置的？</text>
+            <text class="help-page__card-text">只允许在打卡日期范围内进行打卡。{{ '\n' }}未到打卡时间：打卡按钮为“未到打卡时间”。{{ '\n' }}只有一次提醒时间时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。{{ '\n' }}当存在多个提醒时间且两次打卡间隔大于两小时时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。{{ '\n' }}当存在多个提醒时间且两次打卡间隔在两小时以下时：两次提醒时间的间隔时间中，前半部分时间为已完成，后半部分时间重置按钮为"立即打卡"，此时允许打卡。{{ '\n' }}当任何时候需要打卡，可长按任何非“立即打卡”按钮3秒，会重置按钮为"立即打卡"，此时允许打卡。</text>
+          </view>
+        </view>
+
+        <!-- Card 6 -->
+        <view class="help-page__card">
+          <view class="help-page__card-body">
+            <text class="help-page__card-title">通知逻辑如何设置的？</text>
+            <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡的，发送通知。{{ '\n' }}当存在多个提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天的打卡记录数量小于提醒时间数量时，发送通知。{{ '\n' }}当超过提醒时间5分钟、30分钟、1小时，依旧没有打卡记录时，在对应时间点发送通知。</text>
           </view>
         </view>
       </view>
@@ -79,7 +87,7 @@ const hasNotification = false
 /* ===== 主内容画布（对应设计稿 Main Content Canvas）===== */
 .help-page__canvas {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 100px 24px 32px;
+  padding: 105px 24px 32px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

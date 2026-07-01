@@ -194,7 +194,7 @@ const hasNotification = false
 /* ===== 主容器（对应设计稿 Container 390x3005）===== */
 /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与标题重叠 */
 .privacy-page__container {
-  padding: 100px 16px 48px;
+  padding: 105px 16px 48px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

@@ -11,32 +11,35 @@
           <text class="settings-page__profile-slogan">{{ displaySlogan }}</text>
         </view>
         <view class="settings-page__profile-avatar-wrap">
-          <image class="settings-page__profile-avatar" :src="avatarUrl" mode="aspectFit" />
+          <image v-if="avatarUrl" class="settings-page__profile-avatar" :src="avatarUrl" mode="aspectFit" />
         </view>
       </view>
 
-      <!-- 分组 1：制定计划 + 通知方式 -->
-      <view class="settings-page__group1">
-        <view class="settings-page__link-card settings-page__link-card--plan" @click="goPlan">
+      <!-- 分组 1：制定计划 + 通知方式（删除冷静期内置灰禁点击） -->
+      <view class="settings-page__group1" :class="{ 'settings-page__group1--disabled': isDeletionScheduled }">
+        <view class="settings-page__link-card settings-page__link-card--plan" @click="!isDeletionScheduled && goPlan()">
           <view class="settings-page__link-left">
             <text class="settings-page__link-title">制定计划</text>
-            <view class="settings-page__link-status">
+            <!-- 仅当存在进行中的计划时显示"进行中"状态徽章 -->
+            <view class="settings-page__link-status" v-if="activePlanName">
               <view class="settings-page__link-status-dot"></view>
               <text class="settings-page__link-status-text">进行中</text>
             </view>
           </view>
           <view class="settings-page__link-right">
-            <text class="settings-page__link-value settings-page__link-value--active">按时吃药</text>
+            <!-- 动态展示第一个进行中的计划名称，无则显示空 -->
+            <text v-if="activePlanName" class="settings-page__link-value settings-page__link-value--active">{{ activePlanName }}</text>
             <view class="u-arrow-right settings-page__arrow--green"></view>
           </view>
         </view>
 
-        <view class="settings-page__link-card" @click="goNotification">
+        <view class="settings-page__link-card" @click="!isDeletionScheduled && goNotification()">
           <view class="settings-page__link-left">
             <text class="settings-page__link-title">通知方式</text>
           </view>
           <view class="settings-page__link-right">
-            <text class="settings-page__link-value">邮件通知</text>
+            <!-- 动态展示除站内信外第一个通知类型名称，无则显示空 -->
+            <text v-if="notificationTypeName" class="settings-page__link-value">{{ notificationTypeName }}</text>
             <view class="u-arrow-right"></view>
           </view>
         </view>
@@ -75,16 +78,69 @@
  *  - 分组 2（帮助入口）：帮助中心、联系我们、隐私政策
  *  - 底部固定导航栏（BottomNav），当前激活项为"设置"
  */
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
 import touxiangHei from '../../assets/images/touxiang/hei.png'
 import touxiangHong from '../../assets/images/touxiang/hong.png'
 import touxiangLan from '../../assets/images/touxiang/lan.png'
 import { useUserStore } from '../../store/modules/user'
+import { listNotificationChannels } from '../../api/modules/notification'
+import { listPlans } from '../../api/modules/plan'
 
 const hasNotification = false
 const userStore = useUserStore()
+
+// 账号是否处于删除冷静期（status=0）
+const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
+
+// 用户的通知渠道列表和计划列表（从数据库动态加载）
+const channels = ref([])
+const plans = ref([])
+
+// 计算属性：第一个进行中的计划名称（无则返回空字符串）
+const activePlanName = computed(() => {
+  const activePlan = plans.value.find(p => p.status === 1)
+  return activePlan ? activePlan.name : ''
+})
+
+// 计算属性：除"站内信"外第一个通知类型名称（无则返回空字符串）
+const notificationTypeName = computed(() => {
+  const ch = channels.value.find(c => c.channel_type !== '站内信')
+  return ch ? ch.channel_type : ''
+})
+
+// 加载用户通知渠道列表
+async function loadChannels() {
+  if (!userStore.userInfo) return
+  try {
+    const res = await listNotificationChannels(userStore.userInfo.id)
+    if (res.code === 0 && res.data) {
+      channels.value = res.data
+    }
+  } catch (e) {
+    // 静默失败，不影响页面渲染
+    console.warn('加载通知渠道失败', e)
+  }
+}
+
+// 加载用户计划列表
+async function loadPlans() {
+  if (!userStore.userInfo) return
+  try {
+    const res = await listPlans(userStore.userInfo.id)
+    if (res.code === 0 && res.data) {
+      plans.value = res.data
+    }
+  } catch (e) {
+    console.warn('加载计划列表失败', e)
+  }
+}
+
+onMounted(() => {
+  loadChannels()
+  loadPlans()
+})
 
 // 头像 key 与图片资源的映射
 const avatarMap = {
@@ -93,9 +149,12 @@ const avatarMap = {
   lan: touxiangLan
 }
 
-// 用户名显示：已登录显示 username，未登录显示"请登录"
+// 用户名显示：已登录显示 username（可能为空，如微信登录用户），未登录显示"请登录"
 const displayName = computed(() => {
-  return userStore.userInfo?.username || '请登录'
+  if (userStore.userInfo) {
+    return userStore.userInfo.username || ''
+  }
+  return '请登录'
 })
 
 // 个性签名显示：已登录显示 signature（可能为空），未登录显示默认文案
@@ -106,13 +165,16 @@ const displaySlogan = computed(() => {
   return '"保持热爱，奔赴山海，\n每一天都要好好生活。"'
 })
 
-// 用户头像：根据数据库存储的 key 映射到对应图片，未登录或无匹配时显示默认头像
+// 用户头像：未登录使用默认头像 hong；已登录从数据库获取，字段为空则不显示头像
 const avatarUrl = computed(() => {
-  const key = userStore.userInfo?.avatar_url
+  if (!userStore.userInfo) {
+    return touxiangHong
+  }
+  const key = userStore.userInfo.avatar_url
   if (key && avatarMap[key]) {
     return avatarMap[key]
   }
-  return touxiangHong
+  return ''
 })
 
 function goNotification() {
@@ -167,8 +229,8 @@ function goPrivacy() {
 }
 
 .settings-page__main {
-  /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 100px 24px 0;
+  /* padding-top 105px：通知按钮 top约50px + 高40px = 底部约90px，留 15px 间隙避免与内容重叠 */
+  padding: 105px 24px 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -217,6 +279,8 @@ function goPrivacy() {
   flex-direction: column;
   justify-content: center;
   flex: 1;
+  /* min-width:0 是 flexbox 文本截断的关键，否则长文本会撑开容器挤压头像 */
+  min-width: 0;
 }
 
 .settings-page__profile-name {
@@ -225,6 +289,10 @@ function goPrivacy() {
   line-height: 35px;
   font-weight: 600;
   padding-bottom: 8px;
+  /* 用户名单行截断，过长时显示省略号 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-page__profile-slogan {
@@ -232,7 +300,12 @@ function goPrivacy() {
   font-size: 16px;
   line-height: 26px;
   font-weight: 400;
-  white-space: pre-line;
+  /* 个性签名最多显示3行，超出部分省略号截断 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .settings-page__profile-avatar-wrap {
@@ -255,6 +328,12 @@ function goPrivacy() {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 删除冷静期内（status=0）分组1整体置灰并禁用所有交互 */
+.settings-page__group1--disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .settings-page__link-card {
@@ -314,6 +393,12 @@ function goPrivacy() {
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  /* justify-content:flex-end 让右侧内容靠右对齐，避免文字紧贴左侧标题；
+     max-width:66.666% 限制右侧整体宽度不超过当前行的 2/3；
+     min-width:0 允许文本截断 */
+  justify-content: flex-end;
+  max-width: 66.666%;
+  min-width: 0;
 }
 
 .settings-page__link-value {
@@ -321,11 +406,22 @@ function goPrivacy() {
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
+  /* 右对齐：文字块在容器内靠右展示 */
+  text-align: right;
+  /* 动态截断：超出最大宽度时省略号截断 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-page__link-value--active {
   color: #2f6c00;
   font-weight: 500;
+}
+
+/* 确保右箭头不被压缩 */
+.settings-page__link-right .u-arrow-right {
+  flex-shrink: 0;
 }
 
 /* ===== 右箭头颜色变体（基础样式复用全局 .u-arrow-right，此处仅覆盖颜色） ===== */

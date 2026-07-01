@@ -111,14 +111,15 @@ export function sendChangeEmailOldCode(user_id) {
 }
 
 /**
- * 发送修改邮箱的新邮箱验证码
+ * 发送修改/绑定邮箱的新邮箱验证码
  * @param {string} new_email 新邮箱地址
+ * @param {boolean} allow_existing 是否允许邮箱已存在（绑定邮箱触发账号合并场景传 true）
  */
-export function sendChangeEmailNewCode(new_email) {
+export function sendChangeEmailNewCode(new_email, allow_existing = false) {
   return request({
     url: '/api/v1/users/send-change-email-new-code',
     method: 'POST',
-    data: { new_email }
+    data: { new_email, allow_existing }
   })
 }
 
@@ -153,7 +154,7 @@ export function updateAvatar({ user_id, avatar_url }) {
 }
 
 /**
- * 计划注销账号（24小时后自动删除）
+ * 计划删除账号（将 status 置为 0，后台任务在 1 分钟后自动清理）
  * @param {number} user_id 用户ID
  */
 export function scheduleDeletion(user_id) {
@@ -165,7 +166,7 @@ export function scheduleDeletion(user_id) {
 }
 
 /**
- * 取消账号注销计划
+ * 取消账号删除计划（将 status 恢复为 1）
  * @param {number} user_id 用户ID
  */
 export function cancelDeletion(user_id) {
@@ -186,5 +187,59 @@ export function wechatLogin(code) {
     method: 'POST',
     data: { code },
     timeout: 10000
+  })
+}
+
+/**
+ * 更新用户名（含唯一性校验）
+ * @param {Object} param0 更新用户名数据
+ * @param {number} param0.user_id 用户ID
+ * @param {string} param0.new_username 新用户名
+ */
+export function updateUsername({ user_id, new_username }) {
+  return request({
+    url: '/api/v1/users/update-username',
+    method: 'PUT',
+    data: { user_id, new_username }
+  })
+}
+
+/**
+ * 设置密码（用于无密码用户首次设置密码）
+ * @param {Object} param0 设置密码数据
+ * @param {number} param0.user_id 用户ID
+ * @param {string} param0.new_password 新密码
+ */
+export function setPassword({ user_id, new_password }) {
+  return request({
+    url: '/api/v1/users/set-password',
+    method: 'PUT',
+    data: { user_id, new_password }
+  })
+}
+
+/**
+ * 绑定邮箱（用于无邮箱用户首次绑定邮箱）
+ * @param {Object} param0 绑定邮箱数据
+ * @param {number} param0.user_id 用户ID
+ * @param {string} param0.new_email 新邮箱地址
+ * @param {string} param0.new_code 新邮箱验证码
+ */
+export function bindEmail({ user_id, new_email, new_code }) {
+  return request({
+    url: '/api/v1/users/bind-email',
+    method: 'PUT',
+    data: { user_id, new_email, new_code }
+  })
+}
+
+/**
+ * 获取用户信息（验证账号是否存在及刷新状态）
+ * @param {number} user_id 用户ID
+ */
+export function getUserInfo(user_id) {
+  return request({
+    url: `/api/v1/users/${user_id}/info`,
+    method: 'GET'
   })
 }

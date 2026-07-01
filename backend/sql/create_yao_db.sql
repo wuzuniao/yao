@@ -20,44 +20,49 @@ CREATE TABLE `checkin_plans` (
   `user_id` BIGINT NOT NULL COMMENT '创建者用户ID（关联 users.id）',
   `name` VARCHAR(100) NOT NULL COMMENT '计划名称',
   `remark` VARCHAR(255) NULL COMMENT '备注/描述',
-  `start_date` DATE NOT NULL COMMENT '打卡开始日期',
-  `end_date` DATE NOT NULL COMMENT '打卡结束日期',
-  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-进行中，0-已结束',
+  `start_date` DATE NOT NULL COMMENT '计划开始日期',
+  `end_date` DATE NOT NULL COMMENT '计划结束日期',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-进行中，2-暂停，0-已结束',
+  `priority` INT NOT NULL DEFAULT 3 COMMENT '优先级：数字越小优先级越高（范围0-7，默认3）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   INDEX `idx_user_id` (`user_id`),
-  INDEX `idx_status` (`status`)
+  INDEX `idx_status` (`status`),
+  INDEX `idx_user_status_priority` (`user_id`, `status`, `priority`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='打卡计划主表';
 
 -- ------------------------------------------------------
--- 表：plan_checkin_times（每日打卡时间点表）
--- 说明：每个计划可设置多个打卡时刻（如 08:00、20:00）
+-- 表：plan_notification_times（每日通知时间点表）
+-- 说明：每个计划可设置多个通知时刻（如 08:00、20:00）
 -- ------------------------------------------------------
-CREATE TABLE `plan_checkin_times` (
+CREATE TABLE `plan_notification_times` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '时间点ID',
   `plan_id` BIGINT NOT NULL COMMENT '所属计划ID（关联 checkin_plans.id）',
-  `checkin_time` TIME NOT NULL COMMENT '每日打卡时刻（HH:MM:SS）',
+  `notification_time` TIME NOT NULL COMMENT '每日通知时刻（HH:MM:SS）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
   INDEX `idx_plan_id` (`plan_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='每个计划的多个打卡时间点';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='每个计划的多个通知时间点';
 
 -- ------------------------------------------------------
 -- 表：notification_channels（通知渠道配置表）
--- 说明：用户预配置的各种通知方式（邮件、短信、微信等）
+-- 说明：用户预配置的各种通知方式（站内信、邮件等）
+-- 存储规范：
+--   - 站内信：channel_type='站内信'，channel_value=用户ID（字符串形式）
+--   - 邮件：channel_type='邮件'，channel_value=JSON 字符串（含 smtp_host/smtp_port/email/password 字段）
 -- ------------------------------------------------------
 CREATE TABLE `notification_channels` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '渠道ID',
   `user_id` BIGINT NOT NULL COMMENT '所属用户ID（关联 users.id）',
-  `channel_type` VARCHAR(20) NOT NULL COMMENT '通知类型（如 email、sms、wechat）',
-  `channel_value` VARCHAR(255) NOT NULL COMMENT '接收地址（邮箱、手机号、openid等）',
+  `channel_type` VARCHAR(20) NOT NULL COMMENT '通知类型（站内信、邮件）',
+  `channel_value` TEXT NOT NULL COMMENT '通知值（站内信存用户ID；邮件存 JSON 配置：smtp_host/smtp_port/email/password）',
   `enabled` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用（true-启用，false-停用）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   INDEX `idx_user_id` (`user_id`),
-  UNIQUE INDEX `uk_user_type_value` (`user_id`, `channel_type`, `channel_value`)
+  INDEX `idx_user_type` (`user_id`, `channel_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户通知渠道配置（可复用于多个计划）';
 
 -- ------------------------------------------------------
@@ -83,15 +88,19 @@ CREATE TABLE `notification_logs` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '日志ID',
   `plan_id` BIGINT NOT NULL COMMENT '关联计划ID（checkin_plans.id）',
   `channel_id` BIGINT NOT NULL COMMENT '使用的渠道ID（notification_channels.id）',
+  `plan_time_id` BIGINT NULL COMMENT '触发该通知的提醒时间点ID（plan_notification_times.id，用于催办去重）',
   `user_id` BIGINT NOT NULL COMMENT '接收者用户ID（冗余，方便查询）',
   `send_time` DATETIME NOT NULL COMMENT '发送时间（实际触发时间）',
+  `notify_date` DATE NULL COMMENT '通知归属日期（提醒时间所在日，跨天催办去重用）',
   `status` TINYINT NOT NULL COMMENT '发送状态：0-成功，1-失败，2-未读',
+  `trigger_type` TINYINT NOT NULL DEFAULT 0 COMMENT '触发类型：0-准时，1-超5分钟，2-超30分钟，3-超1小时',
   `error_msg` VARCHAR(255) NULL COMMENT '失败时的错误信息',
   PRIMARY KEY (`id`),
   INDEX `idx_plan_id` (`plan_id`),
   INDEX `idx_channel_id` (`channel_id`),
   INDEX `idx_user_id` (`user_id`),
-  INDEX `idx_send_time` (`send_time`)
+  INDEX `idx_send_time` (`send_time`),
+  INDEX `idx_dedup` (`plan_time_id`, `trigger_type`, `notify_date`, `channel_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知发送历史日志';
 
 -- ------------------------------------------------------
@@ -100,13 +109,13 @@ CREATE TABLE `notification_logs` (
 -- ------------------------------------------------------
 CREATE TABLE `checkin_records` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '记录ID',
-  `user_id` BIGINT NOT NULL COMMENT '打卡用户ID（关联 users.id）',
+  `user_id` BIGINT NOT NULL COMMENT '打卡用户ID（关联 users.id）',  
   `plan_id` BIGINT NOT NULL COMMENT '所属计划ID（checkin_plans.id）',
-  `plan_time_id` BIGINT NOT NULL COMMENT '对应的打卡时间点ID（plan_checkin_times.id）',
+  `plan_time_id` BIGINT NOT NULL COMMENT '对应的通知时间点ID（plan_notification_times.id）',
   `actual_time` DATETIME NOT NULL COMMENT '实际打卡时间戳',
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `uk_user_plan_time_day` (`user_id`, `plan_id`, `plan_time_id`, DATE(`actual_time`)) COMMENT '同一天同一时间点只能打卡一次',
+  INDEX `idx_user_plan_actual` (`user_id`, `plan_id`, `actual_time`) COMMENT '用户+计划+时间戳范围索引（用于日期范围查询）',
+  INDEX `idx_user_actual` (`user_id`, `actual_time`) COMMENT '用户+时间戳范围索引（用于跨计划日期范围查询）',
   INDEX `idx_plan_id` (`plan_id`),
-  INDEX `idx_plan_time_id` (`plan_time_id`),
-  INDEX `idx_user_id` (`user_id`)
+  INDEX `idx_plan_time_id` (`plan_time_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户打卡记录（支持多个时间点）';

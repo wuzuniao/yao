@@ -21,9 +21,15 @@
             placeholder="请输入用户名或邮箱"
             placeholder-class="login-page__placeholder"
             :placeholder-style="phStyle('username')"
+            :maxlength="usernameLimit.max"
+            @input="e => form.username = usernameLimit.handleInput(e)"
             @focus="handleFocus('username')"
             @blur="handleBlur('username')"
           />
+          <text
+            v-if="usernameLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': usernameLimit.isNear.value, 'input-limit-hint--full': usernameLimit.isFull.value }]"
+          >{{ usernameLimit.hint.value }}</text>
           <text v-if="errors.username" class="login-page__error-text">{{ errors.username }}</text>
         </view>
 
@@ -39,6 +45,8 @@
               placeholder="请输入密码"
               placeholder-class="login-page__placeholder"
               :placeholder-style="phStyle('password')"
+              :maxlength="passwordLimit.max"
+              @input="e => form.password = passwordLimit.handleInput(e)"
               @focus="handleFocus('password')"
               @blur="handleBlur('password')"
             />
@@ -46,6 +54,10 @@
               <image class="login-page__eye-icon" :src="mimaIcon" mode="aspectFit" />
             </view>
           </view>
+          <text
+            v-if="passwordLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': passwordLimit.isNear.value, 'input-limit-hint--full': passwordLimit.isFull.value }]"
+          >{{ passwordLimit.hint.value }}</text>
           <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
           <view class="login-page__forgot-row">
             <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
@@ -79,6 +91,14 @@
       <view class="login-page__wechat-btn" @click="handleWechatLogin">
         <image class="login-page__wechat-icon" :src="wxIcon" mode="aspectFit" />
       </view>
+      <!-- 微信登录隐私勾选（独立于账号密码登录的隐私勾选） -->
+      <view class="login-page__remember login-page__remember--wechat" @click="toggleWechatAgree">
+        <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': wechatAgree }">
+          <view v-if="wechatAgree" class="login-page__checkmark"></view>
+        </view>
+        <text class="login-page__remember-text">查看并同意</text>
+        <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+      </view>
     </view>
   </view>
 </template>
@@ -100,6 +120,7 @@
 import { reactive, ref } from 'vue'
 import NoticeButton from '../../components/NoticeButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
+import { useInputLimit } from '../../composables/useInputLimit'
 import { loginUser, wechatLogin } from '../../api/modules/user'
 import { useUserStore } from '../../store/modules/user'
 import mimaIcon from '../../assets/images/mima_1.png'
@@ -111,6 +132,8 @@ const hasNotification = false
 const form = reactive({ username: '', password: '' })
 const showPassword = ref(false)
 const remember = ref(false)
+// 微信登录独立隐私勾选（与账号密码登录的 remember 分离，互不影响）
+const wechatAgree = ref(false)
 const submitting = ref(false)
 const userStore = useUserStore()
 
@@ -122,6 +145,10 @@ const errors = reactive({
 
 // 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
+
+// 输入框字符限制（与后端字段长度严格匹配）
+const usernameLimit = useInputLimit(254)
+const passwordLimit = useInputLimit(20)
 
 // ===== 前端输入校验（参照 register.vue）=====
 function validateUsername(v) {
@@ -161,6 +188,11 @@ function togglePassword() {
 
 function toggleRemember() {
   remember.value = !remember.value
+}
+
+// 微信登录隐私勾选切换
+function toggleWechatAgree() {
+  wechatAgree.value = !wechatAgree.value
 }
 
 // ===== 登录提交：前端校验 → 后端验证 → 写入状态 → 跳转 =====
@@ -227,6 +259,22 @@ function handleForgot() {
 // 使用 callback 风格调用 uni.login + 超时安全网覆盖整个流程（含后端请求）
 function handleWechatLogin() {
   if (submitting.value) return
+  // 隐私协议勾选校验：未勾选时弹出确认对话框，用户点击"确认"后直接执行登录
+  if (!wechatAgree.value) {
+    uni.showModal({
+      title: '提示',
+      content: '请先查看并同意《隐私政策》',
+      confirmText: '确认',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          wechatAgree.value = true
+          handleWechatLogin()
+        }
+      }
+    })
+    return
+  }
   submitting.value = true
   uni.showLoading({ title: '微信登录中...', mask: true })
 
@@ -313,8 +361,8 @@ function goPrivacy() {
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
-  /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与卡片重叠 */
-  padding: 100px 24px 33.5px;
+  /* padding-top 105px：通知按钮 top约50px + 高40px = 底部约90px，留 15px 间隙避免与卡片重叠 */
+  padding: 105px 24px 33.5px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -581,5 +629,11 @@ function goPrivacy() {
   width: 48px;
   height: 48px;
   display: block;
+}
+
+/* 微信登录区隐私勾选：与账号密码登录的隐私勾选样式一致，居中显示 */
+.login-page__remember--wechat {
+  justify-content: center;
+  margin-top: 4px;
 }
 </style>

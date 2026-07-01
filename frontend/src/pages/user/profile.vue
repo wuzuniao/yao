@@ -7,8 +7,42 @@
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
       <PageHeader title="个人信息" :desc="`管理您的账户资料与安全设置，${'\n'}随时修改个人信息。`" />
 
-      <!-- 分组 1：资料修改（修改头像、修改签名、修改密码、修改邮箱） -->
-      <view class="profile-page__group">
+      <!-- 分组 1：资料修改（修改用户名、修改头像、修改签名、修改密码、修改邮箱） -->
+      <view class="profile-page__group" :class="{ 'profile-page__group--disabled': isDeletionScheduled }">
+        <!-- 修改用户名 -->
+        <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('username')">
+          <text class="profile-page__group-text">修改用户名</text>
+          <view class="u-arrow-right"></view>
+        </view>
+        <!-- 修改用户名表单（动态显示） -->
+        <view v-if="expandedSections.username" class="profile-page__form-section">
+          <view class="profile-page__form-field">
+            <text class="profile-page__form-label">新用户名</text>
+            <input
+              class="profile-page__input"
+              :class="{ 'profile-page__input--error': usernameError }"
+              v-model="usernameForm.value"
+              placeholder="请输入新用户名（2-15 个字符）"
+              placeholder-class="profile-page__placeholder"
+              :maxlength="usernameLimit.max"
+              @input="e => usernameForm.value = usernameLimit.handleInput(e)"
+            />
+            <text
+              v-if="usernameLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': usernameLimit.isNear.value, 'input-limit-hint--full': usernameLimit.isFull.value }]"
+            >{{ usernameLimit.hint.value }}</text>
+            <text v-if="usernameError" class="profile-page__error-text">{{ usernameError }}</text>
+          </view>
+          <view class="profile-page__form-actions">
+            <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('username')">
+              <text class="profile-page__btn-text">取消</text>
+            </view>
+            <view class="profile-page__btn profile-page__btn--submit" @click="handleUpdateUsername">
+              <text class="profile-page__btn-text">提交</text>
+            </view>
+          </view>
+        </view>
+
         <!-- 修改头像 -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('avatar')">
           <text class="profile-page__group-text">修改头像</text>
@@ -48,10 +82,15 @@
             class="profile-page__input"
             :class="{ 'profile-page__input--error': signatureError }"
             v-model="signatureForm.value"
-            placeholder="请输入签名（最多 255 个字符）"
+            placeholder="请输入签名（最多 70 个字符）"
             placeholder-class="profile-page__placeholder"
-            maxlength="255"
+            :maxlength="signatureLimit.max"
+            @input="e => signatureForm.value = signatureLimit.handleInput(e)"
           />
+          <text
+            v-if="signatureLimit.hint.value"
+            :class="['input-limit-hint', { 'input-limit-hint--near': signatureLimit.isNear.value, 'input-limit-hint--full': signatureLimit.isFull.value }]"
+          >{{ signatureLimit.hint.value }}</text>
           <text v-if="signatureError" class="profile-page__error-text">{{ signatureError }}</text>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('signature')">
@@ -63,14 +102,15 @@
           </view>
         </view>
 
-        <!-- 修改密码 -->
+        <!-- 修改密码 / 设置密码（无密码用户显示"设置密码"） -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('password')">
-          <text class="profile-page__group-text">修改密码</text>
+          <text class="profile-page__group-text">{{ hasPassword ? '修改密码' : '设置密码' }}</text>
           <view class="u-arrow-right"></view>
         </view>
-        <!-- 修改密码表单（动态显示） -->
+        <!-- 修改/设置密码表单（动态显示） -->
         <view v-if="expandedSections.password" class="profile-page__form-section">
-          <view class="profile-page__form-field">
+          <!-- 旧密码（仅已设置密码的用户需要验证） -->
+          <view v-if="hasPassword" class="profile-page__form-field">
             <text class="profile-page__form-label">旧密码</text>
             <input
               class="profile-page__input"
@@ -79,7 +119,13 @@
               :password="true"
               placeholder="请输入旧密码"
               placeholder-class="profile-page__placeholder"
+              :maxlength="oldPwdLimit.max"
+              @input="e => passwordForm.oldPassword = oldPwdLimit.handleInput(e)"
             />
+            <text
+              v-if="oldPwdLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': oldPwdLimit.isNear.value, 'input-limit-hint--full': oldPwdLimit.isFull.value }]"
+            >{{ oldPwdLimit.hint.value }}</text>
             <text v-if="passwordErrors.oldPassword" class="profile-page__error-text">{{ passwordErrors.oldPassword }}</text>
           </view>
           <view class="profile-page__form-field">
@@ -91,7 +137,13 @@
               :password="true"
               placeholder="请设置强密码"
               placeholder-class="profile-page__placeholder"
+              :maxlength="newPwdLimit.max"
+              @input="e => passwordForm.newPassword = newPwdLimit.handleInput(e)"
             />
+            <text
+              v-if="newPwdLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': newPwdLimit.isNear.value, 'input-limit-hint--full': newPwdLimit.isFull.value }]"
+            >{{ newPwdLimit.hint.value }}</text>
             <text v-if="passwordErrors.newPassword" class="profile-page__error-text">{{ passwordErrors.newPassword }}</text>
           </view>
           <view class="profile-page__form-field">
@@ -103,7 +155,13 @@
               :password="true"
               placeholder="请再次输入密码"
               placeholder-class="profile-page__placeholder"
+              :maxlength="confirmPwdLimit.max"
+              @input="e => passwordForm.confirmPassword = confirmPwdLimit.handleInput(e)"
             />
+            <text
+              v-if="confirmPwdLimit.hint.value"
+              :class="['input-limit-hint', { 'input-limit-hint--near': confirmPwdLimit.isNear.value, 'input-limit-hint--full': confirmPwdLimit.isFull.value }]"
+            >{{ confirmPwdLimit.hint.value }}</text>
             <text v-if="passwordErrors.confirmPassword" class="profile-page__error-text">{{ passwordErrors.confirmPassword }}</text>
           </view>
           <view class="profile-page__form-actions">
@@ -116,15 +174,15 @@
           </view>
         </view>
 
-        <!-- 修改邮箱 -->
+        <!-- 修改邮箱 / 绑定邮箱（无邮箱用户显示"绑定邮箱"） -->
         <view class="profile-page__group-item" @click="toggleSection('email')">
-          <text class="profile-page__group-text">修改邮箱</text>
+          <text class="profile-page__group-text">{{ hasEmail ? '修改邮箱' : '绑定邮箱' }}</text>
           <view class="u-arrow-right"></view>
         </view>
-        <!-- 修改邮箱表单（动态显示） -->
+        <!-- 修改/绑定邮箱表单（动态显示） -->
         <view v-if="expandedSections.email" class="profile-page__form-section">
-          <!-- 步骤1：旧邮箱验证 -->
-          <view v-if="emailStep === 1">
+          <!-- 步骤1：旧邮箱验证（仅已有邮箱的用户需要） -->
+          <view v-if="hasEmail && emailStep === 1">
             <view class="profile-page__form-field">
               <text class="profile-page__form-label">旧邮箱验证码</text>
               <view class="profile-page__code-row">
@@ -134,11 +192,17 @@
                   v-model="emailForm.oldCode"
                   placeholder="请输入验证码"
                   placeholder-class="profile-page__placeholder"
+                  :maxlength="oldCodeLimit.max"
+                  @input="e => emailForm.oldCode = oldCodeLimit.handleInput(e)"
                 />
                 <view class="profile-page__code-btn" @click="handleGetOldEmailCode">
                   <text class="profile-page__code-btn-text">{{ emailOldCodeText }}</text>
                 </view>
               </view>
+              <text
+                v-if="oldCodeLimit.hint.value"
+                :class="['input-limit-hint', { 'input-limit-hint--near': oldCodeLimit.isNear.value, 'input-limit-hint--full': oldCodeLimit.isFull.value }]"
+              >{{ oldCodeLimit.hint.value }}</text>
               <text v-if="emailErrors.oldCode" class="profile-page__error-text">{{ emailErrors.oldCode }}</text>
             </view>
             <view class="profile-page__form-actions">
@@ -150,7 +214,7 @@
               </view>
             </view>
           </view>
-          <!-- 步骤2：新邮箱验证 -->
+          <!-- 步骤2：新邮箱验证 / 绑定邮箱（无邮箱用户直接显示此步骤） -->
           <view v-else>
             <view class="profile-page__form-field">
               <text class="profile-page__form-label">新邮箱地址</text>
@@ -160,7 +224,13 @@
                 v-model="emailForm.newEmail"
                 placeholder="请输入新邮箱地址"
                 placeholder-class="profile-page__placeholder"
+                :maxlength="newEmailLimit.max"
+                @input="e => emailForm.newEmail = newEmailLimit.handleInput(e)"
               />
+              <text
+                v-if="newEmailLimit.hint.value"
+                :class="['input-limit-hint', { 'input-limit-hint--near': newEmailLimit.isNear.value, 'input-limit-hint--full': newEmailLimit.isFull.value }]"
+              >{{ newEmailLimit.hint.value }}</text>
               <text v-if="emailErrors.newEmail" class="profile-page__error-text">{{ emailErrors.newEmail }}</text>
             </view>
             <view class="profile-page__form-field">
@@ -172,26 +242,32 @@
                   v-model="emailForm.newCode"
                   placeholder="请输入验证码"
                   placeholder-class="profile-page__placeholder"
+                  :maxlength="newCodeLimit.max"
+                  @input="e => emailForm.newCode = newCodeLimit.handleInput(e)"
                 />
                 <view class="profile-page__code-btn" @click="handleGetNewEmailCode">
                   <text class="profile-page__code-btn-text">{{ emailNewCodeText }}</text>
                 </view>
               </view>
+              <text
+                v-if="newCodeLimit.hint.value"
+                :class="['input-limit-hint', { 'input-limit-hint--near': newCodeLimit.isNear.value, 'input-limit-hint--full': newCodeLimit.isFull.value }]"
+              >{{ newCodeLimit.hint.value }}</text>
               <text v-if="emailErrors.newCode" class="profile-page__error-text">{{ emailErrors.newCode }}</text>
             </view>
             <view class="profile-page__form-actions">
-              <view class="profile-page__btn profile-page__btn--cancel" @click="handleResetEmailStep">
-                <text class="profile-page__btn-text">返回</text>
+              <view class="profile-page__btn profile-page__btn--cancel" @click="hasEmail ? handleResetEmailStep() : toggleSection('email')">
+                <text class="profile-page__btn-text">{{ hasEmail ? '返回' : '取消' }}</text>
               </view>
               <view class="profile-page__btn profile-page__btn--submit" @click="handleChangeEmail">
-                <text class="profile-page__btn-text">修改</text>
+                <text class="profile-page__btn-text">{{ hasEmail ? '修改' : '绑定' }}</text>
               </view>
             </view>
           </view>
         </view>
       </view>
 
-      <!-- 分组 2：退出登录 + 注销账号（危险操作，单独分组并使用红色文字提示） -->
+      <!-- 分组 2：退出登录 + 删除账号（危险操作，单独分组并使用红色文字提示） -->
       <view class="profile-page__group">
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="handleLogout">
           <text class="profile-page__group-text profile-page__group-text--danger">退出登录</text>
@@ -199,7 +275,7 @@
         </view>
         <view class="profile-page__group-item" @click="handleDeletion">
           <text class="profile-page__group-text profile-page__group-text--danger">
-            {{ isDeletionScheduled ? '取消注销' : '注销账号' }}
+            {{ isDeletionScheduled ? '取消删除' : '删除账号' }}
           </text>
           <view class="u-arrow-right"></view>
         </view>
@@ -213,15 +289,18 @@
  * 个人信息页（profile.vue）
  * --------------------------------------------------------------------------
  * 功能：管理当前登录用户的账户资料与安全设置
+ *  - 修改用户名：含前端格式校验 + 后端唯一性校验
  *  - 修改签名：点击后动态插入输入框和提交按钮，保存到数据库
- *  - 修改密码：旧密码验证（后端）+ 新密码复杂性验证（前端）
- *  - 修改邮箱：两步验证（旧邮箱验证码 → 新邮箱验证码 → 更新）
+ *  - 修改密码 / 设置密码：有密码用户走旧密码验证流程；无密码用户直接设置新密码
+ *  - 修改邮箱 / 绑定邮箱：有邮箱用户走两步验证（旧邮箱 → 新邮箱）；无邮箱用户直接绑定新邮箱
  *  - 退出登录：弹窗二次确认，清除状态并跳转 settings.vue
  * 视觉规范参照 settings.vue 分组卡片，保持应用内设置类页面一致性
  */
 import { reactive, ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
+import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
 import {
   updateSignature,
@@ -231,13 +310,26 @@ import {
   changeEmail,
   updateAvatar,
   scheduleDeletion,
-  cancelDeletion
+  cancelDeletion,
+  updateUsername,
+  setPassword,
+  bindEmail
 } from '../../api/modules/user'
 import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
 import lanAvatar from '../../assets/images/touxiang/lan.png'
 
 const userStore = useUserStore()
+
+// 输入框字符限制（与后端字段长度严格匹配）
+const usernameLimit = useInputLimit(15, /^[\u4e00-\u9fa5a-zA-Z0-9]$/)
+const signatureLimit = useInputLimit(70)
+const oldPwdLimit = useInputLimit(20)
+const newPwdLimit = useInputLimit(20)
+const confirmPwdLimit = useInputLimit(20)
+const oldCodeLimit = useInputLimit(6, /^\d$/)
+const newEmailLimit = useInputLimit(254)
+const newCodeLimit = useInputLimit(6, /^\d$/)
 
 // 可选头像列表
 const avatarOptions = [
@@ -262,15 +354,31 @@ const urlToAvatarKey = (url) => {
   return 'hong'
 }
 
-// 是否处于注销冷静期
-const isDeletionScheduled = computed(() => !!userStore.userInfo?.deletion_scheduled_at)
+// 账号是否处于待删除状态（status=0：用户已确认删除，1分钟倒计时中）
+const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
+// 当前用户是否已设置密码（微信登录用户可能无密码）
+const hasPassword = computed(() => !!userStore.userInfo?.has_password)
+// 当前用户是否已绑定邮箱（微信登录用户可能无邮箱）
+const hasEmail = computed(() => !!userStore.userInfo?.email)
 
 const expandedSections = reactive({
+  username: false,
   avatar: false,
   signature: false,
   password: false,
   email: false
 })
+
+// 页面加载时接收参数：focus=email 时自动展开绑定邮箱区域（从 notification 页跳转）
+onLoad((options) => {
+  if (options && options.focus === 'email' && !isDeletionScheduled.value) {
+    expandedSections.email = true
+  }
+})
+
+// ===== 修改用户名 =====
+const usernameForm = reactive({ value: '' })
+const usernameError = ref('')
 
 // ===== 修改头像 =====
 const avatarForm = reactive({
@@ -282,6 +390,8 @@ const signatureForm = reactive({ value: '' })
 const signatureError = ref('')
 
 function toggleSection(section) {
+  // 账号待删除状态下（status=0）禁止展开任何修改项
+  if (isDeletionScheduled.value) return
   expandedSections[section] = !expandedSections[section]
   if (!expandedSections[section]) {
     resetSection(section)
@@ -289,7 +399,10 @@ function toggleSection(section) {
 }
 
 function resetSection(section) {
-  if (section === 'avatar') {
+  if (section === 'username') {
+    usernameForm.value = ''
+    usernameError.value = ''
+  } else if (section === 'avatar') {
     avatarForm.selected = urlToAvatarKey(userStore.userInfo?.avatar_url)
   } else if (section === 'signature') {
     signatureForm.value = ''
@@ -313,6 +426,40 @@ function resetSection(section) {
     emailOldCodeText.value = '获取验证码'
     emailNewCodeCounting.value = false
     emailNewCodeText.value = '获取验证码'
+  }
+}
+
+// ===== 修改用户名 =====
+function validateUsername(v) {
+  if (!v) return '请输入用户名'
+  if (v.length < 2 || v.length > 15) return '用户名长度需为 2-15 个字符'
+  if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(v)) return '用户名仅允许中文、英文及数字字符'
+  return ''
+}
+
+async function handleUpdateUsername() {
+  const err = validateUsername(usernameForm.value.trim())
+  if (err) {
+    usernameError.value = err
+    uni.showToast({ title: err, icon: 'none' })
+    return
+  }
+  try {
+    const result = await updateUsername({
+      user_id: userStore.userInfo.id,
+      new_username: usernameForm.value.trim()
+    })
+    // 同步更新本地用户信息
+    userStore.userInfo.username = result.data.username
+    try {
+      uni.setStorageSync('userInfo', userStore.userInfo)
+    } catch (e) {
+      console.warn('保存本地用户信息失败', e)
+    }
+    uni.showToast({ title: '用户名修改成功', icon: 'success' })
+    toggleSection('username')
+  } catch (e) {
+    uni.showToast({ title: e.message, icon: 'none' })
   }
 }
 
@@ -346,8 +493,8 @@ async function handleUpdateSignature() {
     signatureError.value = '请输入签名'
     return
   }
-  if (signatureForm.value.length > 255) {
-    signatureError.value = '签名长度不能超过 255 个字符'
+  if (signatureForm.value.length > 70) {
+    signatureError.value = '签名长度不能超过 70 个字符'
     return
   }
   try {
@@ -355,6 +502,13 @@ async function handleUpdateSignature() {
       user_id: userStore.userInfo.id,
       signature: signatureForm.value.trim()
     })
+    // 同步更新本地用户信息，settings.vue 通过 computed 自动刷新签名显示
+    userStore.userInfo.signature = signatureForm.value.trim()
+    try {
+      uni.setStorageSync('userInfo', userStore.userInfo)
+    } catch (e) {
+      console.warn('保存本地用户信息失败', e)
+    }
     uni.showToast({ title: '签名更新成功', icon: 'success' })
     toggleSection('signature')
   } catch (e) {
@@ -388,12 +542,18 @@ function validatePassword(v) {
 }
 
 async function handleChangePassword() {
-  passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'
   passwordErrors.newPassword = validatePassword(passwordForm.newPassword)
   passwordErrors.confirmPassword = passwordForm.confirmPassword ? '' : '请输入确认密码'
 
   if (passwordForm.newPassword && passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword) {
     passwordErrors.confirmPassword = '两次密码不一致'
+  }
+
+  // 已有密码用户需校验旧密码
+  if (hasPassword.value) {
+    passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'
+  } else {
+    passwordErrors.oldPassword = ''
   }
 
   const hasError = Object.values(passwordErrors).some((e) => e)
@@ -404,12 +564,29 @@ async function handleChangePassword() {
   }
 
   try {
-    await changePassword({
-      user_id: userStore.userInfo.id,
-      old_password: passwordForm.oldPassword,
-      new_password: passwordForm.newPassword
-    })
-    uni.showToast({ title: '密码修改成功', icon: 'success' })
+    if (hasPassword.value) {
+      // 修改密码：验证旧密码后更新
+      await changePassword({
+        user_id: userStore.userInfo.id,
+        old_password: passwordForm.oldPassword,
+        new_password: passwordForm.newPassword
+      })
+      uni.showToast({ title: '密码修改成功', icon: 'success' })
+    } else {
+      // 设置密码：无密码用户首次设置
+      await setPassword({
+        user_id: userStore.userInfo.id,
+        new_password: passwordForm.newPassword
+      })
+      // 设置密码成功后更新本地 has_password 状态
+      userStore.userInfo.has_password = true
+      try {
+        uni.setStorageSync('userInfo', userStore.userInfo)
+      } catch (e) {
+        console.warn('保存本地用户信息失败', e)
+      }
+      uni.showToast({ title: '密码设置成功', icon: 'success' })
+    }
     toggleSection('password')
   } catch (e) {
     uni.showToast({ title: e.message, icon: 'none' })
@@ -502,7 +679,8 @@ async function handleGetNewEmailCode() {
     return
   }
   try {
-    await sendChangeEmailNewCode(emailForm.newEmail)
+    // 绑定邮箱场景（无邮箱用户）允许邮箱已存在以触发账号合并；修改邮箱场景禁止已存在
+    await sendChangeEmailNewCode(emailForm.newEmail, !hasEmail.value)
     uni.showToast({ title: '验证码已发送', icon: 'none' })
     startCountdown(emailNewCodeText, emailNewCodeCounting)
   } catch (e) {
@@ -522,37 +700,53 @@ async function handleChangeEmail() {
   }
 
   try {
-    await changeEmail({
-      user_id: userStore.userInfo.id,
-      old_code: emailForm.oldCode,
-      new_email: emailForm.newEmail,
-      new_code: emailForm.newCode
-    })
-    uni.showToast({ title: '邮箱修改成功', icon: 'success' })
+    if (hasEmail.value) {
+      // 修改邮箱：需旧邮箱验证码 + 新邮箱验证码
+      await changeEmail({
+        user_id: userStore.userInfo.id,
+        old_code: emailForm.oldCode,
+        new_email: emailForm.newEmail,
+        new_code: emailForm.newCode
+      })
+      uni.showToast({ title: '邮箱修改成功', icon: 'success' })
+    } else {
+      // 绑定邮箱：无邮箱用户首次绑定，仅需新邮箱验证码
+      // 若邮箱已存在会触发账号合并，返回的主账号 id 可能与当前不同
+      const result = await bindEmail({
+        user_id: userStore.userInfo.id,
+        new_email: emailForm.newEmail,
+        new_code: emailForm.newCode
+      })
+      // 账号合并后用后端返回的完整用户信息更新本地状态（id/username/email/avatar_url/signature 等均可能变化）
+      userStore.setUser(result.data)
+      uni.showToast({ title: '邮箱绑定成功', icon: 'success' })
+    }
     toggleSection('email')
   } catch (e) {
     uni.showToast({ title: e.message, icon: 'none' })
   }
 }
 
-// ===== 注销账号 =====
+// ===== 删除账号 =====
 function handleDeletion() {
   if (isDeletionScheduled.value) {
-    // 处于冷静期，执行取消注销
+    // 处于冷静期，执行取消删除
     uni.showModal({
       title: '提示',
-      content: '确定要取消账号注销吗？',
+      content: '确定要取消账号删除吗？',
       success: async (res) => {
         if (res.confirm) {
           try {
             await cancelDeletion(userStore.userInfo.id)
-            userStore.userInfo.deletion_scheduled_at = null
+            userStore.userInfo.status = 1
             try {
               uni.setStorageSync('userInfo', userStore.userInfo)
             } catch (e) {
               console.warn('保存本地用户信息失败', e)
             }
-            uni.showToast({ title: '账号注销已取消', icon: 'success' })
+            // 取消删除倒计时
+            userStore.clearDeletionTimer()
+            uni.showToast({ title: '账号删除已取消', icon: 'success' })
           } catch (e) {
             uni.showToast({ title: e.message, icon: 'none' })
           }
@@ -560,23 +754,25 @@ function handleDeletion() {
       }
     })
   } else {
-    // 未处于冷静期，执行注销
+    // 未处于冷静期，执行删除
     uni.showModal({
-      title: '注销账号',
-      content: '账号将在一天后自动删除，且无法恢复，请保留个人数据',
-      confirmText: '确认注销',
+      title: '删除账号',
+      content: '账号将在1分钟后自动删除，且无法恢复，请保留个人数据',
+      confirmText: '确认删除',
       cancelText: '取消',
       success: async (res) => {
         if (res.confirm) {
           try {
             const result = await scheduleDeletion(userStore.userInfo.id)
-            userStore.userInfo.deletion_scheduled_at = result.data.deletion_scheduled_at
+            userStore.userInfo.status = result.data.status
             try {
               uni.setStorageSync('userInfo', userStore.userInfo)
             } catch (e) {
               console.warn('保存本地用户信息失败', e)
             }
-            uni.showToast({ title: '已计划注销，24小时后自动删除', icon: 'none' })
+            // 启动 60 秒倒计时，到期后自动清除前端状态并跳转登录页
+            userStore.startDeletionCountdown()
+            uni.showToast({ title: '已计划删除，1分钟后自动删除', icon: 'none' })
           } catch (e) {
             uni.showToast({ title: e.message, icon: 'none' })
           }
@@ -613,7 +809,7 @@ function handleLogout() {
 }
 
 .profile-page__main {
-  padding: 100px 24px 32px;
+  padding: 105px 24px 32px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -640,6 +836,12 @@ function handleLogout() {
 
 .profile-page__group-item--bordered {
   border-bottom: 1px solid #f3f3f4;
+}
+
+/* 账号待删除状态下（status=0）：分组1整体置灰且禁用所有交互 */
+.profile-page__group--disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .profile-page__group-text {

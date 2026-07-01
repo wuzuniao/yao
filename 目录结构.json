@@ -10,50 +10,69 @@
           "__init__.py": "API路由聚合文件",
           "v1": {
             "描述": "版本化接口，存放v1版本的API接口定义",
-            "__init__.py": "v1路由初始化文件",
-            "users.py": "用户模块API接口：注册 register、发送验证码 send-code、登录 login（支持用户名或邮箱 + 密码）"
+            "__init__.py": "v1路由初始化文件，注册 users/notification-channels/plans/checkins/notification-logs 五个子路由",
+            "users.py": "用户模块API接口：注册 register、发送验证码 send-code、登录 login（支持用户名或邮箱 + 密码）",
+            "notification_channels.py": "通知渠道API接口：GET /{user_id}/list 查询用户通知渠道列表、POST /email 创建邮件渠道（密码AES-256-GCM加密存储）、PUT /email 更新邮件渠道（password空字符串保留原密码）、DELETE / 删除渠道（站内信禁删）。响应中邮件渠道password字段始终返回空值",
+            "plans.py": "计划API接口：GET /{user_id}/list 查询用户计划列表（按status+priority+created_at排序）、POST 创建计划（含通知时间点/关联渠道/priority优先级）、PUT /{plan_id} 更新计划、DELETE /{plan_id} 删除计划",
+            "checkins.py": "打卡记录API接口：POST /checkins 创建打卡记录（允许重复打卡，解析时间后去除时区确保 naive Shanghai datetime）、GET /checkins/{user_id}/today 查询今日所有打卡、GET /checkins/{user_id}/today/{plan_id} 查询某计划今日打卡（返回checked_time_ids数组）、GET /checkins/{user_id}/month?year=&month= 查询某月有打卡记录的日期列表、GET /checkins/{user_id}/day?date= 查询某天打卡详情（含计划提醒时间及打卡状态）",
+            "notification_logs.py": "站内信API接口：GET /notification-logs/{user_id}/list 分页查询站内信列表（JOIN过滤站内信渠道+LEFT JOIN计划取名称备注，返回items/total/has_more/unread_count）、PUT /notification-logs/read 标记已读（status 2→0，校验归属）、GET /notification-logs/{user_id}/unread-count 查询未读数量（用于通知图标切换）"
           }
         },
         "core": {
           "描述": "核心配置与工具",
-          "config.py": "统一读取.env配置，自动切换开发/生产环境",
-          "database.py": "数据库连接引擎（SQLAlchemy异步）",
+          "config.py": "统一读取.env配置，自动切换开发/生产环境，含 ENCRYPTION_SECRET_KEY 加密密钥配置",
+          "database.py": "数据库连接引擎（SQLAlchemy异步），connect_args 设置 session time_zone='+08:00' 确保上海时区",
           "security.py": "加密、JWT等安全相关工具"
         },
         "models": {
           "描述": "SQLAlchemy ORM模型，对应数据库表结构",
           "__init__.py": "模型包初始化文件",
           "user.py": "用户数据表模型",
-          "user_miniapp_account.py": "用户-小程序绑定关系表模型（存储openid和session_key）"
+          "user_miniapp_account.py": "用户-小程序绑定关系表模型（存储openid和session_key）",
+          "notification_channel.py": "通知渠道配置表模型（NotificationChannel：channel_type=站内信/邮件，channel_value=用户ID或JSON配置）",
+          "plan.py": "计划相关表模型（CheckinPlan 主表含 priority 优先级字段 + PlanNotificationTime 通知时间点表 + PlanNotificationChannel 计划-渠道多对多关联表）",
+          "checkin_record.py": "打卡记录表模型（CheckinRecord：id/user_id/plan_id/plan_time_id/actual_time，外键关联 checkin_plans 和 plan_notification_times）",
+          "notification_log.py": "通知发送记录表模型（NotificationLog：id/plan_id/channel_id/plan_time_id/user_id/send_time/notify_date/status/trigger_type/error_msg。status 0-成功已读/1-失败/2-未读；trigger_type 0-准时/1-超5分/2-超30分/3-超1时；plan_time_id+trigger_type+notify_date+channel_id 为催办去重键；外键字段仅建索引不设物理约束）"
         },
         "schemas": {
           "描述": "Pydantic模型，负责请求/响应校验",
           "__init__.py": "Schema包初始化文件",
-          "user.py": "用户相关Schema：RegisterUser（注册请求校验）、SendCode（发送验证码请求）、LoginUser（登录请求校验）"
+          "user.py": "用户相关Schema：RegisterUser（注册请求校验）、SendCode（发送验证码请求）、LoginUser（登录请求校验）",
+          "notification_channel.py": "通知渠道Schema：EmailChannelValue（邮件JSON结构）、CreateEmailChannel、UpdateEmailChannel（password空字符串表示保留原密码）、DeleteChannel；常量 CHANNEL_TYPE_ZNX/CHANNEL_TYPE_EMAIL",
+          "plan.py": "计划Schema：CreatePlan（含 notification_times 时间数组、channel_ids 渠道ID数组、priority 优先级0-7，Pydantic v2 校验）、UpdatePlan（继承 CreatePlan 复用全部校验，新增 plan_id 字段）",
+          "checkin_record.py": "打卡记录Schema：CreateCheckin（含 actual_time ISO格式校验）、CheckinOut",
+          "notification_log.py": "通知记录Schema：状态常量 LOG_STATUS_SUCCESS/FAILED/UNREAD、触发类型常量 TRIGGER_ON_TIME/OFFSET_5MIN/OFFSET_30MIN/OFFSET_1HOUR、FOLLOWUP_OFFSETS 催办偏移映射、TRIGGER_DESC 中文描述、MarkRead（标记已读请求 log_id+user_id）"
         },
         "services": {
           "描述": "业务逻辑层，供api层调用，与框架无关",
           "__init__.py": "服务包初始化文件",
-          "user_service.py": "用户业务逻辑服务（User 类：注册/登录/验证码校验）",
-          "email_service.py": "邮箱操作服务（Email 类：SMTP 腾讯企业邮发送验证码邮件）"
+          "user_service.py": "用户业务逻辑服务（User 类：注册/登录/验证码校验/资料修改/微信登录/默认用户名生成/用户名更新/密码设置/邮箱绑定（含账号合并）/删除计划/到期账号清理/自动创建站内信通知渠道）",
+          "email_service.py": "邮箱操作服务（Email 类：send_verification_code 系统腾讯企业邮发送验证码；send_notification 使用用户自配 SMTP（notification_channels.channel_value）发送打卡通知邮件，端口465走SSL/其他走STARTTLS）",
+          "notification_channel_service.py": "通知渠道业务服务（NotificationChannelService 类：list_by_user/get_by_id/ensure_znx_channel/create_email_channel（密码AES-256-GCM加密存储）/update_email_channel（password空保留原密码）/delete_channel（站内信禁删）/parse_email_channel_value）",
+          "plan_service.py": "计划业务服务（PlanService 类：list_by_user（CASE表达式排序：进行中>暂停>已结束，再按priority升序+created_at降序）/get_by_id/create_plan（含priority参数）/update_plan（含priority参数）/delete_plan（级联删除）/auto_close_expired_plans（自动关闭过期计划：status=1且end_date<today更新为0））",
+          "checkin_service.py": "打卡记录业务服务（CheckinService 类：create_checkin（校验计划/时间点归属，允许重复打卡）/list_today_by_user/list_today_by_plan（均使用日期范围比较避免DATE()时区问题）/get_latest_checkin/list_by_month（查询某月有打卡记录的日期列表）/list_day_detail（查询某天打卡详情含计划提醒时间））",
+          "notification_log_service.py": "通知记录业务服务（NotificationLogService 类：list_znx_by_user（JOIN notification_channels 过滤站内信+LEFT JOIN checkin_plans 取计划名称/备注，分页+未读计数）/count_unread（未读站内信数量）/mark_as_read（status 2→0，校验归属，已读不重复标记））",
+          "scheduler_service.py": "定时任务调度服务（SchedulerService 定时计划类 + NotificationDispatcher 通知派发器）。SchedulerService 集中管理3个后台循环：账号清理(30秒,委托User)/计划关闭(30分钟,委托PlanService)/通知派发(60秒,实例化NotificationDispatcher)。main.py lifespan 调用 start_all/stop_all。NotificationDispatcher.dispatch_for_now 每分钟执行：准时触发(打卡记录数<提醒时间数则发)+三档催办(超5分/30分/1小时该时间点无打卡则发)；防重键(plan_time_id,trigger_type,notify_date,channel_id)查notification_logs；站内信直接写log(status=2未读)，邮件读取channel_value作SMTP发件+users.email收件+解密密码+记录发送结果"
         },
         "utils": {
           "描述": "通用工具函数，非业务相关",
           "__init__.py": "工具包初始化文件",
-          "logger.py": "日志配置与工具"
+          "logger.py": "日志配置与工具",
+          "crypto.py": "AES-256-GCM 对称加密工具（encrypt/decrypt），用于邮件客户端专用密码加密存储，存储格式 base64(nonce+ciphertext+tag)",
+          "timezone.py": "时区工具模块，统一上海时区 UTC+8：SHANGHAI_TZ 常量、now_shanghai() 返回 naive 上海 datetime、today_shanghai() 返回上海 date"
         },
-        "main.py": "FastAPI应用入口，负责挂载路由和中间件"
+        "main.py": "FastAPI应用入口，负责挂载路由和中间件；lifespan 中实例化 SchedulerService 并调用 start_all/stop_all，由其统一管理后台循环（账号清理/计划关闭/通知派发）"
       },
       "sql": {
         "描述": "数据库SQL脚本目录",
         "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本",
-        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本"
+        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本，含checkin_records表的复合索引idx_user_plan_actual(user_id,plan_id,actual_time)和idx_user_actual(user_id,actual_time)以优化日期范围查询性能；notification_logs表新增plan_time_id/notify_date/trigger_type列及去重索引idx_dedup(plan_time_id,trigger_type,notify_date,channel_id)用于定时通知防重"
       },
       "logs": {
         "描述": "本地运行日志目录，.gitignore忽略"
       },
-      ".env.dev": "Windows开发环境变量配置（数据库连接等）",
-      ".env.prod": "Linux生产环境变量配置（不提交Git）",
+      ".env": "环境变量实际配置文件（开发与生产通用，不提交Git）",
+      ".env.template": "环境变量参数模板（含字段说明与注释，提交Git）",
       "requirements.txt": "Python依赖清单",
       "run.py": "可选，替代uvicorn命令的启动入口"
     },
@@ -66,7 +85,11 @@
           "request.js": "统一请求封装：baseURL 拼接、错误解析（FastAPI 校验错误/HTTPException/业务格式）",
           "modules": {
             "描述": "按业务模块拆分的请求函数目录",
-            "user.js": "用户模块接口：发送注册验证码 sendRegisterCode、用户注册 registerUser、用户登录 loginUser"
+            "user.js": "用户模块接口：sendRegisterCode/registerUser/loginUser/sendResetCode/resetPassword/updateSignature/changePassword/changeEmail(修改邮箱)/updateAvatar/scheduleDeletion/cancelDeletion/wechatLogin/updateUsername(修改用户名)/setPassword(设置密码)/bindEmail(绑定邮箱)/getUserInfo(查询用户信息)",
+            "notification.js": "通知渠道模块接口：listNotificationChannels(查询渠道列表)/createEmailChannel(创建邮件渠道)/updateEmailChannel(更新邮件渠道配置，password空字符串保留原密码)/deleteNotificationChannel(删除渠道)",
+            "plan.js": "计划模块接口：listPlans(查询计划列表)/createPlan(创建计划，含通知时间点/关联渠道/priority优先级)/updatePlan(更新计划，PUT请求)/deletePlan(删除计划)",
+            "checkin.js": "打卡记录模块接口：createCheckin(创建打卡记录)/listTodayCheckins(查询今日打卡)/listTodayCheckinsByPlan(查询某计划今日打卡)/listMonthCheckins(查询某月打卡日期)/listDayCheckins(查询某天打卡详情)",
+            "message.js": "站内信模块接口：listMessages(分页查询站内信列表，返回未读数量)/markMessageRead(标记已读)/getUnreadCount(查询未读数量，用于通知图标切换)"
           }
         },
         "assets": {
@@ -79,54 +102,57 @@
           },
           "styles": {
             "描述": "全局样式目录",
-            "global.scss": "全局样式文件，定义 CSS 设计令牌（文本色/品牌色/卡片色/阴影/圆角/页面间距等 CSS 变量）与 .u-arrow-right 右箭头工具类"
+            "global.scss": "全局样式文件，定义 CSS 设计令牌（文本色/品牌色/卡片色/阴影/圆角/页面间距等 CSS 变量）、.u-arrow-right 右箭头工具类、.input-limit-hint 输入框字符限制提示类（配合 composables/useInputLimit.js 使用，含 --near 接近限制橙色与 --full 达到限制红色修饰符）"
           }
         },
         "components": {
           "描述": "可复用组件目录",
-          "NoticeButton.vue": "通知按钮组件，支持未读状态切换和点击事件",
+          "NoticeButton.vue": "通知按钮组件，图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onMounted 自动拉取未读数量；点击 reLaunch 直达站内信页 /pages/user/messages。hasNotification prop 已废弃（保留兼容，实际不再使用）",
           "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项",
           "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,支持\\n换行)，用于 notification/profile/help/contact 等页面"
         },
         "composables": {
           "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",
-          "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面"
+          "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面",
+          "useInputLimit.js": "输入框字符限制工具，导出 useInputLimit(maxLength, allowedPattern?) 组合式函数，返回 { count, max, isNear, isFull, hint, filter, sync, handleInput }。实现字符限制与后端字段严格匹配、实时计数、接近限制视觉提示、达到限制阻止输入、白名单正则过滤特殊字符。配合全局 .input-limit-hint CSS 类用于 login/register/forgot-password/profile/plan/notification 页面"
         },
         "store": {
           "描述": "Pinia 状态管理目录，管理全局共享状态（用户登录信息等）",
           "index.js": "Pinia 实例创建与导出，供 main.js 注册",
           "modules": {
             "描述": "按业务模块拆分的 Store 目录",
-            "user.js": "用户状态管理：userInfo（id/username/signature/avatar_url）、setUser/clearUser/loadUserFromStorage，支持本地存储持久化"
+            "user.js": "用户状态管理（Pinia）：userInfo 用户信息、unreadCount 全局未读站内信数量（供 NoticeButton 图标切换）、setUser/clearUser/loadUserFromStorage/verifyUserExists/startDeletionCountdown/clearDeletionTimer/loadUnreadCount（10秒节流查询未读数量）/setUnreadCount（站内信页同步）/decrementUnread（标记已读减一），支持本地存储持久化"
           }
         },
         "pages": {
           "描述": "页面目录，按业务模块分包",
           "index": {
             "描述": "主包首页",
-            "index.vue": "首页组件",
-            "record.vue": "用药记录页面",
-            "settings.vue": "设置页面，用户资料卡动态显示登录状态（已登录显示用户信息并跳转 profile.vue，未登录显示'请登录'并跳转 login.vue）",
-            "notification.vue": "通知方式页面，管理提醒接收渠道（站内信/邮件），含'新建通知方式'表单卡（通知名称/接收地址/保存通知，点击'添加新的通知方式'切换显示）",
-            "plan.vue": "制定计划页面，展示已有计划列表，点击'新建计划'入口卡切换为'新建计划详情'表单卡（含名称/备注/日期范围/提醒时间/通知方式）"
+            "index.vue": "首页组件，从checkin_plans表获取当前用户进行中计划按priority升序排序展示。主要卡片展示当前选中任务（不设点击事件），次要卡片点击后内容替换到主要卡片位置；3+任务时次要卡片右侧显示'...'按钮，点击弹出任务列表可选择任务替换到主要卡片；仅2个任务显示主+次卡片无'...'，仅1个任务只显示主卡片。空状态：未登录显示'欢迎使用无足鸟按时吃药打卡！'，已登录无进行中计划显示'请先到设置界面创建您的打卡计划...'。立即打卡按钮三态：灰色'无打卡任务'（未登录/无任务/不在打卡时段）、红色'立即打卡'（提醒时间前一小时内可打卡）、绿色'已打卡'（不可点击，长按3秒重置）；多提醒时间间隔不足一小时时动态调整并自动重置按钮；每分钟定时刷新打卡时段状态。页面加载阶段异步查询今日打卡记录（loadTodayCheckins），若当前打卡窗口已存在记录则自动设置justCheckedInTimeId使按钮显示'已打卡'绿色状态，无需用户手动点击；数据库异常时仅console.warn不阻塞界面",
+            "record.vue": "用药记录页面，展示当月打卡日历与当日打卡明细。页面加载时（onShow）已登录且查看当前月份时自动选中今天并加载当日打卡详情；其他日期需用户点击日期单元格才触发查询。异步查询含加载中（'加载中...'灰色文本）和加载失败（'加载失败，点击重试'红色文本，点击重试）状态反馈。当日明细列出所有进行中计划的提醒时间及打卡状态：已打卡显示绿点+提醒时间+实际打卡时间（→HH:MM绿色小字）+计划名称/备注+jilu_wc.png图标，未打卡显示灰点+提醒时间+计划名称/备注",
+            "settings.vue": "设置页面，用户资料卡动态显示登录状态（已登录显示用户名和头像并跳转 profile.vue；未登录显示'请登录'与默认头像 hong 并跳转 login.vue；已登录用户名为空时显示空，头像字段为空时不显示头像；用户名单行截断、签名3行截断显示省略号，防止头像框被挤压）。制定计划和通知方式卡片右侧信息从数据库动态获取：计划卡片显示第一个进行中的计划名称+进行中徽章（无则空），通知方式卡片显示除站内信外第一个通知类型名称（无则空）。删除冷静期内（status=0）制定计划和通知方式卡片置灰且禁止点击交互（opacity:0.5+pointer-events:none）",
+            "notification.vue": "通知方式页面，管理提醒接收渠道（站内信/邮件）。通知方式列表从数据库动态加载，站内信卡片不可删除/修改，邮件卡片含删除图标且点击展开SMTP配置表单（含是否启用单选框）。'客户端专用密码'采用AES-256-GCM加密存储，修改时密码字段始终显示空值（不暴露解密内容），留空提交保留原密码。输入框CSS修复（padding:0 12px+line-height=height）解决微信小程序文本超出下边框问题。'新建通知方式'表单卡默认选中'邮件'选项，选邮件时前置校验用户是否已绑定邮箱（未绑定弹出3秒倒计时提示框，结束后自动跳转profile.vue?focus=email）",
+            "plan.vue": "制定计划页面，已有计划列表从数据库动态加载（排序：进行中>暂停>已结束，同状态按priority升序，同状态同优先级新创建在前），点击已有计划卡片就地展开编辑区域（CSS border-radius衔接实现卡片延伸视觉效果，去除编辑标题），再次点击收起。点击'新建计划'入口卡隐藏所有已有计划显示'新建计划详情'表单卡。表单含计划名称/备注/起止日期（双picker同行）/提醒时间（多个picker单时间控件，width:50%，默认当前系统时间）/优先级单选框（0-7，数字越小越优先，默认3）/通知方式（多选框，站内信默认勾选）/任务状态（单选框：进行中=1/暂停=2/已结束=0）。已有计划卡片右上角显示shanchu.png删除图标。保存写入checkin_plans+plan_notification_times+plan_notification_channels三张表"
           },
           "user": {
             "描述": "分包：用户模块",
-            "profile.vue": "个人信息页面，含修改签名/修改密码/修改邮箱分组与退出登录（红色危险操作，弹窗二次确认，退出时清除用户状态并跳转 settings.vue）",
+            "profile.vue": "个人信息页面，含修改用户名（含后端唯一性校验）/修改头像/修改签名/修改密码或设置密码（根据 has_password 动态显示）/修改邮箱或绑定邮箱（根据 email 动态显示，绑定邮箱时若邮箱已存在触发账号合并）分组与退出登录、删除账号（冷静期1分钟，后台30秒轮询自动清理，红色危险操作，弹窗二次确认）。支持onLoad接收URL参数focus=email自动展开绑定邮箱区域（供notification页跳转使用）",
             "login.vue": "登录页面，含账号密码登录（前后端双重验证，登录成功写入 Pinia 状态并跳转 settings.vue）与微信一键登录（占位）",
             "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单（前后端双重验证，失焦实时校验）",
             "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
             "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
+            "messages.vue": "站内信页面，从 notification_logs 表查询当前用户站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注）。卡片展示计划名称+备注说明+发送时间；未读(status=2)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读(status→0)，前端实时移除高亮(卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；onShow拉取数据+启动30秒轮询(检测新消息自动刷新)；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
             "privacy.vue": "隐私政策页面，静态展示七章节政策条款含第三方信息共享表格"
           }
         },
         "App.vue": "应用根组件",
         "main.js": "应用入口文件",
         "manifest.json": "微信小程序/App配置文件",
-        "pages.json": "路由配置文件，pages与subPackages注册",
+        "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password)",
         "uni.scss": "全局可用的SCSS变量"
       },
-      ".env.dev": "前端开发环境变量（API_BASE）",
+      ".env": "前端环境变量实际配置文件（不提交Git）",
+      ".env.template": "前端环境变量参数模板（提交Git）",
       "index.html": "HTML入口文件",
       "package.json": "npm依赖配置",
       "package-lock.json": "npm依赖锁定文件",
