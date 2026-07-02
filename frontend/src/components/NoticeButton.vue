@@ -57,7 +57,15 @@ const positionStyle = computed(() => ({
 
 // 模内紧耦：点击直达站内信页，逻辑封装在组件内部，页面无需重复实现
 function handleClick() {
-  uni.reLaunch({
+  // 检测当前是否已在站内信页：避免在 messages.vue 内重复入栈
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  if (currentPage && currentPage.route === 'pages/user/messages') {
+    return
+  }
+  // 使用 navigateTo 保留页面栈，确保 messages.vue 可通过返回手势（左滑/右滑）回到上一页
+  // （原 reLaunch 会清空页面栈导致栈底无返回目标，返回手势失效）
+  uni.navigateTo({
     url: '/pages/user/messages'
   })
 }
