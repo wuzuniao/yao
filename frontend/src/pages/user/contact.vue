@@ -1,11 +1,11 @@
 <template>
   <view class="contact-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="contact-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="联系我们" :desc="`如果您在使用过程中遇到任何问题，欢迎随时${'\n'}联系我们。`" />
+      <PageHeader title="联系我们" desc="如果您在使用过程中遇到任何问题，欢迎随时联系我们。" />
 
       <!-- 白色卡片：联系方式列表 -->
       <view class="contact-page__card">
@@ -59,13 +59,13 @@
  *  - QQ群：278634838（含二维码图片）
  * 纯展示页面，无交互逻辑
  */
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import wxIcon from '../../assets/images/ewm_wx.png'
 import qqIcon from '../../assets/images/ewm_qq.png'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶栏图标为绿色无红点态
-const hasNotification = false
+useShare({ title: '联系我们' })
 </script>
 
 <style lang="scss">

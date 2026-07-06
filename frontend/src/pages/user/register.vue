@@ -1,7 +1,7 @@
 <template>
   <view class="register-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="register-page__canvas">
       <!-- 白色卡片容器 -->
@@ -29,10 +29,6 @@
               @focus="handleFocus('username')"
               @blur="handleBlur('username')"
             />
-            <text
-              v-if="usernameLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': usernameLimit.isNear.value, 'input-limit-hint--full': usernameLimit.isFull.value }]"
-            >{{ usernameLimit.hint.value }}</text>
             <text v-if="errors.username" class="register-page__error-text">{{ errors.username }}</text>
           </view>
 
@@ -52,10 +48,6 @@
               @focus="handleFocus('password')"
               @blur="handleBlur('password')"
             />
-            <text
-              v-if="passwordLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': passwordLimit.isNear.value, 'input-limit-hint--full': passwordLimit.isFull.value }]"
-            >{{ passwordLimit.hint.value }}</text>
             <text v-if="errors.password" class="register-page__error-text">{{ errors.password }}</text>
           </view>
 
@@ -75,10 +67,6 @@
               @focus="handleFocus('confirmPassword')"
               @blur="handleBlur('confirmPassword')"
             />
-            <text
-              v-if="confirmPwdLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': confirmPwdLimit.isNear.value, 'input-limit-hint--full': confirmPwdLimit.isFull.value }]"
-            >{{ confirmPwdLimit.hint.value }}</text>
             <text v-if="errors.confirmPassword" class="register-page__error-text">{{ errors.confirmPassword }}</text>
           </view>
 
@@ -97,10 +85,6 @@
               @focus="handleFocus('email')"
               @blur="handleBlur('email')"
             />
-            <text
-              v-if="emailLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': emailLimit.isNear.value, 'input-limit-hint--full': emailLimit.isFull.value }]"
-            >{{ emailLimit.hint.value }}</text>
             <text v-if="errors.email" class="register-page__error-text">{{ errors.email }}</text>
           </view>
 
@@ -124,10 +108,6 @@
                 <text class="register-page__code-btn-text">{{ codeText }}</text>
               </view>
             </view>
-            <text
-              v-if="codeLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': codeLimit.isNear.value, 'input-limit-hint--full': codeLimit.isFull.value }]"
-            >{{ codeLimit.hint.value }}</text>
             <text v-if="errors.code" class="register-page__error-text">{{ errors.code }}</text>
           </view>
 
@@ -175,13 +155,13 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref } from 'vue'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { sendRegisterCode, registerUser } from '../../api/modules/user'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶栏铃铛为绿色无红点态
-const hasNotification = false
+useShare({ title: '注册账号' })
 
 const form = reactive({
   username: '',

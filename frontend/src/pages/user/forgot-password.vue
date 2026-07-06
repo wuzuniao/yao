@@ -1,7 +1,7 @@
 <template>
   <view class="forgot-password-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="false" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <!-- 找回密码卡片 -->
     <view class="forgot-password-page__card">
@@ -26,10 +26,6 @@
             @focus="handleFocus('email')"
             @blur="handleBlur('email')"
           />
-          <text
-            v-if="emailLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': emailLimit.isNear.value, 'input-limit-hint--full': emailLimit.isFull.value }]"
-          >{{ emailLimit.hint.value }}</text>
           <text v-if="errors.email" class="forgot-password-page__error-text">{{ errors.email }}</text>
         </view>
 
@@ -53,10 +49,6 @@
               <text class="forgot-password-page__code-btn-text">{{ codeText }}</text>
             </view>
           </view>
-          <text
-            v-if="codeLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': codeLimit.isNear.value, 'input-limit-hint--full': codeLimit.isFull.value }]"
-          >{{ codeLimit.hint.value }}</text>
           <text v-if="errors.code" class="forgot-password-page__error-text">{{ errors.code }}</text>
         </view>
 
@@ -84,10 +76,6 @@
             @focus="handleFocus('newPassword')"
             @blur="handleBlur('newPassword')"
           />
-          <text
-            v-if="newPwdLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': newPwdLimit.isNear.value, 'input-limit-hint--full': newPwdLimit.isFull.value }]"
-          >{{ newPwdLimit.hint.value }}</text>
           <text v-if="errors.newPassword" class="forgot-password-page__error-text">{{ errors.newPassword }}</text>
         </view>
 
@@ -107,10 +95,6 @@
             @focus="handleFocus('confirmPassword')"
             @blur="handleBlur('confirmPassword')"
           />
-          <text
-            v-if="confirmPwdLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': confirmPwdLimit.isNear.value, 'input-limit-hint--full': confirmPwdLimit.isFull.value }]"
-          >{{ confirmPwdLimit.hint.value }}</text>
           <text v-if="errors.confirmPassword" class="forgot-password-page__error-text">{{ errors.confirmPassword }}</text>
         </view>
 
@@ -140,10 +124,13 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref } from 'vue'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { sendResetCode, resetPassword } from '../../api/modules/user'
+import { useShare } from '../../composables/useShare'
+
+useShare({ title: '找回密码' })
 
 const step = ref(1)
 const form = reactive({

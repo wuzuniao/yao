@@ -1,11 +1,11 @@
 <template>
   <view class="help-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="help-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="帮助中心" :desc="`找到常见问题的解答，或了解如何更好地管理${'\n'}您的习惯。`" />
+      <PageHeader title="帮助中心" desc="找到常见问题的解答，或了解如何更好地管理您的习惯。" />
 
       <!-- FAQ 卡片列表 -->
       <view class="help-page__list">
@@ -21,7 +21,7 @@
         <view class="help-page__card">
           <view class="help-page__card-body">
             <text class="help-page__card-title">邮件通知怎么填写？</text>
-            <text class="help-page__card-text">参考文章：QQ邮箱中开通SMTP服务并获取授权码{{ '\n' }}</text>
+            <text class="help-page__card-text">参考公众号文章（无足鸟ICT）：<text class="help-page__card-link" @click="copySmtpLink">QQ邮箱中开通SMTP服务并获取授权码</text></text>
           </view>
         </view>
 
@@ -37,7 +37,8 @@
         <view class="help-page__card">
           <view class="help-page__card-body">
             <text class="help-page__card-title">为什么邮件通知要配置自己的邮箱客户端专用密码？</text>
-            <text class="help-page__card-text">因为要用你的邮箱给你自己发信，保证邮件内容安全，还可以避免邮件被当垃圾邮件拦截。{{ '\n' }}邮箱客户端专用密码在数据库中已被再次加密存储，且不会通过接口返回给前端。</text>
+            <text class="help-page__card-text">因为要用你的邮箱给你自己发信，保证邮件内容安全，还可以避免邮件被当垃圾邮件拦截。</text>
+            <text class="help-page__card-text">邮箱客户端专用密码在数据库中已被再次加密存储，且不会通过接口返回给前端。</text>
           </view>
         </view>
 
@@ -45,7 +46,12 @@
         <view class="help-page__card">
           <view class="help-page__card-body">
             <text class="help-page__card-title">打卡逻辑如何设置的？</text>
-            <text class="help-page__card-text">只允许在打卡日期范围内进行打卡。{{ '\n' }}未到打卡时间：打卡按钮为“未到打卡时间”。{{ '\n' }}只有一次提醒时间时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。{{ '\n' }}当存在多个提醒时间且两次打卡间隔大于两小时时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。{{ '\n' }}当存在多个提醒时间且两次打卡间隔在两小时以下时：两次提醒时间的间隔时间中，前半部分时间为已完成，后半部分时间重置按钮为"立即打卡"，此时允许打卡。{{ '\n' }}当任何时候需要打卡，可长按任何非“立即打卡”按钮3秒，会重置按钮为"立即打卡"，此时允许打卡。</text>
+            <text class="help-page__card-text">只允许在打卡日期范围内进行打卡。</text>
+            <text class="help-page__card-text">未到打卡时间：打卡按钮为“未到打卡时间”。</text>
+            <text class="help-page__card-text">只有有一次提醒时间时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。</text>
+            <text class="help-page__card-text">当存在多个提醒时间且两次打卡间隔大于两小时时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。</text>
+            <text class="help-page__card-text">当存在多个提醒时间且两次打卡间隔在两小时以下时：两次提醒时间的间隔时间中，前半部分时间为已完成，后半部分时间重置按钮为"立即打卡"，此时允许打卡。</text>
+            <text class="help-page__card-text">当任何时候需要打卡，可长按任何非“立即打卡”按钮3秒，会重置按钮为"立即打卡"，此时允许打卡。</text>
           </view>
         </view>
 
@@ -53,7 +59,9 @@
         <view class="help-page__card">
           <view class="help-page__card-body">
             <text class="help-page__card-title">通知逻辑如何设置的？</text>
-            <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡的，发送通知。{{ '\n' }}当存在多个提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天的打卡记录数量小于提醒时间数量时，发送通知。{{ '\n' }}当超过提醒时间5分钟、30分钟、1小时，依旧没有打卡记录时，在对应时间点发送通知。</text>
+            <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡的，发送通知。</text>
+            <text class="help-page__card-text">当存在多个提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天的打卡记录数量小于提醒时间数量时，发送通知。</text>
+            <text class="help-page__card-text">当超过提醒时间5分钟、30分钟、1小时，依旧没有打卡记录时，在对应时间点发送通知。</text>
           </view>
         </view>
       </view>
@@ -69,11 +77,25 @@
  *  - 5 张 FAQ 卡片：修改打卡时间、添加多个时间段、通知收不到、恢复误删记录、导出历史数据
  *  - 纯展示页面，无交互逻辑，内容为静态文案
  */
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶栏图标为绿色无红点态
-const hasNotification = false
+useShare({ title: '帮助中心' })
+
+// 复制 SMTP 配置教程链接到剪贴板
+function copySmtpLink() {
+  const url = 'https://mp.weixin.qq.com/s/JNOseGYNjaFxWcTpERXnTQ'
+  uni.setClipboardData({
+    data: url,
+    success: () => {
+      uni.showToast({ title: '链接已复制', icon: 'success' })
+    },
+    fail: () => {
+      uni.showToast({ title: '复制失败', icon: 'none' })
+    }
+  })
+}
 </script>
 
 <style lang="scss">
@@ -132,5 +154,10 @@ const hasNotification = false
   line-height: 26px;
   font-weight: 400;
   white-space: pre-line;
+}
+
+.help-page__card-link {
+  color: #0066cc;
+  text-decoration: underline;
 }
 </style>

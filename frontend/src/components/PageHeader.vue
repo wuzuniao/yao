@@ -6,7 +6,7 @@
 
   视觉规范（对照 Figma 设计稿）：
     - 标题：32px / 行高 36px / 600 / #0e0f0c
-    - 副标题：16px / 行高 24px / 400 / #454745 / white-space: pre-line（支持 \n 换行）
+    - 副标题：16px / 行高 24px / 400 / #454745 / 自动换行（容器边界换行）
     - 容器：padding 0 8px，flex column，gap 8px
 
   参考：
@@ -27,7 +27,7 @@
 /**
  * Props
  * @prop {string} title - 页面主标题（必填）
- * @prop {string} desc - 页面副标题/描述（可选，支持 \n 换行）
+ * @prop {string} desc - 页面副标题/描述（可选，自动换行）
  */
 defineProps({
   title: {
@@ -62,7 +62,6 @@ defineProps({
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
-  /* pre-line：保留文本中的 \n 换行，合并多余空白，符合设计稿多行描述排版 */
-  white-space: pre-line;
+  /* 默认 normal：文本根据容器边界自动换行 */
 }
 </style>

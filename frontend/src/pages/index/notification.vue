@@ -1,10 +1,11 @@
 <template>
   <view class="notification-page">
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="notification-page__main">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/profile 等页面保持一致） -->
-      <PageHeader title="通知方式" :desc="`管理您的提醒接收渠道，确保不错过任何重要${'\n'}提醒。`" />
+      <PageHeader title="通知方式" desc="管理您的提醒接收渠道，确保不错过任何重要提醒。" />
 
       <!-- 通知方式列表（动态从数据库加载，仅展示用户已配置的通知方式） -->
       <view class="notification-page__section" v-if="channels.length > 0">
@@ -46,10 +47,6 @@
                 :maxlength="editHostLimit.max"
                 @input="e => editForm.smtp_host = editHostLimit.handleInput(e)"
               />
-              <text
-                v-if="editHostLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': editHostLimit.isNear.value, 'input-limit-hint--full': editHostLimit.isFull.value }]"
-              >{{ editHostLimit.hint.value }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">SMTP服务器端口</text>
@@ -61,11 +58,9 @@
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editPortLimit.max"
                 @input="e => editForm.smtp_port = editPortLimit.handleInput(e)"
+                @blur="editPortError = validatePort(editForm.smtp_port)"
               />
-              <text
-                v-if="editPortLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': editPortLimit.isNear.value, 'input-limit-hint--full': editPortLimit.isFull.value }]"
-              >{{ editPortLimit.hint.value }}</text>
+              <text v-if="editPortError" style="color: #e5484d; font-size: 12px; line-height: 16px; margin-top: 4px;">{{ editPortError }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">发件邮箱地址</text>
@@ -77,10 +72,6 @@
                 :maxlength="editEmailLimit.max"
                 @input="e => editForm.email = editEmailLimit.handleInput(e)"
               />
-              <text
-                v-if="editEmailLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': editEmailLimit.isNear.value, 'input-limit-hint--full': editEmailLimit.isFull.value }]"
-              >{{ editEmailLimit.hint.value }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">客户端专用密码</text>
@@ -93,10 +84,6 @@
                 :maxlength="editPwdLimit.max"
                 @input="e => editForm.password = editPwdLimit.handleInput(e)"
               />
-              <text
-                v-if="editPwdLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': editPwdLimit.isNear.value, 'input-limit-hint--full': editPwdLimit.isFull.value }]"
-              >{{ editPwdLimit.hint.value }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定） -->
             <view class="notification-page__field">
@@ -171,10 +158,6 @@
                 @focus="onFocus('smtp_host')"
                 @blur="onBlur"
               />
-              <text
-                v-if="hostLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': hostLimit.isNear.value, 'input-limit-hint--full': hostLimit.isFull.value }]"
-              >{{ hostLimit.hint.value }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">SMTP服务器端口</text>
@@ -188,12 +171,9 @@
                 :maxlength="portLimit.max"
                 @input="e => form.smtp_port = portLimit.handleInput(e)"
                 @focus="onFocus('smtp_port')"
-                @blur="onBlur"
+                @blur="() => { onBlur(); portError = validatePort(form.smtp_port) }"
               />
-              <text
-                v-if="portLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': portLimit.isNear.value, 'input-limit-hint--full': portLimit.isFull.value }]"
-              >{{ portLimit.hint.value }}</text>
+              <text v-if="portError" style="color: #e5484d; font-size: 12px; line-height: 16px; margin-top: 4px;">{{ portError }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">发件邮箱地址</text>
@@ -208,10 +188,6 @@
                 @focus="onFocus('email')"
                 @blur="onBlur"
               />
-              <text
-                v-if="emailLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': emailLimit.isNear.value, 'input-limit-hint--full': emailLimit.isFull.value }]"
-              >{{ emailLimit.hint.value }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">客户端专用密码</text>
@@ -227,10 +203,6 @@
                 @focus="onFocus('password')"
                 @blur="onBlur"
               />
-              <text
-                v-if="pwdLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': pwdLimit.isNear.value, 'input-limit-hint--full': pwdLimit.isFull.value }]"
-              >{{ pwdLimit.hint.value }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定，默认是） -->
             <view class="notification-page__field">
@@ -286,7 +258,7 @@
  *  - 数据存储：邮件 channel_value 以 JSON 字符串存储（含 smtp_host/smtp_port/email/password）
  */
 import { reactive, ref, computed, onMounted } from 'vue'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
@@ -300,9 +272,9 @@ import {
 import znxIcon from '../../assets/images/tz_znx.png'
 import yxIcon from '../../assets/images/tz_yx.png'
 import deleteIcon from '../../assets/images/shanchu.png'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶部铃铛含红点，使用激活态图标
-const hasNotification = true
+useShare({ title: '通知方式' })
 
 const userStore = useUserStore()
 
@@ -335,6 +307,10 @@ const editForm = reactive({
   enabled: true
 })
 
+// 端口格式错误提示（编辑表单与新建表单各自独立）
+const portError = ref('')
+const editPortError = ref('')
+
 // 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
 
@@ -362,6 +338,16 @@ const canSave = computed(() => {
   }
   return false
 })
+
+// 端口格式校验：空值返回空，非整数或超出 1-65535 范围返回错误提示
+function validatePort(v) {
+  if (!v) return ''
+  const num = Number(v)
+  if (!Number.isInteger(num) || num < 1 || num > 65535) {
+    return '端口必须为 1-65535 之间的数字'
+  }
+  return ''
+}
 
 // 加载用户通知渠道列表
 async function loadChannels() {
@@ -423,6 +409,7 @@ function handleAdd() {
   form.email = ''
   form.password = ''
   form.enabled = true
+  portError.value = ''
   // 未绑定邮箱时启动3秒倒计时弹窗，结束后跳转绑定邮箱页面
   if (!userStore.userInfo || !userStore.userInfo.email) {
     startEmailCountdown()
@@ -434,6 +421,11 @@ async function handleSave() {
   if (!canSave.value) return
   if (!userStore.userInfo) {
     uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  portError.value = validatePort(form.smtp_port)
+  if (portError.value) {
+    uni.showToast({ title: portError.value, icon: 'none' })
     return
   }
   try {
@@ -473,6 +465,7 @@ function toggleEmailEdit(channelId) {
   }
   // 填充启用状态（默认 true）
   editForm.enabled = ch ? !!ch.enabled : true
+  editPortError.value = ''
   expandedEmailId.value = channelId
 }
 
@@ -481,6 +474,11 @@ function toggleEmailEdit(channelId) {
 async function handleUpdateEmail(channelId) {
   if (!editForm.smtp_host || !editForm.smtp_port || !editForm.email) {
     uni.showToast({ title: '请填写完整配置', icon: 'none' })
+    return
+  }
+  editPortError.value = validatePort(editForm.smtp_port)
+  if (editPortError.value) {
+    uni.showToast({ title: editPortError.value, icon: 'none' })
     return
   }
   if (!userStore.userInfo) return

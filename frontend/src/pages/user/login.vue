@@ -1,7 +1,7 @@
 <template>
   <view class="login-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <!-- 氛围背景装饰圆（设计稿 Background+Blur） -->
     <view class="login-page__ambient"></view>
@@ -26,10 +26,6 @@
             @focus="handleFocus('username')"
             @blur="handleBlur('username')"
           />
-          <text
-            v-if="usernameLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': usernameLimit.isNear.value, 'input-limit-hint--full': usernameLimit.isFull.value }]"
-          >{{ usernameLimit.hint.value }}</text>
           <text v-if="errors.username" class="login-page__error-text">{{ errors.username }}</text>
         </view>
 
@@ -54,10 +50,6 @@
               <image class="login-page__eye-icon" :src="mimaIcon" mode="aspectFit" />
             </view>
           </view>
-          <text
-            v-if="passwordLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': passwordLimit.isNear.value, 'input-limit-hint--full': passwordLimit.isFull.value }]"
-          >{{ passwordLimit.hint.value }}</text>
           <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
           <view class="login-page__forgot-row">
             <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
@@ -118,16 +110,16 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref } from 'vue'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { loginUser, wechatLogin } from '../../api/modules/user'
 import { useUserStore } from '../../store/modules/user'
 import mimaIcon from '../../assets/images/mima_1.png'
 import wxIcon from '../../assets/images/dl_wx.png'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶栏铃铛为绿色无红点态
-const hasNotification = false
+useShare({ title: '登录' })
 
 const form = reactive({ username: '', password: '' })
 const showPassword = ref(false)

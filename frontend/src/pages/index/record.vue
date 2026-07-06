@@ -150,6 +150,9 @@ import { useUserStore } from '../../store/modules/user'
 import { listMonthCheckins, listDayCheckins } from '../../api/modules/checkin'
 import jiluXqIcon from '../../assets/images/jilu_xq.png'
 import jiluWcIcon from '../../assets/images/jilu_wc.png'
+import { useShare } from '../../composables/useShare'
+
+useShare({ title: '用药记录' })
 
 const hasNotification = false
 const userStore = useUserStore()

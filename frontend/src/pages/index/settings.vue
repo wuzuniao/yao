@@ -87,6 +87,9 @@ import touxiangLan from '../../assets/images/touxiang/lan.png'
 import { useUserStore } from '../../store/modules/user'
 import { listNotificationChannels } from '../../api/modules/notification'
 import { listPlans } from '../../api/modules/plan'
+import { useShare } from '../../composables/useShare'
+
+useShare({ title: '设置' })
 
 const hasNotification = false
 const userStore = useUserStore()
@@ -162,7 +165,7 @@ const displaySlogan = computed(() => {
   if (userStore.userInfo) {
     return userStore.userInfo.signature != null ? String(userStore.userInfo.signature) : ''
   }
-  return '"保持热爱，奔赴山海，\n每一天都要好好生活。"'
+  return '"保持热爱，奔赴山海，每一天都要好好生活。"'
 })
 
 // 用户头像：未登录使用默认头像 hong；已登录从数据库获取，字段为空则不显示头像

@@ -1,12 +1,13 @@
 <template>
   <view class="plan-page">
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="plan-page__main">
       <!-- 页面标题区 -->
       <view class="plan-page__header">
         <text class="plan-page__title">制定计划</text>
-        <text class="plan-page__desc">合理规划您的用药与健康提醒，助您养成良好{{'\n'}}的生活习惯。</text>
+        <text class="plan-page__desc">合理规划您的用药与健康提醒，助您养成良好的生活习惯。</text>
       </view>
 
       <!-- 新建计划入口卡（点击后切换为"新建计划详情"表单卡，隐藏所有已有计划） -->
@@ -230,10 +231,6 @@
                 :maxlength="editNameLimit.max"
                 @input="e => editingForm.name = editNameLimit.handleInput(e)"
               />
-              <text
-                v-if="editNameLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': editNameLimit.isNear.value, 'input-limit-hint--full': editNameLimit.isFull.value }]"
-              >{{ editNameLimit.hint.value }}</text>
             </view>
 
             <!-- 备注说明 -->
@@ -389,7 +386,7 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref, onMounted, computed } from 'vue'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
@@ -399,9 +396,9 @@ import jiaJihuaIcon from '../../assets/images/jia_jihua.png'
 import jiaShijianIcon from '../../assets/images/jia_shijian.png'
 import shanchuIcon from '../../assets/images/shanchu.png'
 import baocunJihuaIcon from '../../assets/images/baocun_jihua.png'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶栏铃铛为绿色无红点态
-const hasNotification = false
+useShare({ title: '制定计划' })
 
 const userStore = useUserStore()
 

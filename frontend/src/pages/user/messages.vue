@@ -1,11 +1,11 @@
 <template>
   <view class="messages-page">
-    <!-- 顶部通知按钮：图标随未读状态切换（tongzhi_1/tongzhi_0） -->
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="messages-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 help/notification 等页面保持一致） -->
-      <PageHeader title="站内信" :desc="`查看您的打卡提醒消息，${'\n'}点击未读消息可标记为已读。`" />
+      <PageHeader title="站内信" desc="查看您的打卡提醒消息，点击未读消息可标记为已读。" />
 
       <!-- 消息卡片列表 -->
       <view class="messages-page__list">
@@ -70,12 +70,15 @@
  *  - 定时轮询：每 30 秒查询未读数量，有新消息时自动刷新列表
  *  - 加载中/空数据/加载失败三种状态反馈，失败可点击重试
  */
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { onShow, onHide, onReachBottom } from '@dcloudio/uni-app'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useUserStore } from '../../store/modules/user'
 import { listMessages, markMessageRead, getUnreadCount } from '../../api/modules/message'
+import { useShare } from '../../composables/useShare'
+
+useShare({ title: '站内信' })
 
 const userStore = useUserStore()
 
@@ -89,9 +92,6 @@ const page = ref(1)
 const PAGE_SIZE = 20
 const POLL_INTERVAL = 30000 // 30 秒轮询（与项目后台清理任务节奏一致）
 let pollTimer = null
-
-// 通知按钮图标状态：读取全局未读数量（与其它页面共享，标记已读后即时切换）
-const hasNotification = computed(() => userStore.unreadCount > 0)
 
 // ===== 数据加载 =====
 

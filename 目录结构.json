@@ -102,19 +102,21 @@
           },
           "styles": {
             "描述": "全局样式目录",
-            "global.scss": "全局样式文件，定义 CSS 设计令牌（文本色/品牌色/卡片色/阴影/圆角/页面间距等 CSS 变量）、.u-arrow-right 右箭头工具类、.input-limit-hint 输入框字符限制提示类（配合 composables/useInputLimit.js 使用，含 --near 接近限制橙色与 --full 达到限制红色修饰符）"
+            "global.scss": "全局样式文件，定义 CSS 设计令牌（文本色/品牌色/卡片色/阴影/圆角/页面间距等 CSS 变量）与 .u-arrow-right 右箭头工具类"
           }
         },
         "components": {
           "描述": "可复用组件目录",
-          "NoticeButton.vue": "通知按钮组件，图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onMounted 自动拉取未读数量；点击 reLaunch 直达站内信页 /pages/user/messages。hasNotification prop 已废弃（保留兼容，实际不再使用）",
+          "NoticeButton.vue": "通知按钮组件（一级页面专用），图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onMounted 自动拉取未读数量；点击 navigateTo 直达站内信页 /pages/user/messages。仅用于 index/record/settings 三个一级页面",
+          "BackButton.vue": "返回按钮组件（次级页面专用），以 NoticeButton 为蓝本，图标使用 fanhui.png，点击触发 uni.navigateBack 返回上一页（页面栈为空时 reLaunch 回首页）。用于 notification/plan/profile/login/register/contact/help/messages/privacy/forgot-password 等次级页面",
           "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项",
-          "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,支持\\n换行)，用于 notification/profile/help/contact 等页面"
+          "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,文本自动换行)，用于 notification/profile/help/contact 等页面"
         },
         "composables": {
           "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",
           "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面",
-          "useInputLimit.js": "输入框字符限制工具，导出 useInputLimit(maxLength, allowedPattern?) 组合式函数，返回 { count, max, isNear, isFull, hint, filter, sync, handleInput }。实现字符限制与后端字段严格匹配、实时计数、接近限制视觉提示、达到限制阻止输入、白名单正则过滤特殊字符。配合全局 .input-limit-hint CSS 类用于 login/register/forgot-password/profile/plan/notification 页面"
+          "useInputLimit.js": "输入框字符过滤与长度限制工具，导出 useInputLimit(maxLength, allowedPattern?) 组合式函数，返回 { max, filter, handleInput }。实现字符限制与后端字段严格匹配（配合 input 组件 :maxlength）与白名单正则过滤特殊字符。不提供计数提示，错误提示由各页面 errors 字段驱动。用于 login/register/forgot-password/profile/plan/notification 页面",
+          "useShare.js": "微信分享统一配置组合式函数，导出 useShare(options?)，内部注册 onShareAppMessage（转发给朋友）与 onShareTimeline（分享到朋友圈）两个页面生命周期钩子。复制链接由微信小程序菜单默认提供。用于全部 13 个页面"
         },
         "store": {
           "描述": "Pinia 状态管理目录，管理全局共享状态（用户登录信息等）",

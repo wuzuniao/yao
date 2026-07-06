@@ -105,6 +105,9 @@ import { listPlans } from '../../api/modules/plan'
 import { createCheckin, listTodayCheckinsByPlan } from '../../api/modules/checkin'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
+import { useShare } from '../../composables/useShare'
+
+useShare({ title: '首页' })
 
 const userStore = useUserStore()
 // 通知按钮红点（暂固定为 true，后续可对接通知状态）

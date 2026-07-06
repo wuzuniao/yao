@@ -1,11 +1,11 @@
 <template>
   <view class="profile-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="false" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="profile-page__main">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="个人信息" :desc="`管理您的账户资料与安全设置，${'\n'}随时修改个人信息。`" />
+      <PageHeader title="个人信息" desc="管理您的账户资料与安全设置，随时修改个人信息。" />
 
       <!-- 分组 1：资料修改（修改用户名、修改头像、修改签名、修改密码、修改邮箱） -->
       <view class="profile-page__group" :class="{ 'profile-page__group--disabled': isDeletionScheduled }">
@@ -27,10 +27,6 @@
               :maxlength="usernameLimit.max"
               @input="e => usernameForm.value = usernameLimit.handleInput(e)"
             />
-            <text
-              v-if="usernameLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': usernameLimit.isNear.value, 'input-limit-hint--full': usernameLimit.isFull.value }]"
-            >{{ usernameLimit.hint.value }}</text>
             <text v-if="usernameError" class="profile-page__error-text">{{ usernameError }}</text>
           </view>
           <view class="profile-page__form-actions">
@@ -87,10 +83,6 @@
             :maxlength="signatureLimit.max"
             @input="e => signatureForm.value = signatureLimit.handleInput(e)"
           />
-          <text
-            v-if="signatureLimit.hint.value"
-            :class="['input-limit-hint', { 'input-limit-hint--near': signatureLimit.isNear.value, 'input-limit-hint--full': signatureLimit.isFull.value }]"
-          >{{ signatureLimit.hint.value }}</text>
           <text v-if="signatureError" class="profile-page__error-text">{{ signatureError }}</text>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('signature')">
@@ -122,10 +114,6 @@
               :maxlength="oldPwdLimit.max"
               @input="e => passwordForm.oldPassword = oldPwdLimit.handleInput(e)"
             />
-            <text
-              v-if="oldPwdLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': oldPwdLimit.isNear.value, 'input-limit-hint--full': oldPwdLimit.isFull.value }]"
-            >{{ oldPwdLimit.hint.value }}</text>
             <text v-if="passwordErrors.oldPassword" class="profile-page__error-text">{{ passwordErrors.oldPassword }}</text>
           </view>
           <view class="profile-page__form-field">
@@ -140,10 +128,6 @@
               :maxlength="newPwdLimit.max"
               @input="e => passwordForm.newPassword = newPwdLimit.handleInput(e)"
             />
-            <text
-              v-if="newPwdLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': newPwdLimit.isNear.value, 'input-limit-hint--full': newPwdLimit.isFull.value }]"
-            >{{ newPwdLimit.hint.value }}</text>
             <text v-if="passwordErrors.newPassword" class="profile-page__error-text">{{ passwordErrors.newPassword }}</text>
           </view>
           <view class="profile-page__form-field">
@@ -158,10 +142,6 @@
               :maxlength="confirmPwdLimit.max"
               @input="e => passwordForm.confirmPassword = confirmPwdLimit.handleInput(e)"
             />
-            <text
-              v-if="confirmPwdLimit.hint.value"
-              :class="['input-limit-hint', { 'input-limit-hint--near': confirmPwdLimit.isNear.value, 'input-limit-hint--full': confirmPwdLimit.isFull.value }]"
-            >{{ confirmPwdLimit.hint.value }}</text>
             <text v-if="passwordErrors.confirmPassword" class="profile-page__error-text">{{ passwordErrors.confirmPassword }}</text>
           </view>
           <view class="profile-page__form-actions">
@@ -199,10 +179,6 @@
                   <text class="profile-page__code-btn-text">{{ emailOldCodeText }}</text>
                 </view>
               </view>
-              <text
-                v-if="oldCodeLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': oldCodeLimit.isNear.value, 'input-limit-hint--full': oldCodeLimit.isFull.value }]"
-              >{{ oldCodeLimit.hint.value }}</text>
               <text v-if="emailErrors.oldCode" class="profile-page__error-text">{{ emailErrors.oldCode }}</text>
             </view>
             <view class="profile-page__form-actions">
@@ -227,10 +203,6 @@
                 :maxlength="newEmailLimit.max"
                 @input="e => emailForm.newEmail = newEmailLimit.handleInput(e)"
               />
-              <text
-                v-if="newEmailLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': newEmailLimit.isNear.value, 'input-limit-hint--full': newEmailLimit.isFull.value }]"
-              >{{ newEmailLimit.hint.value }}</text>
               <text v-if="emailErrors.newEmail" class="profile-page__error-text">{{ emailErrors.newEmail }}</text>
             </view>
             <view class="profile-page__form-field">
@@ -249,10 +221,6 @@
                   <text class="profile-page__code-btn-text">{{ emailNewCodeText }}</text>
                 </view>
               </view>
-              <text
-                v-if="newCodeLimit.hint.value"
-                :class="['input-limit-hint', { 'input-limit-hint--near': newCodeLimit.isNear.value, 'input-limit-hint--full': newCodeLimit.isFull.value }]"
-              >{{ newCodeLimit.hint.value }}</text>
               <text v-if="emailErrors.newCode" class="profile-page__error-text">{{ emailErrors.newCode }}</text>
             </view>
             <view class="profile-page__form-actions">
@@ -298,7 +266,7 @@
  */
 import { reactive, ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
@@ -318,6 +286,9 @@ import {
 import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
 import lanAvatar from '../../assets/images/touxiang/lan.png'
+import { useShare } from '../../composables/useShare'
+
+useShare({ title: '个人信息' })
 
 const userStore = useUserStore()
 

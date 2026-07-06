@@ -1,7 +1,7 @@
 <template>
   <view class="privacy-page">
-    <!-- 顶部通知按钮（复用项目通知组件，非导航栏） -->
-    <NoticeButton :has-notification="hasNotification" />
+    <!-- 顶部返回按钮（次级页面统一返回组件） -->
+    <BackButton />
 
     <view class="privacy-page__container">
       <!-- 标题区 -->
@@ -11,18 +11,18 @@
 
       <!-- 前言 -->
       <view class="privacy-page__intro">
-        <text class="privacy-page__intro-text">欢迎您使用本微信小程序。我们深知个{{ '\n' }}人信息对您的重要性，并会尽全力保护{{ '\n' }}您的个人信息安全可靠。请您在使用本{{ '\n' }}小程序前，仔细阅读并充分理解本《隐{{ '\n' }}私政策》。</text>
+        <text class="privacy-page__intro-text">欢迎您使用本微信小程序。我们深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。请您在使用本小程序前，仔细阅读并充分理解本《隐私政策》。</text>
       </view>
 
       <!-- 主内容卡片 -->
       <view class="privacy-page__card">
         <!-- 一、我们如何收集和使用您的个人信息 -->
         <view class="privacy-page__section">
-          <text class="privacy-page__section-title">一、我们如何收集和使用您{{ '\n' }}的个人信息</text>
-          <text class="privacy-page__para">我们仅会出于本政策所述的以下目的，收集{{ '\n' }}和使用您的个人信息：</text>
+          <text class="privacy-page__section-title">一、我们如何收集和使用您的个人信息</text>
+          <text class="privacy-page__para">我们仅会出于本政策所述的以下目的，收集和使用您的个人信息：</text>
 
           <text class="privacy-page__sub-title">1. 账号注册与登录</text>
-          <text class="privacy-page__para">当您注册或登录本小程序时，您需要主动提{{ '\n' }}供以下信息：</text>
+          <text class="privacy-page__para">当您注册或登录本小程序时，您需要主动提供以下信息：</text>
 
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
@@ -31,23 +31,23 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">密码：用于验证您的身份，保障账号安全{{ '\n' }}（密码将经过不可逆加密处理后存储，我{{ '\n' }}们无法获知您的明文密码）；</text>
+              <text class="privacy-page__list-text">密码：用于验证您的身份，保障账号安全（密码将经过不可逆加密处理后存储，我们无法获知您的明文密码）；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">邮箱：用于账号绑定、密码找回及接收与{{ '\n' }}本小程序相关的重要通知。</text>
+              <text class="privacy-page__list-text">邮箱：用于账号绑定、密码找回及接收与本小程序相关的重要通知。</text>
             </view>
           </view>
 
-          <text class="privacy-page__para">以上信息由您自愿提供，若您不提供，则无{{ '\n' }}法使用注册登录功能，但您仍可以浏览小程{{ '\n' }}序的部分公开内容。</text>
+          <text class="privacy-page__para">以上信息由您自愿提供，若您不提供，则无法使用注册登录功能，但您仍可以浏览小程序的部分公开内容。</text>
 
           <text class="privacy-page__sub-title">2. 保障小程序的正常运行</text>
-          <text class="privacy-page__para">本小程序基于 DCloud uni-app 框架开发。{{ '\n' }}为提供统计分析服务、优化性能及修复错{{ '\n' }}误，我们会自动收集以下设备信息：</text>
+          <text class="privacy-page__para">本小程序基于 DCloud uni-app 框架开发。为提供统计分析服务、优化性能及修复错误，我们会自动收集以下设备信息：</text>
 
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">设备唯一识别码（包括 IMEI、Android{{ '\n' }}ID、DEVICE_ID、IDFA）；</text>
+              <text class="privacy-page__list-text">设备唯一识别码（包括 IMEI、AndroidID、DEVICE_ID、IDFA）；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
@@ -67,13 +67,13 @@
             </view>
           </view>
 
-          <text class="privacy-page__para">上述信息仅用于提升服务质量和用户体验，{{ '\n' }}不会与您的个人身份信息关联。</text>
+          <text class="privacy-page__para">上述信息仅用于提升服务质量和用户体验，不会与您的个人身份信息关联。</text>
         </view>
 
         <!-- 二、我们如何共享您的信息 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">二、我们如何共享您的信息</text>
-          <text class="privacy-page__para">我们不会向任何第三方出售或非法共享您的{{ '\n' }}个人信息。为实现小程序的基本运行和功{{ '\n' }}能，我们可能会与以下第三方共享必要的技{{ '\n' }}术信息：</text>
+          <text class="privacy-page__para">我们不会向任何第三方出售或非法共享您的个人信息。为实现小程序的基本运行和功能，我们可能会与以下第三方共享必要的技术信息：</text>
 
           <!-- 第三方共享信息表格（横向滚动，避免窄屏截断） -->
           <scroll-view scroll-x class="privacy-page__table-scroll">
@@ -84,31 +84,31 @@
                 <text class="privacy-page__table-cell privacy-page__table-cell--purpose">使用目的</text>
               </view>
               <view class="privacy-page__table-row">
-                <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">DCloud uni-{{ '\n' }}app 引擎</text>
-                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">设备唯一识别码（IMEI、Android{{ '\n' }}ID、IDFA 等）、OAID、SIM 卡{{ '\n' }}IMSI</text>
-                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">提供应用运行框架支持，进{{ '\n' }}行统计分析、性能优化和故{{ '\n' }}障排查</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">DCloud uni-app 引擎</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">设备唯一识别码（IMEI、AndroidID、IDFA 等）、OAID、SIM 卡IMSI</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">提供应用运行框架支持，进行统计分析、性能优化和故障排查</text>
               </view>
             </view>
           </scroll-view>
 
-          <text class="privacy-page__para">除上述情况外，未经您的明确同意，我们不{{ '\n' }}会向其他任何第三方提供您的个人信息。</text>
+          <text class="privacy-page__para">除上述情况外，未经您的明确同意，我们不会向其他任何第三方提供您的个人信息。</text>
         </view>
 
         <!-- 三、我们如何存储和保护您的信息 -->
         <view class="privacy-page__section">
-          <text class="privacy-page__section-title">三、我们如何存储和保护您{{ '\n' }}的信息</text>
+          <text class="privacy-page__section-title">三、我们如何存储和保护您的信息</text>
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">存储地点：您的个人信息将存储于中华人{{ '\n' }}民共和国境内。</text>
+              <text class="privacy-page__list-text">存储地点：您的个人信息将存储于中华人民共和国境内。</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">存储期限：我们仅在实现本政策所述目的{{ '\n' }}所必需的最短时间内保留您的信息，超出{{ '\n' }}期限后将进行删除或匿名化处理。</text>
+              <text class="privacy-page__list-text">存储期限：我们仅在实现本政策所述目的所必需的最短时间内保留您的信息，超出期限后将进行删除或匿名化处理。</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">安全措施：我们采用加密传输、访问控{{ '\n' }}制、数据脱敏等技术手段，确保您的数据{{ '\n' }}安全。</text>
+              <text class="privacy-page__list-text">安全措施：我们采用加密传输、访问控制、数据脱敏等技术手段，确保您的数据安全。</text>
             </view>
           </view>
         </view>
@@ -120,47 +120,47 @@
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">查询与更正：您可以在小程序内查看您的{{ '\n' }}用户名和邮箱，并随时修改邮箱地址；</text>
+              <text class="privacy-page__list-text">查询与更正：您可以在小程序内查看您的用户名和邮箱，并随时修改邮箱地址；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">删除：您可以联系客服删除您的账号及个{{ '\n' }}人信息；</text>
+              <text class="privacy-page__list-text">删除：您可以联系客服删除您的账号及个人信息；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">撤回同意：您可以在设备系统设置中关闭{{ '\n' }}对我们收集设备信息的授权，但可能影响{{ '\n' }}小程序的正常使用；</text>
+              <text class="privacy-page__list-text">撤回同意：您可以在设备系统设置中关闭对我们收集设备信息的授权，但可能影响小程序的正常使用；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">注销账号：您可以联系我们申请注销账{{ '\n' }}号，我们将在十五个工作日内完成处理。</text>
+              <text class="privacy-page__list-text">注销账号：您可以联系我们申请注销账号，我们将在十五个工作日内完成处理。</text>
             </view>
           </view>
-          <text class="privacy-page__para">如您需行使上述权利，可通过文末联系方式{{ '\n' }}与我们沟通。</text>
+          <text class="privacy-page__para">如您需行使上述权利，可通过文末联系方式与我们沟通。</text>
         </view>
 
         <!-- 五、未成年人保护 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">五、未成年人保护</text>
-          <text class="privacy-page__para">根据相关法律法规，若您未满 14 周岁，请{{ '\n' }}您在监护人陪同下阅读本政策，并在征得监{{ '\n' }}护人明示同意后再使用本小程序。</text>
+          <text class="privacy-page__para">根据相关法律法规，若您未满 14 周岁，请您在监护人陪同下阅读本政策，并在征得监护人明示同意后再使用本小程序。</text>
         </view>
 
         <!-- 六、本政策的更新 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">六、本政策的更新</text>
-          <text class="privacy-page__para">我们可能适时修订本政策。如有重大变更{{ '\n' }}（如个人信息收集范围、使用目的等），我{{ '\n' }}们将通过小程序内的显著弹窗或公告方式通{{ '\n' }}知您。</text>
+          <text class="privacy-page__para">我们可能适时修订本政策。如有重大变更（如个人信息收集范围、使用目的等），我们将通过小程序内的显著弹窗或公告方式通知您。</text>
         </view>
 
         <!-- 七、如何联系我们 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">七、如何联系我们</text>
-          <text class="privacy-page__para">如您对本政策有任何疑问、意见或建议，请{{ '\n' }}通过以下方式联系我们：</text>
+          <text class="privacy-page__para">如您对本政策有任何疑问、意见或建议，请通过以下方式联系我们：</text>
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
               <text class="privacy-page__list-text">电子邮箱：xpg@wuzuniao.com</text>
             </view>
           </view>
-          <text class="privacy-page__para privacy-page__para--footer">我们将尽快在十五个工作日内回复您的问{{ '\n' }}题。</text>
+          <text class="privacy-page__para privacy-page__para--footer">我们将尽快在十五个工作日内回复您的问题。</text>
         </view>
       </view>
     </view>
@@ -177,10 +177,10 @@
  *    信息保护、Cookie 与同类技术、您的权利、儿童隐私、政策变更、联系我们等章节
  *  - 纯展示页面，无交互逻辑（除表格横向滚动外）
  */
-import NoticeButton from '../../components/NoticeButton.vue'
+import BackButton from '../../components/BackButton.vue'
+import { useShare } from '../../composables/useShare'
 
-// 设计稿顶栏图标为绿色无红点态
-const hasNotification = false
+useShare({ title: '隐私政策' })
 </script>
 
 <style lang="scss">
