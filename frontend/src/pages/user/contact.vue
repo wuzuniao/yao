@@ -69,6 +69,14 @@ useShare({ title: '联系我们' })
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .contact-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
@@ -79,20 +87,20 @@ useShare({ title: '联系我们' })
 /* ===== 主内容画布（对应设计稿 Main Content Canvas）===== */
 .contact-page__canvas {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 105px 24px 32px;
+  padding: 210rpx 48rpx 64rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
   min-height: 100vh;
 }
 
 /* ===== 白色卡片（对应设计稿 Article）===== */
 .contact-page__card {
-  padding: 24px;
+  padding: 48rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 24px;
+  border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -103,7 +111,7 @@ useShare({ title: '联系我们' })
 .contact-page__list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 48rpx;
 }
 
 /* ===== 单个联系项 ===== */
@@ -115,33 +123,33 @@ useShare({ title: '联系我们' })
 .contact-page__item-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .contact-page__item-label {
   color: #5e5f5a;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .contact-page__item-value {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
 }
 
 /* ===== 二维码区（对应设计稿 Margin + Background 140x140）===== */
 .contact-page__qr-wrap {
-  padding-top: 12px;
+  padding-top: 24rpx;
 }
 
 .contact-page__qr-bg {
-  width: 140px;
-  height: 140px;
+  width: 280rpx;
+  height: 280rpx;
   background: #f3f3f4;
-  border-radius: 8px;
+  border-radius: 16rpx;
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -149,7 +157,47 @@ useShare({ title: '联系我们' })
 }
 
 .contact-page__qr-img {
-  width: 140px;
-  height: 140px;
+  width: 280rpx;
+  height: 280rpx;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ */
+@media screen and (min-width: 768px) {
+  .contact-page__canvas {
+    padding: 105px 24px 32px;
+    gap: 32px;
+  }
+  .contact-page__card {
+    padding: 24px;
+    border-radius: 24px;
+  }
+  .contact-page__list {
+    gap: 24px;
+  }
+  .contact-page__item-info {
+    gap: 8px;
+  }
+  .contact-page__item-label {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .contact-page__item-value {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .contact-page__qr-wrap {
+    padding-top: 12px;
+  }
+  .contact-page__qr-bg {
+    width: 140px;
+    height: 140px;
+    border-radius: 8px;
+  }
+  .contact-page__qr-img {
+    width: 140px;
+    height: 140px;
+  }
 }
 </style>

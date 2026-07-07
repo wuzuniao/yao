@@ -27,6 +27,7 @@
             @blur="handleBlur('username')"
           />
           <text v-if="errors.username" class="login-page__error-text">{{ errors.username }}</text>
+          <text v-if="usernameLimit.limitReached" class="login-page__limit-text">{{ usernameLimit.limitHint }}</text>
         </view>
 
         <!-- 密码 -->
@@ -51,6 +52,7 @@
             </view>
           </view>
           <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
+          <text v-if="passwordLimit.limitReached" class="login-page__limit-text">{{ passwordLimit.limitHint }}</text>
           <view class="login-page__forgot-row">
             <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
           </view>
@@ -348,13 +350,21 @@ function goPrivacy() {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .login-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
   /* padding-top 105px：通知按钮 top约50px + 高40px = 底部约90px，留 15px 间隙避免与卡片重叠 */
-  padding: 105px 24px 33.5px;
+  padding: 210rpx 48rpx 67rpx;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -366,10 +376,10 @@ function goPrivacy() {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 312px;
-  height: 312px;
-  margin-top: -156px;
-  margin-left: -156px;
+  width: 624rpx;
+  height: 624rpx;
+  margin-top: -312rpx;
+  margin-left: -312rpx;
   background: #e2f6d5;
   border-radius: 9999px;
   z-index: 0;
@@ -380,22 +390,22 @@ function goPrivacy() {
 .login-page__card {
   position: relative;
   z-index: 1;
-  width: 342px;
-  margin-top: 32px;
-  padding: 24px;
+  width: 684rpx;
+  margin-top: 64rpx;
+  padding: 48rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 24px;
+  border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 48rpx;
 }
 
 .login-page__title {
   color: #0e0f0c;
-  font-size: 32px;
-  line-height: 36px;
+  font-size: 64rpx;
+  line-height: 72rpx;
   font-weight: 600;
   text-align: center;
 }
@@ -404,7 +414,7 @@ function goPrivacy() {
 .login-page__form {
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
+  padding-top: 16rpx;
 }
 
 .login-page__field {
@@ -413,27 +423,27 @@ function goPrivacy() {
 }
 
 .login-page__field--password {
-  padding-top: 16px;
+  padding-top: 32rpx;
 }
 
 .login-page__label {
   color: #41493a;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .login-page__input {
-  margin-top: 4px;
-  height: 49px;
-  padding: 14px 12px 12px;
+  margin-top: 8rpx;
+  height: 98rpx;
+  padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 24rpx;
   box-shadow: inset 0 0 0 1px #c1cab5;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 21px;
+  font-size: 32rpx;
+  line-height: 42rpx;
 }
 
 /* 输入框错误态：红色边框（覆盖默认 #c1cab5） */
@@ -444,42 +454,50 @@ function goPrivacy() {
 /* 错误提示文字 */
 .login-page__error-text {
   color: #e5484d;
-  font-size: 12px;
-  line-height: 16px;
-  margin-top: 4px;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
+}
+
+/* 字符限制提示文字 */
+.login-page__limit-text {
+  color: #d97706;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
 }
 
 .login-page__placeholder {
   color: #454745;
-  font-size: 16px;
+  font-size: 32rpx;
 }
 
 /* 密码行：输入框 + 眼睛图标 */
 .login-page__password-row {
   position: relative;
-  margin-top: 4px;
+  margin-top: 8rpx;
 }
 
 .login-page__input--password {
-  padding-right: 24px;
+  padding-right: 48rpx;
   margin-top: 0;
 }
 
 .login-page__eye {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 24rpx;
   transform: translateY(-50%);
-  width: 18.33px;
-  height: 12.5px;
+  width: 36.66rpx;
+  height: 25rpx;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .login-page__eye-icon {
-  width: 18.33px;
-  height: 12.5px;
+  width: 36.66rpx;
+  height: 25rpx;
   display: block;
 }
 
@@ -488,19 +506,19 @@ function goPrivacy() {
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
-  padding-top: 4px;
-  height: 20px;
+  padding-top: 8rpx;
+  height: 40rpx;
 }
 
 .login-page__forgot {
   color: #454745;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
 }
 
 /* ===== 操作区 ===== */
 .login-page__actions {
-  padding-top: 16px;
+  padding-top: 32rpx;
   display: flex;
   flex-direction: column;
 }
@@ -509,13 +527,13 @@ function goPrivacy() {
   display: flex;
   flex-direction: row;
   align-items: center;
-  height: 16px;
+  height: 32rpx;
 }
 
 .login-page__checkbox {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 8rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #c1cab5;
   display: flex;
@@ -531,34 +549,34 @@ function goPrivacy() {
 
 /* 选中态对勾（CSS 绘制） */
 .login-page__checkmark {
-  width: 5px;
-  height: 8px;
+  width: 10rpx;
+  height: 16rpx;
   border-right: 1.5px solid #ffffff;
   border-bottom: 1.5px solid #ffffff;
   transform: rotate(45deg) translate(-1px, -1px);
 }
 
 .login-page__remember-text {
-  margin-left: 8px;
+  margin-left: 16rpx;
   color: #454745;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
 }
 
 /* 《隐私政策》可点击链接：与同行文本样式一致，点击触发跳转 */
 .login-page__agree-link {
   color: #454745;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
 }
 
 .login-page__submit {
-  margin-top: 12px;
-  height: 48px;
-  padding: 12px 0;
+  margin-top: 24rpx;
+  height: 96rpx;
+  padding: 24rpx 0;
   box-sizing: border-box;
   background: #9fe870;
-  border-radius: 24px;
+  border-radius: 48rpx;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -566,8 +584,8 @@ function goPrivacy() {
 
 .login-page__submit-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
@@ -579,8 +597,8 @@ function goPrivacy() {
 
 .login-page__footer-text {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
 }
 
@@ -588,29 +606,29 @@ function goPrivacy() {
 .login-page__wechat {
   position: relative;
   z-index: 1;
-  width: 342px;
-  margin-top: 16px;
-  padding: 24px;
+  width: 684rpx;
+  margin-top: 32rpx;
+  padding: 48rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 24px;
+  border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .login-page__wechat-title {
   color: #41493a;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
   text-align: center;
 }
 
 .login-page__wechat-btn {
-  width: 48px;
-  height: 48px;
+  width: 96rpx;
+  height: 96rpx;
   margin: 0 auto;
   display: flex;
   justify-content: center;
@@ -618,14 +636,198 @@ function goPrivacy() {
 }
 
 .login-page__wechat-icon {
-  width: 48px;
-  height: 48px;
+  width: 96rpx;
+  height: 96rpx;
   display: block;
 }
 
 /* 微信登录区隐私勾选：与账号密码登录的隐私勾选样式一致，居中显示 */
 .login-page__remember--wechat {
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 8rpx;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 页面主容器 padding */
+  .login-page {
+    padding: 105px 24px 33.5px;
+  }
+
+  /* 氛围装饰圆尺寸 */
+  .login-page__ambient {
+    width: 312px;
+    height: 312px;
+    margin-top: -156px;
+    margin-left: -156px;
+  }
+
+  /* 主登录卡片 */
+  .login-page__card {
+    width: 342px;
+    margin-top: 32px;
+    padding: 24px;
+    border-radius: 24px;
+    gap: 24px;
+  }
+
+  .login-page__title {
+    font-size: 32px;
+    line-height: 36px;
+  }
+
+  /* 表单 */
+  .login-page__form {
+    padding-top: 8px;
+  }
+
+  .login-page__field--password {
+    padding-top: 16px;
+  }
+
+  .login-page__label {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* 输入框 */
+  .login-page__input {
+    margin-top: 4px;
+    height: 49px;
+    padding: 14px 12px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  .login-page__error-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+
+  .login-page__limit-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+
+  .login-page__placeholder {
+    font-size: 16px;
+  }
+
+  /* 密码行 */
+  .login-page__password-row {
+    margin-top: 4px;
+  }
+
+  .login-page__input--password {
+    padding-right: 24px;
+  }
+
+  .login-page__eye {
+    right: 12px;
+    width: 18.33px;
+    height: 12.5px;
+  }
+
+  .login-page__eye-icon {
+    width: 18.33px;
+    height: 12.5px;
+  }
+
+  /* 忘记密码行 */
+  .login-page__forgot-row {
+    padding-top: 4px;
+    height: 20px;
+  }
+
+  .login-page__forgot {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* 操作区 */
+  .login-page__actions {
+    padding-top: 16px;
+  }
+
+  .login-page__remember {
+    height: 16px;
+  }
+
+  /* 复选框 */
+  .login-page__checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+  }
+
+  /* 对勾 */
+  .login-page__checkmark {
+    width: 5px;
+    height: 8px;
+  }
+
+  .login-page__remember-text {
+    margin-left: 8px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .login-page__agree-link {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* 提交按钮 */
+  .login-page__submit {
+    margin-top: 12px;
+    height: 48px;
+    padding: 12px 0;
+    border-radius: 24px;
+  }
+
+  .login-page__submit-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  /* 底部注册链接 */
+  .login-page__footer-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  /* 微信登录区 */
+  .login-page__wechat {
+    width: 342px;
+    margin-top: 16px;
+    padding: 24px;
+    border-radius: 24px;
+    gap: 12px;
+  }
+
+  .login-page__wechat-title {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .login-page__wechat-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .login-page__wechat-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .login-page__remember--wechat {
+    margin-top: 4px;
+  }
 }
 </style>

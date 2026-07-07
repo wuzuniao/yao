@@ -72,15 +72,20 @@ function handleClick(type) {
 </script>
 
 <style lang="scss" scoped>
+/* ===== 单位转换说明（px → rpx）=====
+ * 设计稿基准 375px 宽，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 已转换属性：width/height/padding/margin/gap/font-size/line-height/top/bottom 等
+ * 保留 px 的情况：1px 物理边框、box-shadow 偏移与模糊半径、9999px 胶囊圆角、百分比、translate 百分比、z-index
+ */
 .bottom-nav {
   /* position: fixed 相对视口定位，不随页面内容滚动，始终固定在可视区域底部 */
   position: fixed;
   left: 50%;
-  bottom: 15px;
+  bottom: 30rpx;
   transform: translateX(-50%);
-  width: 351px;
-  height: 86px;
-  padding: 8px 25.5px;
+  width: 702rpx;
+  height: 172rpx;
+  padding: 16rpx 51rpx;
   box-sizing: border-box;
   border-radius: 9999px;
   background: #ffffff;
@@ -90,25 +95,25 @@ function handleClick(type) {
     inset 0 0 0 1px #e2e2e2;
   display: flex;
   align-items: center;
-  gap: 35px;
+  gap: 70rpx;
   z-index: 100;
 }
 
 .bottom-nav__item {
-  width: 76px;
-  height: 68px;
-  padding: 12px 24px;
+  width: 152rpx;
+  height: 136rpx;
+  padding: 24rpx 48rpx;
   box-sizing: border-box;
   border-radius: 9999px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .bottom-nav__item--active {
-  height: 66px;
+  height: 132rpx;
   background: #9fe870;
 }
 
@@ -117,28 +122,66 @@ function handleClick(type) {
 }
 
 .bottom-nav__icon--home {
-  width: 16px;
-  height: 18px;
+  width: 32rpx;
+  height: 36rpx;
 }
 
 .bottom-nav__icon--record {
-  width: 18px;
-  height: 20px;
+  width: 36rpx;
+  height: 40rpx;
 }
 
 .bottom-nav__icon--settings {
-  width: 21px;
-  height: 24px;
+  width: 42rpx;
+  height: 48rpx;
 }
 
 .bottom-nav__text {
   color: #454745;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .bottom-nav__text--active {
   color: #2f6c00;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为原 px 值
+ */
+@media screen and (min-width: 768px) {
+  .bottom-nav {
+    bottom: 15px;
+    width: 351px;
+    height: 86px;
+    padding: 8px 25.5px;
+    gap: 35px;
+  }
+  .bottom-nav__item {
+    width: 76px;
+    height: 68px;
+    padding: 12px 24px;
+    gap: 4px;
+  }
+  .bottom-nav__item--active {
+    height: 66px;
+  }
+  .bottom-nav__icon--home {
+    width: 16px;
+    height: 18px;
+  }
+  .bottom-nav__icon--record {
+    width: 18px;
+    height: 20px;
+  }
+  .bottom-nav__icon--settings {
+    width: 21px;
+    height: 24px;
+  }
+  .bottom-nav__text {
+    font-size: 14px;
+    line-height: 20px;
+  }
 }
 </style>

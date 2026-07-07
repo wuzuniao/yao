@@ -99,6 +99,14 @@ function copySmtpLink() {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .help-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
@@ -109,11 +117,11 @@ function copySmtpLink() {
 /* ===== 主内容画布（对应设计稿 Main Content Canvas）===== */
 .help-page__canvas {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 105px 24px 32px;
+  padding: 210rpx 48rpx 64rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
   min-height: 100vh;
 }
 
@@ -121,15 +129,15 @@ function copySmtpLink() {
 .help-page__list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 /* ===== 单张 FAQ 卡片（对应设计稿 Card 1~5）===== */
 .help-page__card {
-  padding: 16px;
+  padding: 32rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 24rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -138,20 +146,20 @@ function copySmtpLink() {
 .help-page__card-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .help-page__card-title {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 600;
 }
 
 .help-page__card-text {
   color: #454745;
-  font-size: 16px;
-  line-height: 26px;
+  font-size: 32rpx;
+  line-height: 52rpx;
   font-weight: 400;
   white-space: pre-line;
 }
@@ -159,5 +167,33 @@ function copySmtpLink() {
 .help-page__card-link {
   color: #0066cc;
   text-decoration: underline;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ */
+@media screen and (min-width: 768px) {
+  .help-page__canvas {
+    padding: 105px 24px 32px;
+    gap: 32px;
+  }
+  .help-page__list {
+    gap: 16px;
+  }
+  .help-page__card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .help-page__card-body {
+    gap: 4px;
+  }
+  .help-page__card-title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .help-page__card-text {
+    font-size: 16px;
+    line-height: 26px;
+  }
 }
 </style>

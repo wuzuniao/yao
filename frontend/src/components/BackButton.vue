@@ -63,21 +63,42 @@ function handleClick() {
 </script>
 
 <style lang="scss" scoped>
+/* ===== 单位转换说明（px → rpx）=====
+ * 设计稿基准 375px 宽，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 已转换属性：width/height/left 等
+ * 保留 px 的情况：top 的 calc(45px + 0.6vh) 为状态栏偏移基准（与 statusBarHeight 联动，且含 vh 相对单位）、z-index
+ */
 .back-button {
   position: absolute;
+  /* top 基于状态栏高度计算，含 vh 相对单位，且与 JS 动态值（statusBarHeight-5）px 保持一致，故保留 */
   top: calc(45px + 0.6vh);
-  left: 24px;
+  left: 48rpx;
   z-index: 10;
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .back-button__icon {
-  width: 40px;
-  height: 40px;
+  width: 80rpx;
+  height: 80rpx;
   display: block;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为原 px 值
+ */
+@media screen and (min-width: 768px) {
+  .back-button {
+    left: 24px;
+    width: 40px;
+    height: 40px;
+  }
+  .back-button__icon {
+    width: 40px;
+    height: 40px;
+  }
 }
 </style>

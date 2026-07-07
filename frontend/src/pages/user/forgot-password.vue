@@ -27,6 +27,7 @@
             @blur="handleBlur('email')"
           />
           <text v-if="errors.email" class="forgot-password-page__error-text">{{ errors.email }}</text>
+          <text v-if="emailLimit.limitReached" class="forgot-password-page__limit-text">{{ emailLimit.limitHint }}</text>
         </view>
 
         <!-- 验证码 -->
@@ -50,6 +51,7 @@
             </view>
           </view>
           <text v-if="errors.code" class="forgot-password-page__error-text">{{ errors.code }}</text>
+          <text v-if="codeLimit.limitReached" class="forgot-password-page__limit-text">{{ codeLimit.limitHint }}</text>
         </view>
 
         <!-- 找回按钮 -->
@@ -77,6 +79,7 @@
             @blur="handleBlur('newPassword')"
           />
           <text v-if="errors.newPassword" class="forgot-password-page__error-text">{{ errors.newPassword }}</text>
+          <text v-if="newPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ newPwdLimit.limitHint }}</text>
         </view>
 
         <!-- 确认密码 -->
@@ -96,6 +99,7 @@
             @blur="handleBlur('confirmPassword')"
           />
           <text v-if="errors.confirmPassword" class="forgot-password-page__error-text">{{ errors.confirmPassword }}</text>
+          <text v-if="confirmPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
         </view>
 
         <!-- 找回按钮 -->
@@ -288,7 +292,9 @@ async function handleStep2Submit() {
       uni.redirectTo({ url: '/pages/user/login' })
     }, 1500)
   } catch (e) {
-    uni.showToast({ title: e.message, icon: 'none' })
+    // 验证码错误时统一提示"请输入正确验证码"
+    const msg = /验证码/.test(e.message) ? '请输入正确验证码' : e.message
+    uni.showToast({ title: msg, icon: 'none' })
   } finally {
     submitting.value = false
   }
@@ -300,12 +306,20 @@ function goLogin() {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .forgot-password-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
-  padding: 105px 24px 36px;
+  padding: 210rpx 48rpx 72rpx;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -314,28 +328,28 @@ function goLogin() {
 
 /* ===== 找回密码卡片 ===== */
 .forgot-password-page__card {
-  width: 342px;
-  padding: 24px;
+  width: 684rpx;
+  padding: 48rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 24px;
+  border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 48rpx;
 }
 
 .forgot-password-page__header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
   align-items: center;
 }
 
 .forgot-password-page__title {
   color: #0e0f0c;
-  font-size: 32px;
-  line-height: 36px;
+  font-size: 64rpx;
+  line-height: 72rpx;
   font-weight: 600;
   text-align: center;
 }
@@ -344,32 +358,32 @@ function goLogin() {
 .forgot-password-page__form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 .forgot-password-page__field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .forgot-password-page__label {
   color: #0e0f0c;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .forgot-password-page__input {
-  height: 49px;
-  padding: 14px 12px 12px;
+  height: 98rpx;
+  padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 24rpx;
   box-shadow: inset 0 0 0 1px #c1cab5;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 21px;
+  font-size: 32rpx;
+  line-height: 42rpx;
 }
 
 .forgot-password-page__input--error {
@@ -378,33 +392,41 @@ function goLogin() {
 
 .forgot-password-page__error-text {
   color: #e5484d;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
+}
+
+/* 字符限制提示文字 */
+.forgot-password-page__limit-text {
+  color: #d97706;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
 }
 
 .forgot-password-page__placeholder {
   color: #454745;
-  font-size: 16px;
+  font-size: 32rpx;
 }
 
 /* ===== 验证码行 ===== */
 .forgot-password-page__code-row {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .forgot-password-page__code-input {
   flex: 1;
-  height: 49px;
-  padding: 14px 12px 12px;
+  height: 98rpx;
+  padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 24rpx;
   box-shadow: inset 0 0 0 1px #c1cab5;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 21px;
+  font-size: 32rpx;
+  line-height: 42rpx;
 }
 
 .forgot-password-page__code-input--error {
@@ -412,11 +434,11 @@ function goLogin() {
 }
 
 .forgot-password-page__code-btn {
-  width: 96px;
-  height: 49px;
-  padding: 13.5px 12px 14.5px;
+  width: 192rpx;
+  height: 98rpx;
+  padding: 27rpx 24rpx 29rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   box-shadow: inset 0 0 0 1px #c1cab5;
   display: flex;
   justify-content: center;
@@ -426,18 +448,18 @@ function goLogin() {
 
 .forgot-password-page__code-btn-text {
   color: #0e0f0c;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 /* ===== 找回按钮 ===== */
 .forgot-password-page__submit {
-  height: 48px;
-  padding: 12px 0;
+  height: 96rpx;
+  padding: 24rpx 0;
   box-sizing: border-box;
   background: #9fe870;
-  border-radius: 24px;
+  border-radius: 48rpx;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -445,22 +467,136 @@ function goLogin() {
 
 .forgot-password-page__submit-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
 /* ===== 底部登录链接 ===== */
 .forgot-password-page__footer {
-  margin-top: 24px;
+  margin-top: 48rpx;
   display: flex;
   justify-content: center;
 }
 
 .forgot-password-page__footer-text {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 页面 padding */
+  .forgot-password-page {
+    padding: 105px 24px 36px;
+  }
+
+  /* 找回密码卡片 */
+  .forgot-password-page__card {
+    width: 342px;
+    padding: 24px;
+    border-radius: 24px;
+    gap: 24px;
+  }
+
+  /* 标题区 */
+  .forgot-password-page__header {
+    gap: 8px;
+  }
+
+  .forgot-password-page__title {
+    font-size: 32px;
+    line-height: 36px;
+  }
+
+  /* 表单 */
+  .forgot-password-page__form {
+    gap: 16px;
+  }
+
+  .forgot-password-page__field {
+    gap: 8px;
+  }
+
+  .forgot-password-page__label {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* 输入框 */
+  .forgot-password-page__input {
+    height: 49px;
+    padding: 14px 12px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  .forgot-password-page__error-text {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .forgot-password-page__limit-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+
+  .forgot-password-page__placeholder {
+    font-size: 16px;
+  }
+
+  /* 验证码行 */
+  .forgot-password-page__code-row {
+    gap: 8px;
+  }
+
+  .forgot-password-page__code-input {
+    height: 49px;
+    padding: 14px 12px 12px;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  .forgot-password-page__code-btn {
+    width: 96px;
+    height: 49px;
+    padding: 13.5px 12px 14.5px;
+    border-radius: 12px;
+  }
+
+  .forgot-password-page__code-btn-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* 找回按钮 */
+  .forgot-password-page__submit {
+    height: 48px;
+    padding: 12px 0;
+    border-radius: 24px;
+  }
+
+  .forgot-password-page__submit-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  /* 底部登录链接 */
+  .forgot-password-page__footer {
+    margin-top: 24px;
+  }
+
+  .forgot-password-page__footer-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
 }
 </style>

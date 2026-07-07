@@ -30,9 +30,12 @@
               placeholder="例如：按时吃药"
               placeholder-class="plan-page__placeholder"
               :placeholder-style="phStyle('name')"
+              :maxlength="nameLimit.max"
+              @input="e => form.name = nameLimit.handleInput(e)"
               @focus="onFocus('name')"
               @blur="onBlur"
             />
+            <text v-if="nameLimit.limitReached" class="plan-page__limit-text">{{ nameLimit.limitHint }}</text>
           </view>
 
           <!-- 备注说明 -->
@@ -44,9 +47,12 @@
               placeholder="例如：饭后半小时服用"
               placeholder-class="plan-page__placeholder"
               :placeholder-style="phStyle('remark')"
+              :maxlength="remarkLimit.max"
+              @input="e => form.remark = remarkLimit.handleInput(e)"
               @focus="onFocus('remark')"
               @blur="onBlur"
             />
+            <text v-if="remarkLimit.limitReached" class="plan-page__limit-text">{{ remarkLimit.limitHint }}</text>
           </view>
 
           <!-- 计划持续起始日期（起止日期双控件，禁止手动输入） -->
@@ -231,6 +237,7 @@
                 :maxlength="editNameLimit.max"
                 @input="e => editingForm.name = editNameLimit.handleInput(e)"
               />
+              <text v-if="editNameLimit.limitReached" class="plan-page__limit-text">{{ editNameLimit.limitHint }}</text>
             </view>
 
             <!-- 备注说明 -->
@@ -241,7 +248,10 @@
                 v-model="editingForm.remark"
                 placeholder="例如：饭后半小时服用"
                 placeholder-class="plan-page__placeholder"
+                :maxlength="editRemarkLimit.max"
+                @input="e => editingForm.remark = editRemarkLimit.handleInput(e)"
               />
+              <text v-if="editRemarkLimit.limitReached" class="plan-page__limit-text">{{ editRemarkLimit.limitHint }}</text>
             </view>
 
             <!-- 计划持续起始日期 -->
@@ -757,6 +767,14 @@ async function handleSaveEdit(planId) {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .plan-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
@@ -766,34 +784,34 @@ async function handleSaveEdit(planId) {
 
 .plan-page__main {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 105px 24px 32px;
+  padding: 210rpx 48rpx 64rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
 }
 
 /* ===== 页面标题区 ===== */
 .plan-page__header {
-  padding: 0 8px;
+  padding: 0 16rpx;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .plan-page__title {
   color: #0e0f0c;
-  font-size: 32px;
-  line-height: 36px;
+  font-size: 64rpx;
+  line-height: 72rpx;
   font-weight: 600;
 }
 
 .plan-page__desc {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
-  padding-top: 4px;
+  padding-top: 8rpx;
   white-space: pre-line;
 }
 
@@ -803,24 +821,24 @@ async function handleSaveEdit(planId) {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  height: 96px;
+  gap: 16rpx;
+  height: 192rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #c1cab5;
 }
 
 .plan-page__new-entry-icon {
-  width: 14px;
-  height: 14px;
+  width: 28rpx;
+  height: 28rpx;
   display: block;
 }
 
 .plan-page__new-entry-text {
   color: #2f6c00;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
@@ -830,14 +848,14 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__form {
-  padding: 16px;
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 /* 卡片切换淡入过渡 */
@@ -858,55 +876,63 @@ async function handleSaveEdit(planId) {
 
 .plan-page__form-heading {
   color: #0e0f0c;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 36rpx;
+  line-height: 48rpx;
   font-weight: 600;
-  padding-bottom: 8px;
+  padding-bottom: 16rpx;
 }
 
 .plan-page__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .plan-page__label {
   color: #454745;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .plan-page__placeholder {
   color: #868685;
-  font-size: 16px;
+  font-size: 32rpx;
 }
 
 .plan-page__input {
-  height: 41px;
+  height: 82rpx;
   /* padding 0 12px + line-height 41px：使 input 文本垂直居中（参考 notification.vue 邮件输入框实现） */
-  padding: 0 12px;
+  padding: 0 24rpx;
   box-sizing: border-box;
   background: #f9f9f9;
-  border-radius: 6px;
+  border-radius: 12rpx;
   box-shadow: inset 0 0 0 1px #e8ebe6;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 41px;
+  font-size: 32rpx;
+  line-height: 82rpx;
+}
+
+/* 字符限制提示文字 */
+.plan-page__limit-text {
+  color: #d97706;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
 }
 
 .plan-page__textarea {
   width: 100%;
   /* 高度 88px = 3行 × 24px line-height + 上下 padding 各 8px，使备注说明默认显示3行 */
-  height: 88px;
-  padding: 8px 12px;
+  height: 176rpx;
+  padding: 16rpx 24rpx;
   box-sizing: border-box;
   background: #f9f9f9;
-  border-radius: 6px;
+  border-radius: 12rpx;
   box-shadow: inset 0 0 0 1px #e8ebe6;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
 }
 
 /* ===== 日期选择器 ===== */
@@ -914,7 +940,7 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 /* picker 元素本身设置 flex:1，使两个日期控件平分剩余宽度，共同占满表单单行100% */
@@ -924,19 +950,19 @@ async function handleSaveEdit(planId) {
 
 .plan-page__date-separator {
   color: #454745;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
   flex-shrink: 0;
 }
 
 .plan-page__picker-display {
   flex: 1;
-  height: 41px;
-  padding: 10px 12px;
+  height: 82rpx;
+  padding: 20rpx 24rpx;
   box-sizing: border-box;
   background: #f9f9f9;
-  border-radius: 6px;
+  border-radius: 12rpx;
   box-shadow: inset 0 0 0 1px #e8ebe6;
   display: flex;
   align-items: center;
@@ -944,8 +970,8 @@ async function handleSaveEdit(planId) {
 
 .plan-page__picker-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 21px;
+  font-size: 32rpx;
+  line-height: 42rpx;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -967,19 +993,19 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .plan-page__add-time-icon {
-  width: 14px;
-  height: 14px;
+  width: 28rpx;
+  height: 28rpx;
   display: block;
 }
 
 .plan-page__add-time-text {
   color: #2f6c00;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 500;
 }
 
@@ -987,8 +1013,8 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  height: 41px;
+  gap: 16rpx;
+  height: 82rpx;
 }
 
 /* picker 标签本身设置 width: 50%，确保时间控件宽度为卡片内容区宽度的50% */
@@ -998,11 +1024,11 @@ async function handleSaveEdit(planId) {
 
 .plan-page__time-picker-display {
   width: 100%;
-  height: 41px;
-  padding: 10px 12px;
+  height: 82rpx;
+  padding: 20rpx 24rpx;
   box-sizing: border-box;
   background: #f9f9f9;
-  border-radius: 6px;
+  border-radius: 12rpx;
   box-shadow: inset 0 0 0 1px #e8ebe6;
   display: flex;
   align-items: center;
@@ -1010,8 +1036,8 @@ async function handleSaveEdit(planId) {
 
 .plan-page__time-picker-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 21px;
+  font-size: 32rpx;
+  line-height: 42rpx;
 }
 
 .plan-page__time-picker-text--placeholder {
@@ -1019,8 +1045,8 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__time-delete {
-  width: 32px;
-  height: 41px;
+  width: 64rpx;
+  height: 82rpx;
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -1029,8 +1055,8 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__time-delete-icon {
-  width: 16px;
-  height: 18px;
+  width: 32rpx;
+  height: 36rpx;
   display: block;
 }
 
@@ -1039,8 +1065,8 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  padding-top: 4px;
+  gap: 20rpx;
+  padding-top: 8rpx;
   flex-wrap: wrap;
 }
 
@@ -1048,13 +1074,13 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .plan-page__priority-text {
   color: #0e0f0c;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
@@ -1063,8 +1089,8 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 31px;
-  padding-top: 4px;
+  gap: 62rpx;
+  padding-top: 8rpx;
   flex-wrap: wrap;
 }
 
@@ -1072,13 +1098,13 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 7px;
+  gap: 14rpx;
 }
 
 .plan-page__checkbox {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6;
   display: flex;
@@ -1093,8 +1119,8 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__checkmark {
-  width: 6px;
-  height: 10px;
+  width: 12rpx;
+  height: 20rpx;
   border-right: 2px solid #ffffff;
   border-bottom: 2px solid #ffffff;
   transform: rotate(45deg) translate(-1px, -1px);
@@ -1102,19 +1128,19 @@ async function handleSaveEdit(planId) {
 
 .plan-page__notify-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
 }
 
 .plan-page__notify-empty {
-  padding-top: 4px;
+  padding-top: 8rpx;
 }
 
 .plan-page__notify-empty-text {
   color: #868685;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
 }
 
 /* ===== 任务状态单选框 ===== */
@@ -1122,20 +1148,20 @@ async function handleSaveEdit(planId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 24px;
-  padding-top: 4px;
+  gap: 48rpx;
+  padding-top: 8rpx;
 }
 
 .plan-page__status-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 7px;
+  gap: 14rpx;
 }
 
 .plan-page__radio {
-  width: 20px;
-  height: 20px;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6;
@@ -1151,24 +1177,24 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__radio-dot {
-  width: 8px;
-  height: 8px;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 50%;
   background: #ffffff;
 }
 
 .plan-page__status-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
 }
 
 /* ===== 保存按钮 ===== */
 .plan-page__save {
-  margin-top: 16px;
-  height: 48px;
-  padding: 12px 0;
+  margin-top: 32rpx;
+  height: 96rpx;
+  padding: 24rpx 0;
   box-sizing: border-box;
   border-radius: 9999px;
   background: #2f6c00;
@@ -1177,19 +1203,19 @@ async function handleSaveEdit(planId) {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .plan-page__save-icon {
-  width: 20px;
-  height: 20px;
+  width: 40rpx;
+  height: 40rpx;
   display: block;
 }
 
 .plan-page__save-text {
   color: #ffffff;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
@@ -1197,7 +1223,7 @@ async function handleSaveEdit(planId) {
 .plan-page__list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 .plan-page__card-wrapper {
@@ -1207,9 +1233,9 @@ async function handleSaveEdit(planId) {
 
 .plan-page__card {
   position: relative;
-  padding: 16px;
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
@@ -1217,17 +1243,17 @@ async function handleSaveEdit(planId) {
 
 /* 编辑态卡片：底部圆角去除，与下方编辑表单衔接 */
 .plan-page__card--editing {
-  border-radius: 12px 12px 0 0;
+  border-radius: 24rpx 24rpx 0 0;
 }
 
 .plan-page__card-stripe {
   position: absolute;
   left: 0;
   top: 0;
-  width: 4px;
+  width: 8rpx;
   height: 100%;
   background: #e1e0da;
-  border-radius: 12px 0 0 12px;
+  border-radius: 24rpx 0 0 24rpx;
 }
 
 .plan-page__card-stripe--active {
@@ -1241,7 +1267,7 @@ async function handleSaveEdit(planId) {
 .plan-page__card-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
   position: relative;
 }
 
@@ -1255,15 +1281,15 @@ async function handleSaveEdit(planId) {
 .plan-page__card-title-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
   flex: 1;
   min-width: 0;
 }
 
 .plan-page__card-title {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
   /* 动态截断：占满可用宽度后省略号截断 */
   overflow: hidden;
@@ -1273,8 +1299,8 @@ async function handleSaveEdit(planId) {
 
 .plan-page__card-subtitle {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
   /* 动态截断：占满可用宽度后省略号截断 */
   overflow: hidden;
@@ -1283,8 +1309,8 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__card-delete {
-  width: 32px;
-  height: 32px;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -1293,39 +1319,296 @@ async function handleSaveEdit(planId) {
 }
 
 .plan-page__card-delete-icon {
-  width: 16px;
-  height: 18px;
+  width: 32rpx;
+  height: 36rpx;
   display: block;
 }
 
 .plan-page__card-pills {
   display: flex;
   flex-direction: row;
-  gap: 4px;
-  padding-top: 8px;
+  gap: 8rpx;
+  padding-top: 16rpx;
   flex-wrap: wrap;
 }
 
 .plan-page__pill {
-  padding: 4px 8px;
+  padding: 8rpx 16rpx;
   border-radius: 9999px;
   background: #e8ebe6;
   color: #41493a;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
   font-weight: 400;
 }
 
 /* ===== 就地展开编辑表单（从卡片延伸，无标题） ===== */
 .plan-page__card-edit {
-  padding: 16px;
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 24rpx 24rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
   /* 顶部无 margin，与卡片底部紧密衔接，呈现从卡片延伸的视觉效果 */
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 主容器内边距与间距 */
+  .plan-page__main {
+    padding: 105px 24px 32px;
+    gap: 32px;
+  }
+  /* 标题区 */
+  .plan-page__header {
+    padding: 0 8px;
+    gap: 8px;
+  }
+  .plan-page__title {
+    font-size: 32px;
+    line-height: 36px;
+  }
+  .plan-page__desc {
+    font-size: 16px;
+    line-height: 24px;
+    padding-top: 4px;
+  }
+  /* 新建计划入口卡 */
+  .plan-page__new-entry {
+    gap: 8px;
+    height: 96px;
+    border-radius: 12px;
+  }
+  .plan-page__new-entry-icon {
+    width: 14px;
+    height: 14px;
+  }
+  .plan-page__new-entry-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 新建计划表单卡 */
+  .plan-page__form {
+    padding: 16px;
+    border-radius: 12px;
+    gap: 16px;
+  }
+  .plan-page__form-heading {
+    font-size: 18px;
+    line-height: 24px;
+    padding-bottom: 8px;
+  }
+  .plan-page__field {
+    gap: 4px;
+  }
+  .plan-page__label {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .plan-page__placeholder {
+    font-size: 16px;
+  }
+  .plan-page__input {
+    height: 41px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    line-height: 41px;
+  }
+  .plan-page__limit-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+  .plan-page__textarea {
+    height: 88px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 日期选择器 */
+  .plan-page__date-range {
+    gap: 8px;
+  }
+  .plan-page__date-separator {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .plan-page__picker-display {
+    height: 41px;
+    padding: 10px 12px;
+    border-radius: 6px;
+  }
+  .plan-page__picker-text {
+    font-size: 16px;
+    line-height: 21px;
+  }
+  /* 提醒时间 */
+  .plan-page__add-time {
+    gap: 4px;
+  }
+  .plan-page__add-time-icon {
+    width: 14px;
+    height: 14px;
+  }
+  .plan-page__add-time-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .plan-page__time-row {
+    gap: 8px;
+    height: 41px;
+  }
+  .plan-page__time-picker-display {
+    height: 41px;
+    padding: 10px 12px;
+    border-radius: 6px;
+  }
+  .plan-page__time-picker-text {
+    font-size: 16px;
+    line-height: 21px;
+  }
+  .plan-page__time-delete {
+    width: 32px;
+    height: 41px;
+  }
+  .plan-page__time-delete-icon {
+    width: 16px;
+    height: 18px;
+  }
+  /* 优先级单选框 */
+  .plan-page__priority-row {
+    gap: 10px;
+    padding-top: 4px;
+  }
+  .plan-page__priority-item {
+    gap: 4px;
+  }
+  .plan-page__priority-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  /* 通知方式 */
+  .plan-page__notify-row {
+    gap: 31px;
+    padding-top: 4px;
+  }
+  .plan-page__notify-item {
+    gap: 7px;
+  }
+  .plan-page__checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+  }
+  .plan-page__checkmark {
+    width: 6px;
+    height: 10px;
+  }
+  .plan-page__notify-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .plan-page__notify-empty {
+    padding-top: 4px;
+  }
+  .plan-page__notify-empty-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  /* 任务状态单选框 */
+  .plan-page__status-row {
+    gap: 24px;
+    padding-top: 4px;
+  }
+  .plan-page__status-item {
+    gap: 7px;
+  }
+  .plan-page__radio {
+    width: 20px;
+    height: 20px;
+  }
+  .plan-page__radio-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .plan-page__status-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 保存按钮 */
+  .plan-page__save {
+    margin-top: 16px;
+    height: 48px;
+    padding: 12px 0;
+    gap: 8px;
+  }
+  .plan-page__save-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .plan-page__save-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 已有计划列表 */
+  .plan-page__list {
+    gap: 16px;
+  }
+  .plan-page__card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .plan-page__card--editing {
+    border-radius: 12px 12px 0 0;
+  }
+  .plan-page__card-stripe {
+    width: 4px;
+    border-radius: 12px 0 0 12px;
+  }
+  .plan-page__card-body {
+    gap: 8px;
+  }
+  .plan-page__card-title-group {
+    gap: 4px;
+  }
+  .plan-page__card-title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .plan-page__card-subtitle {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .plan-page__card-delete {
+    width: 32px;
+    height: 32px;
+  }
+  .plan-page__card-delete-icon {
+    width: 16px;
+    height: 18px;
+  }
+  .plan-page__card-pills {
+    gap: 4px;
+    padding-top: 8px;
+  }
+  .plan-page__pill {
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+  /* 就地展开编辑表单 */
+  .plan-page__card-edit {
+    padding: 16px;
+    border-radius: 0 0 12px 12px;
+    gap: 16px;
+  }
 }
 </style>

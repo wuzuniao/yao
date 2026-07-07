@@ -41,37 +41,48 @@
               <text class="notification-page__label">SMTP服务器地址</text>
               <input
                 class="notification-page__input"
+                :class="{ 'notification-page__input--error': editHostError }"
                 v-model="editForm.smtp_host"
                 placeholder="例如：smtp.exmail.qq.com"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editHostLimit.max"
                 @input="e => editForm.smtp_host = editHostLimit.handleInput(e)"
+                @blur="editHostError = validateHost(editForm.smtp_host)"
               />
+              <text v-if="editHostError" class="notification-page__error-text">{{ editHostError }}</text>
+              <text v-if="editHostLimit.limitReached" class="notification-page__limit-text">{{ editHostLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">SMTP服务器端口</text>
               <input
                 class="notification-page__input"
+                :class="{ 'notification-page__input--error': editPortError }"
                 v-model="editForm.smtp_port"
                 type="number"
                 placeholder="例如：465"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editPortLimit.max"
-                @input="e => editForm.smtp_port = editPortLimit.handleInput(e)"
-                @blur="editPortError = validatePort(editForm.smtp_port)"
+                @input="e => { const raw = e.detail.value || ''; const filtered = editPortLimit.handleInput(e); editForm.smtp_port = filtered; editPortHasNonDigit = raw !== filtered }"
+                @focus="editPortError = ''"
+                @blur="editPortError = editPortHasNonDigit ? '请输入有效的数字' : validatePort(editForm.smtp_port)"
               />
-              <text v-if="editPortError" style="color: #e5484d; font-size: 12px; line-height: 16px; margin-top: 4px;">{{ editPortError }}</text>
+              <text v-if="editPortError" class="notification-page__error-text">{{ editPortError }}</text>
+              <text v-if="editPortLimit.limitReached" class="notification-page__limit-text">{{ editPortLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">发件邮箱地址</text>
               <input
                 class="notification-page__input"
+                :class="{ 'notification-page__input--error': editEmailError }"
                 v-model="editForm.email"
                 placeholder="例如：user@example.com"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editEmailLimit.max"
                 @input="e => editForm.email = editEmailLimit.handleInput(e)"
+                @blur="editEmailError = validateEmail(editForm.email)"
               />
+              <text v-if="editEmailError" class="notification-page__error-text">{{ editEmailError }}</text>
+              <text v-if="editEmailLimit.limitReached" class="notification-page__limit-text">{{ editEmailLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">客户端专用密码</text>
@@ -84,6 +95,7 @@
                 :maxlength="editPwdLimit.max"
                 @input="e => editForm.password = editPwdLimit.handleInput(e)"
               />
+              <text v-if="editPwdLimit.limitReached" class="notification-page__limit-text">{{ editPwdLimit.limitHint }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定） -->
             <view class="notification-page__field">
@@ -149,6 +161,7 @@
               <text class="notification-page__label">SMTP服务器地址</text>
               <input
                 class="notification-page__input"
+                :class="{ 'notification-page__input--error': hostError }"
                 v-model="form.smtp_host"
                 placeholder="例如：smtp.qq.com"
                 placeholder-class="notification-page__placeholder"
@@ -156,29 +169,34 @@
                 :maxlength="hostLimit.max"
                 @input="e => form.smtp_host = hostLimit.handleInput(e)"
                 @focus="onFocus('smtp_host')"
-                @blur="onBlur"
+                @blur="() => { onBlur(); hostError = validateHost(form.smtp_host) }"
               />
+              <text v-if="hostError" class="notification-page__error-text">{{ hostError }}</text>
+              <text v-if="hostLimit.limitReached" class="notification-page__limit-text">{{ hostLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">SMTP服务器端口</text>
               <input
                 class="notification-page__input"
+                :class="{ 'notification-page__input--error': portError }"
                 v-model="form.smtp_port"
                 type="number"
                 placeholder="例如：465"
                 placeholder-class="notification-page__placeholder"
                 :placeholder-style="phStyle('smtp_port')"
                 :maxlength="portLimit.max"
-                @input="e => form.smtp_port = portLimit.handleInput(e)"
-                @focus="onFocus('smtp_port')"
-                @blur="() => { onBlur(); portError = validatePort(form.smtp_port) }"
+                @input="e => { const raw = e.detail.value || ''; const filtered = portLimit.handleInput(e); form.smtp_port = filtered; portHasNonDigit = raw !== filtered }"
+                @focus="() => { onFocus('smtp_port'); portError = '' }"
+                @blur="() => { onBlur(); portError = portHasNonDigit ? '请输入有效的数字' : validatePort(form.smtp_port) }"
               />
-              <text v-if="portError" style="color: #e5484d; font-size: 12px; line-height: 16px; margin-top: 4px;">{{ portError }}</text>
+              <text v-if="portError" class="notification-page__error-text">{{ portError }}</text>
+              <text v-if="portLimit.limitReached" class="notification-page__limit-text">{{ portLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">发件邮箱地址</text>
               <input
                 class="notification-page__input"
+                :class="{ 'notification-page__input--error': emailError }"
                 v-model="form.email"
                 placeholder="例如：bbs.wuzuniao@qq.com"
                 placeholder-class="notification-page__placeholder"
@@ -186,8 +204,10 @@
                 :maxlength="emailLimit.max"
                 @input="e => form.email = emailLimit.handleInput(e)"
                 @focus="onFocus('email')"
-                @blur="onBlur"
+                @blur="() => { onBlur(); emailError = validateEmail(form.email) }"
               />
+              <text v-if="emailError" class="notification-page__error-text">{{ emailError }}</text>
+              <text v-if="emailLimit.limitReached" class="notification-page__limit-text">{{ emailLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">客户端专用密码</text>
@@ -203,6 +223,7 @@
                 @focus="onFocus('password')"
                 @blur="onBlur"
               />
+              <text v-if="pwdLimit.limitReached" class="notification-page__limit-text">{{ pwdLimit.limitHint }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定，默认是） -->
             <view class="notification-page__field">
@@ -310,6 +331,17 @@ const editForm = reactive({
 // 端口格式错误提示（编辑表单与新建表单各自独立）
 const portError = ref('')
 const editPortError = ref('')
+// 端口输入是否有非数字字符（用于 blur 时判断）
+const portHasNonDigit = ref(false)
+const editPortHasNonDigit = ref(false)
+// 邮箱格式错误提示（新建表单）
+const emailError = ref('')
+// SMTP服务器地址格式错误提示（新建表单）
+const hostError = ref('')
+// 编辑表单邮箱格式错误提示
+const editEmailError = ref('')
+// 编辑表单SMTP服务器地址格式错误提示
+const editHostError = ref('')
 
 // 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
@@ -345,6 +377,22 @@ function validatePort(v) {
   const num = Number(v)
   if (!Number.isInteger(num) || num < 1 || num > 65535) {
     return '端口必须为 1-65535 之间的数字'
+  }
+  return ''
+}
+
+// 邮箱格式校验：参照注册页规则
+function validateEmail(v) {
+  if (!v) return '请输入邮箱地址'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return '邮箱格式不正确'
+  return ''
+}
+
+// SMTP服务器地址格式校验：非空 + 基本域名格式
+function validateHost(v) {
+  if (!v) return '请输入SMTP服务器地址'
+  if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*(\.[a-zA-Z]{2,})$/.test(v) && !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(v)) {
+    return '服务器地址格式不正确'
   }
   return ''
 }
@@ -410,6 +458,8 @@ function handleAdd() {
   form.password = ''
   form.enabled = true
   portError.value = ''
+  emailError.value = ''
+  hostError.value = ''
   // 未绑定邮箱时启动3秒倒计时弹窗，结束后跳转绑定邮箱页面
   if (!userStore.userInfo || !userStore.userInfo.email) {
     startEmailCountdown()
@@ -423,9 +473,19 @@ async function handleSave() {
     uni.showToast({ title: '请先登录', icon: 'none' })
     return
   }
+  hostError.value = validateHost(form.smtp_host)
+  if (hostError.value) {
+    uni.showToast({ title: hostError.value, icon: 'none' })
+    return
+  }
   portError.value = validatePort(form.smtp_port)
   if (portError.value) {
     uni.showToast({ title: portError.value, icon: 'none' })
+    return
+  }
+  emailError.value = validateEmail(form.email)
+  if (emailError.value) {
+    uni.showToast({ title: emailError.value, icon: 'none' })
     return
   }
   try {
@@ -466,6 +526,8 @@ function toggleEmailEdit(channelId) {
   // 填充启用状态（默认 true）
   editForm.enabled = ch ? !!ch.enabled : true
   editPortError.value = ''
+  editHostError.value = ''
+  editEmailError.value = ''
   expandedEmailId.value = channelId
 }
 
@@ -476,9 +538,19 @@ async function handleUpdateEmail(channelId) {
     uni.showToast({ title: '请填写完整配置', icon: 'none' })
     return
   }
+  editHostError.value = validateHost(editForm.smtp_host)
+  if (editHostError.value) {
+    uni.showToast({ title: editHostError.value, icon: 'none' })
+    return
+  }
   editPortError.value = validatePort(editForm.smtp_port)
   if (editPortError.value) {
     uni.showToast({ title: editPortError.value, icon: 'none' })
+    return
+  }
+  editEmailError.value = validateEmail(editForm.email)
+  if (editEmailError.value) {
+    uni.showToast({ title: editEmailError.value, icon: 'none' })
     return
   }
   if (!userStore.userInfo) return
@@ -533,6 +605,14 @@ async function handleDeleteEmail(channelId) {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .notification-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
@@ -542,18 +622,18 @@ async function handleDeleteEmail(channelId) {
 
 .notification-page__main {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 105px 24px 32px;
+  padding: 210rpx 48rpx 64rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
 }
 
 /* ===== 通知方式列表 ===== */
 .notification-page__section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 .notification-page__card {
@@ -561,9 +641,9 @@ async function handleDeleteEmail(channelId) {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
+  padding: 24rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
 }
 
@@ -571,14 +651,14 @@ async function handleDeleteEmail(channelId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 24rpx;
   flex: 1;
   min-width: 0;
 }
 
 .notification-page__card-icon {
-  width: 48px;
-  height: 48px;
+  width: 96rpx;
+  height: 96rpx;
   display: block;
   flex-shrink: 0;
 }
@@ -592,17 +672,17 @@ async function handleDeleteEmail(channelId) {
 
 .notification-page__card-title {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
 .notification-page__card-subtitle {
   color: #454745;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
   font-weight: 400;
-  padding-top: 2px;
+  padding-top: 4rpx;
   /* 动态截断：占满可用宽度后省略号截断 */
   overflow: hidden;
   text-overflow: ellipsis;
@@ -610,9 +690,9 @@ async function handleDeleteEmail(channelId) {
 }
 
 .notification-page__card-delete {
-  width: 32px;
-  height: 34px;
-  padding: 8px;
+  width: 64rpx;
+  height: 68rpx;
+  padding: 16rpx;
   box-sizing: border-box;
   border-radius: 9999px;
   display: flex;
@@ -623,22 +703,22 @@ async function handleDeleteEmail(channelId) {
 }
 
 .notification-page__card-delete-icon {
-  width: 16px;
-  height: 18px;
+  width: 32rpx;
+  height: 36rpx;
   display: block;
 }
 
 /* ===== 邮件配置表单（点击邮件卡片展开） ===== */
 .notification-page__email-form {
-  padding: 16px;
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: -8px;
+  gap: 32rpx;
+  margin-top: -16rpx;
 }
 
 /* ===== 添加新方式 ===== */
@@ -647,10 +727,10 @@ async function handleDeleteEmail(channelId) {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: 16rpx;
+  padding: 24rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #c1cab5;
 }
@@ -658,8 +738,8 @@ async function handleDeleteEmail(channelId) {
 /* CSS 绘制加号图标（避免引入额外二进制资源） */
 .notification-page__add-plus {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 28rpx;
+  height: 28rpx;
   flex-shrink: 0;
 }
 
@@ -667,8 +747,8 @@ async function handleDeleteEmail(channelId) {
   position: absolute;
   top: 50%;
   left: 0;
-  width: 14px;
-  height: 2px;
+  width: 28rpx;
+  height: 4rpx;
   background: #2f6c00;
   transform: translateY(-50%);
 }
@@ -677,29 +757,29 @@ async function handleDeleteEmail(channelId) {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 2px;
-  height: 14px;
+  width: 4rpx;
+  height: 28rpx;
   background: #2f6c00;
   transform: translateX(-50%);
 }
 
 .notification-page__add-text {
   color: #2f6c00;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
 /* ===== 新建通知方式表单卡（样式参照 plan 页"新建计划详情"卡片，保持设计一致） ===== */
 .notification-page__form {
-  padding: 16px;
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 /* 卡片切换淡入过渡：点击"添加新的通知方式"后表单卡从透明渐显，视觉过渡自然 */
@@ -720,42 +800,63 @@ async function handleDeleteEmail(channelId) {
 
 .notification-page__form-heading {
   color: #0e0f0c;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 36rpx;
+  line-height: 48rpx;
   font-weight: 600;
-  padding-bottom: 8px;
+  padding-bottom: 16rpx;
 }
 
 .notification-page__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .notification-page__label {
   color: #454745;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .notification-page__placeholder {
   color: #868685;
-  font-size: 16px;
+  font-size: 32rpx;
 }
 
 .notification-page__input {
-  height: 41px;
+  height: 82rpx;
   /* 去除纵向 padding，通过 line-height=height 实现文本垂直居中 */
   /* 解决微信小程序原生 input 组件文本超出下边框问题（含聚焦态） */
-  padding: 0 12px;
+  padding: 0 24rpx;
   box-sizing: border-box;
   background: #f9f9f9;
-  border-radius: 6px;
+  border-radius: 12rpx;
   box-shadow: inset 0 0 0 1px #e8ebe6;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 41px;
+  font-size: 32rpx;
+  line-height: 82rpx;
+}
+
+/* 输入框错误态：红色边框 */
+.notification-page__input--error {
+  box-shadow: inset 0 0 0 1px #e5484d;
+}
+
+/* 错误提示文字 */
+.notification-page__error-text {
+  color: #e5484d;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
+}
+
+/* 字符限制提示文字 */
+.notification-page__limit-text {
+  color: #d97706;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
 }
 
 /* ===== 通知类型单选框 ===== */
@@ -763,20 +864,20 @@ async function handleDeleteEmail(channelId) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 31px;
-  padding-top: 4px;
+  gap: 62rpx;
+  padding-top: 8rpx;
 }
 
 .notification-page__radio-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 7px;
+  gap: 14rpx;
 }
 
 .notification-page__radio {
-  width: 20px;
-  height: 20px;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e8ebe6;
@@ -793,24 +894,24 @@ async function handleDeleteEmail(channelId) {
 
 /* 单选框选中态圆点（CSS 绘制） */
 .notification-page__radio-dot {
-  width: 8px;
-  height: 8px;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 50%;
   background: #ffffff;
 }
 
 .notification-page__radio-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
 }
 
 /* ===== 保存通知按钮（参照 plan 页保存按钮样式） ===== */
 .notification-page__save {
-  margin-top: 16px;
-  height: 48px;
-  padding: 12px 0;
+  margin-top: 32rpx;
+  height: 96rpx;
+  padding: 24rpx 0;
   box-sizing: border-box;
   border-radius: 9999px;
   background: #2f6c00;
@@ -828,8 +929,8 @@ async function handleDeleteEmail(channelId) {
 
 .notification-page__save-text {
   color: #ffffff;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
@@ -848,29 +949,186 @@ async function handleDeleteEmail(channelId) {
 }
 
 .notification-page__countdown-box {
-  width: 280px;
-  padding: 24px;
+  width: 560rpx;
+  padding: 48rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .notification-page__countdown-title {
   color: #0e0f0c;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 36rpx;
+  line-height: 48rpx;
   font-weight: 600;
 }
 
 .notification-page__countdown-text {
   color: #454745;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
   text-align: center;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 主容器内边距与间距 */
+  .notification-page__main {
+    padding: 105px 24px 32px;
+    gap: 32px;
+  }
+  .notification-page__section {
+    gap: 16px;
+  }
+  /* 通知方式卡片 */
+  .notification-page__card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .notification-page__card-info {
+    gap: 12px;
+  }
+  .notification-page__card-icon {
+    width: 48px;
+    height: 48px;
+  }
+  .notification-page__card-title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .notification-page__card-subtitle {
+    font-size: 12px;
+    line-height: 16px;
+    padding-top: 2px;
+  }
+  .notification-page__card-delete {
+    width: 32px;
+    height: 34px;
+    padding: 8px;
+  }
+  .notification-page__card-delete-icon {
+    width: 16px;
+    height: 18px;
+  }
+  /* 邮件配置表单 */
+  .notification-page__email-form {
+    padding: 16px;
+    border-radius: 12px;
+    gap: 16px;
+    margin-top: -8px;
+  }
+  /* 添加新方式入口卡 */
+  .notification-page__add {
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .notification-page__add-plus {
+    width: 14px;
+    height: 14px;
+  }
+  .notification-page__add-plus-h {
+    width: 14px;
+    height: 2px;
+  }
+  .notification-page__add-plus-v {
+    width: 2px;
+    height: 14px;
+  }
+  .notification-page__add-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 新建表单卡 */
+  .notification-page__form {
+    padding: 16px;
+    border-radius: 12px;
+    gap: 16px;
+  }
+  .notification-page__form-heading {
+    font-size: 18px;
+    line-height: 24px;
+    padding-bottom: 8px;
+  }
+  .notification-page__field {
+    gap: 4px;
+  }
+  .notification-page__label {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .notification-page__placeholder {
+    font-size: 16px;
+  }
+  .notification-page__input {
+    height: 41px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    line-height: 41px;
+  }
+  .notification-page__error-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+  .notification-page__limit-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+  /* 单选框 */
+  .notification-page__radio-row {
+    gap: 31px;
+    padding-top: 4px;
+  }
+  .notification-page__radio-item {
+    gap: 7px;
+  }
+  .notification-page__radio {
+    width: 20px;
+    height: 20px;
+  }
+  .notification-page__radio-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .notification-page__radio-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 保存按钮 */
+  .notification-page__save {
+    margin-top: 16px;
+    height: 48px;
+    padding: 12px 0;
+  }
+  .notification-page__save-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 倒计时弹窗 */
+  .notification-page__countdown-box {
+    width: 280px;
+    padding: 24px;
+    border-radius: 12px;
+    gap: 12px;
+  }
+  .notification-page__countdown-title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .notification-page__countdown-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
 }
 </style>

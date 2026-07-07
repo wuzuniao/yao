@@ -223,31 +223,39 @@ function goPrivacy() {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .settings-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
-  padding-bottom: 177px;
+  padding-bottom: 354rpx;
 }
 
 .settings-page__main {
   /* padding-top 105px：通知按钮 top约50px + 高40px = 底部约90px，留 15px 间隙避免与内容重叠 */
-  padding: 105px 24px 0;
+  padding: 210rpx 48rpx 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
 }
 
 /* ===== 用户资料卡片 ===== */
 .settings-page__profile-card {
   position: relative;
   width: 100%;
-  height: 145px;
-  padding: 24px;
+  height: 290rpx;
+  padding: 48rpx;
   box-sizing: border-box;
-  border-radius: 24px;
+  border-radius: 48rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -262,15 +270,15 @@ function goPrivacy() {
   position: absolute;
   top: 0;
   right: 0;
-  width: 160px;
-  height: 160px;
+  width: 320rpx;
+  height: 320rpx;
   background: linear-gradient(
     225deg,
     rgba(159, 232, 112, 0.45) 0%,
     rgba(226, 246, 213, 0.18) 55%,
     transparent 100%
   );
-  border-top-right-radius: 24px;
+  border-top-right-radius: 48rpx;
   z-index: 0;
   pointer-events: none;
 }
@@ -288,10 +296,10 @@ function goPrivacy() {
 
 .settings-page__profile-name {
   color: #0e0f0c;
-  font-size: 28px;
-  line-height: 35px;
+  font-size: 56rpx;
+  line-height: 70rpx;
   font-weight: 600;
-  padding-bottom: 8px;
+  padding-bottom: 16rpx;
   /* 用户名单行截断，过长时显示省略号 */
   overflow: hidden;
   text-overflow: ellipsis;
@@ -300,8 +308,8 @@ function goPrivacy() {
 
 .settings-page__profile-slogan {
   color: #454745;
-  font-size: 16px;
-  line-height: 26px;
+  font-size: 32rpx;
+  line-height: 52rpx;
   font-weight: 400;
   /* 个性签名最多显示3行，超出部分省略号截断 */
   display: -webkit-box;
@@ -314,15 +322,15 @@ function goPrivacy() {
 .settings-page__profile-avatar-wrap {
   position: relative;
   z-index: 1;
-  width: 88px;
-  height: 88px;
+  width: 176rpx;
+  height: 176rpx;
   flex-shrink: 0;
 }
 
 .settings-page__profile-avatar {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 176rpx;
+  height: 176rpx;
   z-index: 1;
 }
 
@@ -330,7 +338,7 @@ function goPrivacy() {
 .settings-page__group1 {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 /* 删除冷静期内（status=0）分组1整体置灰并禁用所有交互 */
@@ -344,9 +352,9 @@ function goPrivacy() {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 16px;
+  padding: 48rpx 32rpx;
   box-sizing: border-box;
-  border-radius: 24px;
+  border-radius: 48rpx;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
@@ -359,13 +367,13 @@ function goPrivacy() {
 .settings-page__link-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .settings-page__link-title {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
@@ -373,21 +381,21 @@ function goPrivacy() {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding-top: 4px;
+  gap: 8rpx;
+  padding-top: 8rpx;
 }
 
 .settings-page__link-status-dot {
-  width: 8px;
-  height: 8px;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 9999px;
   background: #2f6c00;
 }
 
 .settings-page__link-status-text {
   color: #2f6c00;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
   font-weight: 400;
 }
 
@@ -395,7 +403,7 @@ function goPrivacy() {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 16rpx;
   /* justify-content:flex-end 让右侧内容靠右对齐，避免文字紧贴左侧标题；
      max-width:66.666% 限制右侧整体宽度不超过当前行的 2/3；
      min-width:0 允许文本截断 */
@@ -406,8 +414,8 @@ function goPrivacy() {
 
 .settings-page__link-value {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
   /* 右对齐：文字块在容器内靠右展示 */
   text-align: right;
@@ -434,7 +442,7 @@ function goPrivacy() {
 
 /* ===== 分组 2 ===== */
 .settings-page__group2 {
-  border-radius: 24px;
+  border-radius: 48rpx;
   background: #ffffff;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
@@ -445,9 +453,9 @@ function goPrivacy() {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   box-sizing: border-box;
-  height: 49px;
+  height: 98rpx;
 }
 
 .settings-page__group2-item--bordered {
@@ -456,8 +464,97 @@ function goPrivacy() {
 
 .settings-page__group2-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 主容器内边距与间距 */
+  .settings-page {
+    padding-bottom: 177px;
+  }
+  .settings-page__main {
+    padding: 105px 24px 0;
+    gap: 32px;
+  }
+  /* 用户资料卡片 */
+  .settings-page__profile-card {
+    height: 145px;
+    padding: 24px;
+    border-radius: 24px;
+  }
+  .settings-page__profile-card-glow {
+    width: 160px;
+    height: 160px;
+    border-top-right-radius: 24px;
+  }
+  .settings-page__profile-name {
+    font-size: 28px;
+    line-height: 35px;
+    padding-bottom: 8px;
+  }
+  .settings-page__profile-slogan {
+    font-size: 16px;
+    line-height: 26px;
+  }
+  .settings-page__profile-avatar-wrap {
+    width: 88px;
+    height: 88px;
+  }
+  .settings-page__profile-avatar {
+    width: 88px;
+    height: 88px;
+  }
+  /* 分组 1 */
+  .settings-page__group1 {
+    gap: 16px;
+  }
+  .settings-page__link-card {
+    padding: 24px 16px;
+    border-radius: 24px;
+  }
+  .settings-page__link-left {
+    gap: 4px;
+  }
+  .settings-page__link-title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .settings-page__link-status {
+    gap: 4px;
+    padding-top: 4px;
+  }
+  .settings-page__link-status-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .settings-page__link-status-text {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .settings-page__link-right {
+    gap: 8px;
+  }
+  .settings-page__link-value {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* 分组 2 */
+  .settings-page__group2 {
+    border-radius: 24px;
+  }
+  .settings-page__group2-item {
+    padding: 12px 16px;
+    height: 49px;
+  }
+  .settings-page__group2-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
 }
 </style>

@@ -456,35 +456,56 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明
+ * --------------------------------------------------------------------------
+ * 全局采用 rpx（uni-app 标准响应式像素，750rpx = 屏幕宽度），
+ * 基于 375px 设计稿，1px = 2rpx，自动适配不同手机宽度。
+ * 以下保留 px 的场景：
+ *   - 1px 物理边框 / box-shadow 内描边（避免高分屏消失）
+ *   - box-shadow 偏移与模糊半径（视觉特效，不应随屏缩放）
+ *   - 9999px（胶囊圆角最大值）
+ * 平板/折叠屏（≥768px）通过媒体查询用 px 锁定关键尺寸，防止 rpx 过度放大。
+ * 参考：
+ *   - uni-app rpx 单位 https://uniapp.dcloud.net.cn/tutorial/syntax-css.html#rpx
+ *   - MDN 媒体查询 https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_media_queries
+ * ========================================================================== */
+
 .index-page {
-  min-height: 100vh;
+  /* height 100vh + overflow hidden 严格锁定视口高度，禁止出现上下滚动条 */
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--page-bg-color);
+  display: flex;
+  flex-direction: column;
 }
 
 .index-page__frame {
   position: relative;
-  /* min-height 100vh + box-sizing border-box：含 padding-top 17px 不超出视口，消除底部空白滚动 */
-  min-height: 100vh;
-  padding-top: 17px;
+  /* flex 1 撑满 index-page 高度；padding-top:0 去掉顶部留白，由 main-canvas padding-top 统一处理通知按钮避让 */
+  flex: 1;
+  padding-top: 0;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .index-page__main-canvas {
-  /* padding-top 105px：通知按钮 top约50px + 高40px = 底部约90px，留 15px 间隙避免与内容重叠 */
-  /* min-height calc(100vh - 17px)：填满 frame 内容区（frame padding-top 17px），使打卡按钮可通过 margin-top:auto 定位至底部 */
-  padding: 105px 24px 0;
+  /* padding-top 200rpx：通知按钮 top约100rpx + 高80rpx = 底部约180rpx，留 20rpx 间隙避免与内容重叠 */
+  /* gap 64rpx：hero 与打卡按钮之间的间隔，小屏断点(max-height:700px)会进一步压缩 */
+  padding: 200rpx 48rpx 0;
   box-sizing: border-box;
-  min-height: calc(100vh - 17px);
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 66px;
+  gap: 64rpx;
 }
 
 /* ===== 空状态提示 ===== */
 .index-page__empty {
-  width: 342px;
-  padding: 48px 16px;
+  width: 684rpx;
+  padding: 96rpx 32rpx;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -493,27 +514,28 @@ onUnmounted(() => {
 
 .index-page__empty-text {
   color: #454745;
-  font-size: 20px;
-  line-height: 30px;
+  font-size: 40rpx;
+  line-height: 60rpx;
   font-weight: 400;
   text-align: center;
 }
 
 /* ===== 任务卡片区域 ===== */
 .index-page__hero {
-  width: 342px;
-  padding-top: 32px;
+  width: 684rpx;
+  padding-top: 32rpx;
   box-sizing: border-box;
 }
 
 .index-page__primary-card {
   position: relative;
-  width: 342px;
-  height: 148px;
-  padding: 16px;
+  width: 684rpx;
+  /* 移除固定高度，根据实际文字内容自适应高度，确保布局紧凑 */
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 32px;
+  border-radius: 64rpx;
   background: #ffffff;
+  /* box-shadow 偏移/模糊保留 px（视觉特效不随屏缩放），1px 内描边保留 */
   box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -526,22 +548,22 @@ onUnmounted(() => {
 
 .index-page__primary-title {
   color: #0e0f0c;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: 48rpx;
+  line-height: 64rpx;
   font-weight: 600;
   /* 动态截断：占满可用宽度后省略号截断，padding-right 为右上角"进行中"徽章预留空间 */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding-right: 80px;
+  padding-right: 160rpx;
   box-sizing: border-box;
 }
 
 .index-page__primary-desc {
-  margin-top: 4px;
+  margin-top: 8rpx;
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
   /* 最多3行，超出省略号截断。
      word-break:break-all 允许字母+数字组合在任意位置断行——无空格的长字符串（如 abc123def）
@@ -558,40 +580,41 @@ onUnmounted(() => {
 
 .index-page__status-badge {
   position: absolute;
-  top: 17px;
-  right: 17px;
-  height: 28px;
-  padding: 4px 8px;
+  top: 34rpx;
+  right: 34rpx;
+  height: 56rpx;
+  padding: 8rpx 16rpx;
   box-sizing: border-box;
   border-radius: 9999px;
   background: #9fe870;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .index-page__status-dot {
-  width: 8px;
-  height: 8px;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 9999px;
   background: #2ead4b;
 }
 
 .index-page__status-text {
   color: #2e6900;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 500;
 }
 
 .index-page__secondary-card {
-  margin-top: -32px;
-  width: 342px;
-  height: 85px;
-  padding: 32px 16px 12px;
+  margin-top: -64rpx;
+  width: 684rpx;
+  height: 170rpx;
+  padding: 64rpx 32rpx 24rpx;
   box-sizing: border-box;
-  border-radius: 0 0 32px 32px;
+  border-radius: 0 0 64rpx 64rpx;
   background: #f3f3f4;
+  /* 1px 内描边保留，避免高分屏消失 */
   box-shadow: inset 0 0 0 1px #e2e2e2;
   display: flex;
   align-items: center;
@@ -608,30 +631,36 @@ onUnmounted(() => {
 
 .index-page__secondary-title {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
-  /* 动态截断：占满可用宽度后省略号截断 */
+  /* 单行截断：占满可用宽度后省略号截断，使用 line-clamp 方案兼容备注含换行符的场景 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
 }
 
 .index-page__secondary-desc {
   color: #454745;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
   font-weight: 400;
-  /* 动态截断：占满可用宽度后省略号截断 */
+  /* 单行截断：占满可用宽度后省略号截断，使用 line-clamp 方案兼容备注含换行符的场景 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
 }
 
 /* 3+任务时的"..."按钮 */
 .index-page__secondary-more {
-  width: 32px;
-  height: 32px;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -640,10 +669,10 @@ onUnmounted(() => {
 
 .index-page__secondary-more-text {
   color: #454745;
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 40rpx;
+  line-height: 48rpx;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 4rpx;
 }
 
 /* ===== 任务列表弹层 ===== */
@@ -661,23 +690,24 @@ onUnmounted(() => {
 }
 
 .index-page__task-list {
-  width: 300px;
-  max-height: 400px;
-  padding: 16px;
+  width: 600rpx;
+  max-height: 800rpx;
+  padding: 32rpx;
   box-sizing: border-box;
-  border-radius: 16px;
+  border-radius: 32rpx;
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .index-page__task-list-title {
   color: #0e0f0c;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 36rpx;
+  line-height: 48rpx;
   font-weight: 600;
-  padding-bottom: 8px;
+  padding-bottom: 16rpx;
+  /* 1px 物理边框保留 */
   border-bottom: 1px solid #e8ebe6;
 }
 
@@ -686,9 +716,9 @@ onUnmounted(() => {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 24rpx;
   box-sizing: border-box;
-  border-radius: 8px;
+  border-radius: 16rpx;
   background: #f9f9f9;
 }
 
@@ -698,8 +728,8 @@ onUnmounted(() => {
 
 .index-page__task-item-name {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
   /* 动态截断：占满可用宽度后省略号截断 */
   flex: 1;
@@ -711,25 +741,28 @@ onUnmounted(() => {
 
 .index-page__task-item-check {
   color: #2f6c00;
-  font-size: 16px;
+  font-size: 32rpx;
   font-weight: 600;
 }
 
 /* ===== 立即打卡按钮 ===== */
 .index-page__checkin-shell {
-  width: 342px;
-  padding: 32px 75px 0;
+  width: 684rpx;
+  padding: 32rpx 150rpx 0;
   box-sizing: border-box;
-  /* margin-top:auto 将打卡按钮推至 main-canvas 底部；margin-bottom calc(20vh + 101px) 使按钮底部距底部导航栏顶部 20% 页面高度（101px = 导航栏高 86px + 底部偏移 15px） */
+  /* margin-top:auto 将打卡按钮推至 main-canvas 底部；
+     margin-bottom 340rpx = 导航栏高172rpx + 底部偏移30rpx + 按钮距导航栏顶部138rpx，
+     使按钮位于整体中下部；小屏断点(max-height:700px)进一步压缩至 280rpx */
   margin-top: auto;
-  margin-bottom: calc(20vh + 101px);
+  margin-bottom: 340rpx;
 }
 
 .index-page__checkin-button {
-  width: 192px;
-  height: 192px;
+  width: 384rpx;
+  height: 384rpx;
   border-radius: 9999px;
   background: #d03238;
+  /* box-shadow 偏移/模糊保留 px */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -754,23 +787,201 @@ onUnmounted(() => {
 }
 
 .index-page__checkin-icon {
-  width: 32px;
-  height: 36px;
-  margin-top: 50px;
+  width: 64rpx;
+  height: 72rpx;
+  margin-top: 100rpx;
   display: block;
 }
 
 .index-page__checkin-text {
-  margin-top: 32px;
+  margin-top: 64rpx;
   color: #ffffff;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 36rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
-/* 无图标态文字垂直居中（disabled/waiting 无图标时 margin-top 调整为 (192-24)/2 = 84px） */
+/* 无图标态文字垂直居中（disabled/waiting 无图标时 margin-top 调整为 (384-48)/2 = 168rpx） */
 .index-page__checkin-button--disabled .index-page__checkin-text,
 .index-page__checkin-button--waiting .index-page__checkin-text {
-  margin-top: 84px;
+  margin-top: 168rpx;
+}
+
+/* ==========================================================================
+ * 小屏机型适配（max-height: 700px）
+ * --------------------------------------------------------------------------
+ * iPhone SE(667px) 等小屏机型视口高度有限，进一步压缩 padding/gap/margin，
+ * 保持打卡按钮(384rpx)与图标尺寸不变，仅减少留白区域，确保不出现滚动条。
+ * 各区域间仍保留合理间隔（gap 32rpx、padding 24rpx、margin 280rpx）。
+ * 参考：
+ *   - MDN 媒体查询 height 特性 https://developer.mozilla.org/zh-CN/docs/Web/CSS/@media/height
+ * ========================================================================== */
+@media screen and (max-height: 700px) {
+  .index-page__main-canvas {
+    /* padding-top 170rpx：通知按钮 100rpx + 高 80rpx = 180rpx，留 10rpx 减少顶部留白 */
+    padding-top: 170rpx;
+    /* gap 32rpx：hero 与打卡按钮之间的最小间隔，保证视觉分隔 */
+    gap: 32rpx;
+  }
+  .index-page__hero {
+    padding-top: 16rpx;
+  }
+  .index-page__checkin-shell {
+    /* padding-top 24rpx + margin-bottom 280rpx：压缩打卡按钮上下留白 */
+    /* margin-bottom 280rpx = 导航栏高172rpx + 底部偏移30rpx + 按钮距导航栏顶部78rpx */
+    padding: 24rpx 150rpx 0;
+    margin-bottom: 280rpx;
+  }
+}
+
+/* ==========================================================================
+ * 平板/折叠屏适配（≥768px）
+ * --------------------------------------------------------------------------
+ * rpx 在宽屏设备会过度放大（768px 屏 1rpx≈1.02px，元素放大2倍），
+ * 以下用 px 锁定关键尺寸（卡片宽度、打卡大圆环、字号、间距），内容居中显示，
+ * 确保平板/折叠屏布局合理，不因等比放大而失真。
+ * 断点参考 MDN 媒体查询标准：
+ *   - 768px：平板竖屏 / 折叠屏内屏
+ *   - 1024px：平板横屏 / 折叠屏展开
+ * ========================================================================== */
+@media screen and (min-width: 768px) {
+  /* 内容容器固定 342px 居中，避免宽屏拉伸 */
+  .index-page__empty,
+  .index-page__hero,
+  .index-page__primary-card,
+  .index-page__secondary-card,
+  .index-page__checkin-shell {
+    width: 342px;
+  }
+
+  /* 主画布 padding/gap 锁定为 px，避免 rpx 在平板上过度放大导致溢出 */
+  .index-page__main-canvas {
+    padding-top: 80px;
+    gap: 24px;
+  }
+
+  /* 空状态 */
+  .index-page__empty {
+    padding: 48px 16px;
+  }
+  .index-page__empty-text {
+    font-size: 20px;
+    line-height: 30px;
+  }
+
+  /* 任务卡片 */
+  .index-page__hero {
+    padding-top: 16px;
+  }
+  .index-page__primary-card {
+    padding: 16px;
+    border-radius: 32px;
+  }
+  .index-page__primary-title {
+    font-size: 24px;
+    line-height: 32px;
+    padding-right: 80px;
+  }
+  .index-page__primary-desc {
+    margin-top: 4px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .index-page__status-badge {
+    top: 17px;
+    right: 17px;
+    height: 28px;
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .index-page__status-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .index-page__status-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .index-page__secondary-card {
+    margin-top: -32px;
+    height: 85px;
+    padding: 32px 16px 12px;
+    border-radius: 0 0 32px 32px;
+  }
+  .index-page__secondary-title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .index-page__secondary-desc {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .index-page__secondary-more {
+    width: 32px;
+    height: 32px;
+  }
+  .index-page__secondary-more-text {
+    font-size: 20px;
+    line-height: 24px;
+    letter-spacing: 2px;
+  }
+
+  /* 任务列表弹层 */
+  .index-page__task-list {
+    width: 300px;
+    max-height: 400px;
+    padding: 16px;
+    border-radius: 16px;
+    gap: 8px;
+  }
+  .index-page__task-list-title {
+    font-size: 18px;
+    line-height: 24px;
+    padding-bottom: 8px;
+  }
+  .index-page__task-item {
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .index-page__task-item-name {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .index-page__task-item-check {
+    font-size: 16px;
+  }
+
+  /* 打卡按钮区域：固定尺寸，居中显示 */
+  .index-page__checkin-shell {
+    padding: 24px 75px 0;
+    /* margin-bottom 201px = 导航栏高86px + 底部偏移15px + 按钮距导航栏顶部100px */
+    margin-bottom: 201px;
+  }
+  .index-page__checkin-button {
+    width: 192px;
+    height: 192px;
+  }
+  .index-page__checkin-icon {
+    width: 32px;
+    height: 36px;
+    margin-top: 50px;
+  }
+  .index-page__checkin-text {
+    margin-top: 32px;
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .index-page__checkin-button--disabled .index-page__checkin-text,
+  .index-page__checkin-button--waiting .index-page__checkin-text {
+    margin-top: 84px;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  /* 折叠屏展开/平板横屏：进一步限制内容最大宽度，居中显示避免过度留白拉伸 */
+  .index-page__main-canvas {
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 </style>

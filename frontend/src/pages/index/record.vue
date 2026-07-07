@@ -346,47 +346,55 @@ onShow(() => {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .record-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
   /* padding-bottom 120px：BottomNav 高86px + bottom15px = 101px，留19px余量确保内容不被遮挡 */
-  padding-bottom: 120px;
+  padding-bottom: 240rpx;
 }
 
 .record-page__main {
   /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与内容重叠 */
-  padding: 105px 24px 0;
+  padding: 210rpx 48rpx 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
 }
 
 .record-page__calendar {
   width: 100%;
-  padding: 24px;
+  padding: 48rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .record-page__calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 36px;
+  height: 72rpx;
 }
 
 .record-page__calendar-arrow-btn {
-  width: 23.4px;
-  height: 36px;
-  padding: 8px 8px 16px;
+  width: 46.8rpx;
+  height: 72rpx;
+  padding: 16rpx 16rpx 32rpx;
   box-sizing: border-box;
   border-radius: 9999px;
   display: flex;
@@ -413,7 +421,7 @@ onShow(() => {
 .record-page__calendar-title-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .record-page__calendar-title-picker {
@@ -423,42 +431,43 @@ onShow(() => {
 
 .record-page__calendar-year {
   color: #0e0f0c;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: 48rpx;
+  line-height: 64rpx;
   font-weight: 600;
   text-align: center;
 }
 
 .record-page__calendar-month {
   color: #0e0f0c;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: 48rpx;
+  line-height: 64rpx;
   font-weight: 600;
   text-align: center;
 }
 
 .record-page__calendar-weekdays {
-  display: flex;
-  padding-top: 8px;
+  /* CSS Grid 7列等宽，列宽自适应卡片宽度，杜绝固定宽度导致的换行错位 */
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding-top: 16rpx;
 }
 
 .record-page__calendar-weekday {
-  width: 42px;
   text-align: center;
   color: #454745;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
   font-weight: 400;
 }
 
 .record-page__calendar-grid {
-  display: flex;
-  flex-wrap: wrap;
+  /* CSS Grid 7列等宽，与星期标题列宽严格对齐，任何机型都不会错位 */
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
 }
 
 .record-page__calendar-cell {
-  width: 42px;
-  height: 52px;
+  height: 104rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -469,8 +478,8 @@ onShow(() => {
 
 .record-page__calendar-day-num {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
   text-align: center;
 }
@@ -480,8 +489,8 @@ onShow(() => {
 }
 
 .record-page__calendar-today {
-  width: 36px;
-  height: 36px;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 9999px;
   /* 绿色内边框始终区分"今天"；浅绿色背景仅在 today 被选中时通过 --active 修饰符叠加 */
   box-shadow: inset 0 0 0 2px #2f6c00;
@@ -496,8 +505,8 @@ onShow(() => {
 }
 
 .record-page__calendar-selected {
-  width: 36px;
-  height: 36px;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 9999px;
   background: #e2f6d5;
   display: flex;
@@ -507,9 +516,9 @@ onShow(() => {
 
 .record-page__calendar-dot {
   position: absolute;
-  bottom: 8px;
-  width: 4px;
-  height: 4px;
+  bottom: 16rpx;
+  width: 8rpx;
+  height: 8rpx;
   border-radius: 9999px;
   background: #2ead4b;
 }
@@ -517,58 +526,58 @@ onShow(() => {
 /* ===== 当天打卡详情卡片 ===== */
 .record-page__list {
   width: 100%;
-  padding: 24px;
+  padding: 48rpx;
   box-sizing: border-box;
-  border-radius: 12px;
+  border-radius: 24rpx;
   background: #ffffff;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 32rpx;
 }
 
 .record-page__list-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 24px;
+  gap: 16rpx;
+  height: 48rpx;
 }
 
 .record-page__list-icon {
-  width: 18px;
-  height: 20px;
+  width: 36rpx;
+  height: 40rpx;
   display: block;
 }
 
 .record-page__list-title {
   color: #0e0f0c;
-  font-size: 18px;
-  line-height: 24px;
+  font-size: 36rpx;
+  line-height: 48rpx;
   font-weight: 600;
 }
 
 .record-page__list-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24rpx;
 }
 
 .record-page__list-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  min-height: 52px;
+  gap: 24rpx;
+  min-height: 104rpx;
 }
 
 .record-page__list-item--bordered {
-  padding-bottom: 12px;
+  padding-bottom: 24rpx;
   border-bottom: 1px solid #e8ebe6;
 }
 
 .record-page__list-item-marker {
-  width: 8px;
-  height: 16px;
-  padding-top: 8px;
+  width: 16rpx;
+  height: 32rpx;
+  padding-top: 16rpx;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -576,8 +585,8 @@ onShow(() => {
 }
 
 .record-page__list-item-dot {
-  width: 8px;
-  height: 8px;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 9999px;
   background: #dadada;
 }
@@ -592,33 +601,33 @@ onShow(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8rpx;
 }
 
 .record-page__list-item-time-row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .record-page__list-item-time {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
 .record-page__list-item-actual-time {
   color: #2ead4b;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .record-page__list-item-name {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
   /* 动态截断：占满可用宽度后省略号截断 */
   overflow: hidden;
@@ -628,8 +637,8 @@ onShow(() => {
 
 .record-page__list-item-remark {
   color: #454745;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
   /* 动态截断：占满可用宽度后省略号截断 */
   overflow: hidden;
@@ -638,14 +647,14 @@ onShow(() => {
 }
 
 .record-page__list-item-check {
-  width: 20px;
-  height: 20px;
+  width: 40rpx;
+  height: 40rpx;
   display: block;
-  margin-top: 2px;
+  margin-top: 4rpx;
 }
 
 .record-page__list-empty {
-  padding: 16px 0;
+  padding: 32rpx 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -653,13 +662,13 @@ onShow(() => {
 
 .record-page__list-empty-text {
   color: #888888;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .record-page__list-loading {
-  padding: 16px 0;
+  padding: 32rpx 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -667,13 +676,13 @@ onShow(() => {
 
 .record-page__list-loading-text {
   color: #888888;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .record-page__list-error {
-  padding: 16px 0;
+  padding: 32rpx 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -681,8 +690,160 @@ onShow(() => {
 
 .record-page__list-error-text {
   color: #e8553a;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 主容器内边距与间距 */
+  .record-page {
+    padding-bottom: 120px;
+  }
+  .record-page__main {
+    padding: 105px 24px 0;
+    gap: 32px;
+  }
+  /* 日历卡片 */
+  .record-page__calendar {
+    padding: 24px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+  .record-page__calendar-header {
+    height: 36px;
+  }
+  .record-page__calendar-arrow-btn {
+    width: 23.4px;
+    height: 36px;
+    padding: 8px 8px 16px;
+  }
+  .record-page__calendar-title-group {
+    gap: 4px;
+  }
+  .record-page__calendar-year {
+    font-size: 24px;
+    line-height: 32px;
+  }
+  .record-page__calendar-month {
+    font-size: 24px;
+    line-height: 32px;
+  }
+  .record-page__calendar-weekdays {
+    padding-top: 8px;
+  }
+  .record-page__calendar-weekday {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .record-page__calendar-cell {
+    height: 52px;
+  }
+  .record-page__calendar-day-num {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .record-page__calendar-today {
+    width: 36px;
+    height: 36px;
+  }
+  .record-page__calendar-selected {
+    width: 36px;
+    height: 36px;
+  }
+  .record-page__calendar-dot {
+    bottom: 8px;
+    width: 4px;
+    height: 4px;
+  }
+  /* 当天打卡详情卡片 */
+  .record-page__list {
+    padding: 24px;
+    border-radius: 12px;
+    gap: 16px;
+  }
+  .record-page__list-header {
+    gap: 8px;
+    height: 24px;
+  }
+  .record-page__list-icon {
+    width: 18px;
+    height: 20px;
+  }
+  .record-page__list-title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .record-page__list-items {
+    gap: 12px;
+  }
+  .record-page__list-item {
+    gap: 12px;
+    min-height: 52px;
+  }
+  .record-page__list-item--bordered {
+    padding-bottom: 12px;
+  }
+  .record-page__list-item-marker {
+    width: 8px;
+    height: 16px;
+    padding-top: 8px;
+  }
+  .record-page__list-item-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .record-page__list-item-content {
+    gap: 4px;
+  }
+  .record-page__list-item-time-row {
+    gap: 8px;
+  }
+  .record-page__list-item-time {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .record-page__list-item-actual-time {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .record-page__list-item-name {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .record-page__list-item-remark {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .record-page__list-item-check {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+  }
+  .record-page__list-empty {
+    padding: 16px 0;
+  }
+  .record-page__list-empty-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .record-page__list-loading {
+    padding: 16px 0;
+  }
+  .record-page__list-loading-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .record-page__list-error {
+    padding: 16px 0;
+  }
+  .record-page__list-error-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
 }
 </style>

@@ -26,8 +26,10 @@
               placeholder-class="profile-page__placeholder"
               :maxlength="usernameLimit.max"
               @input="e => usernameForm.value = usernameLimit.handleInput(e)"
+              @blur="usernameError = validateUsername(usernameForm.value)"
             />
             <text v-if="usernameError" class="profile-page__error-text">{{ usernameError }}</text>
+            <text v-if="usernameLimit.limitReached" class="profile-page__limit-text">{{ usernameLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('username')">
@@ -84,6 +86,7 @@
             @input="e => signatureForm.value = signatureLimit.handleInput(e)"
           />
           <text v-if="signatureError" class="profile-page__error-text">{{ signatureError }}</text>
+          <text v-if="signatureLimit.limitReached" class="profile-page__limit-text">{{ signatureLimit.limitHint }}</text>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('signature')">
               <text class="profile-page__btn-text">取消</text>
@@ -113,8 +116,10 @@
               placeholder-class="profile-page__placeholder"
               :maxlength="oldPwdLimit.max"
               @input="e => passwordForm.oldPassword = oldPwdLimit.handleInput(e)"
+              @blur="passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'"
             />
             <text v-if="passwordErrors.oldPassword" class="profile-page__error-text">{{ passwordErrors.oldPassword }}</text>
+            <text v-if="oldPwdLimit.limitReached" class="profile-page__limit-text">{{ oldPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
             <text class="profile-page__form-label">新密码</text>
@@ -127,8 +132,10 @@
               placeholder-class="profile-page__placeholder"
               :maxlength="newPwdLimit.max"
               @input="e => passwordForm.newPassword = newPwdLimit.handleInput(e)"
+              @blur="passwordErrors.newPassword = validatePassword(passwordForm.newPassword)"
             />
             <text v-if="passwordErrors.newPassword" class="profile-page__error-text">{{ passwordErrors.newPassword }}</text>
+            <text v-if="newPwdLimit.limitReached" class="profile-page__limit-text">{{ newPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
             <text class="profile-page__form-label">确认密码</text>
@@ -141,8 +148,10 @@
               placeholder-class="profile-page__placeholder"
               :maxlength="confirmPwdLimit.max"
               @input="e => passwordForm.confirmPassword = confirmPwdLimit.handleInput(e)"
+              @blur="passwordErrors.confirmPassword = passwordForm.confirmPassword ? (passwordForm.confirmPassword !== passwordForm.newPassword ? '两次密码不一致' : '') : '请再次输入密码'"
             />
             <text v-if="passwordErrors.confirmPassword" class="profile-page__error-text">{{ passwordErrors.confirmPassword }}</text>
+            <text v-if="confirmPwdLimit.limitReached" class="profile-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('password')">
@@ -167,19 +176,20 @@
               <text class="profile-page__form-label">旧邮箱验证码</text>
               <view class="profile-page__code-row">
                 <input
-                  class="profile-page__input profile-page__input--code"
-                  :class="{ 'profile-page__input--error': emailErrors.oldCode }"
-                  v-model="emailForm.oldCode"
-                  placeholder="请输入验证码"
-                  placeholder-class="profile-page__placeholder"
-                  :maxlength="oldCodeLimit.max"
-                  @input="e => emailForm.oldCode = oldCodeLimit.handleInput(e)"
-                />
+                class="profile-page__input profile-page__input--code"
+                :class="{ 'profile-page__input--error': emailErrors.oldCode }"
+                v-model="emailForm.oldCode"
+                placeholder="请输入验证码"
+                placeholder-class="profile-page__placeholder"
+                :maxlength="oldCodeLimit.max"
+                @input="e => emailForm.oldCode = oldCodeLimit.handleInput(e)"
+              />
                 <view class="profile-page__code-btn" @click="handleGetOldEmailCode">
                   <text class="profile-page__code-btn-text">{{ emailOldCodeText }}</text>
                 </view>
               </view>
               <text v-if="emailErrors.oldCode" class="profile-page__error-text">{{ emailErrors.oldCode }}</text>
+              <text v-if="oldCodeLimit.limitReached" class="profile-page__limit-text">{{ oldCodeLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('email')">
@@ -202,8 +212,10 @@
                 placeholder-class="profile-page__placeholder"
                 :maxlength="newEmailLimit.max"
                 @input="e => emailForm.newEmail = newEmailLimit.handleInput(e)"
+                @blur="emailErrors.newEmail = validateEmail(emailForm.newEmail)"
               />
               <text v-if="emailErrors.newEmail" class="profile-page__error-text">{{ emailErrors.newEmail }}</text>
+              <text v-if="newEmailLimit.limitReached" class="profile-page__limit-text">{{ newEmailLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-field">
               <text class="profile-page__form-label">新邮箱验证码</text>
@@ -222,6 +234,7 @@
                 </view>
               </view>
               <text v-if="emailErrors.newCode" class="profile-page__error-text">{{ emailErrors.newCode }}</text>
+              <text v-if="newCodeLimit.limitReached" class="profile-page__limit-text">{{ newCodeLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="hasEmail ? handleResetEmailStep() : toggleSection('email')">
@@ -694,7 +707,9 @@ async function handleChangeEmail() {
     }
     toggleSection('email')
   } catch (e) {
-    uni.showToast({ title: e.message, icon: 'none' })
+    // 验证码错误时统一提示"请输入正确验证码"
+    const msg = /验证码/.test(e.message) ? '请输入正确验证码' : e.message
+    uni.showToast({ title: msg, icon: 'none' })
   }
 }
 
@@ -772,6 +787,14 @@ function handleLogout() {
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .profile-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
@@ -780,16 +803,16 @@ function handleLogout() {
 }
 
 .profile-page__main {
-  padding: 105px 24px 32px;
+  padding: 210rpx 48rpx 64rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
 }
 
 /* ===== 分组卡片 ===== */
 .profile-page__group {
-  border-radius: 24px;
+  border-radius: 48rpx;
   background: #ffffff;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
@@ -800,9 +823,9 @@ function handleLogout() {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   box-sizing: border-box;
-  height: 49px;
+  height: 98rpx;
 }
 
 .profile-page__group-item--bordered {
@@ -817,8 +840,8 @@ function handleLogout() {
 
 .profile-page__group-text {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 500;
 }
 
@@ -828,7 +851,7 @@ function handleLogout() {
 
 /* ===== 动态表单区域 ===== */
 .profile-page__form-section {
-  padding: 12px 16px;
+  padding: 24rpx 32rpx;
   box-sizing: border-box;
   background: #fafafa;
 }
@@ -836,27 +859,27 @@ function handleLogout() {
 .profile-page__form-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: 8rpx;
+  margin-bottom: 24rpx;
 }
 
 .profile-page__form-label {
   color: #41493a;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
 .profile-page__input {
-  height: 44px;
-  padding: 0 12px;
+  height: 88rpx;
+  padding: 0 24rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 8px;
+  border-radius: 16rpx;
   border: 1px solid #c1cab5;
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 21px;
+  font-size: 32rpx;
+  line-height: 42rpx;
 }
 
 .profile-page__input--error {
@@ -869,28 +892,36 @@ function handleLogout() {
 
 .profile-page__placeholder {
   color: #454745;
-  font-size: 14px;
+  font-size: 28rpx;
 }
 
 .profile-page__error-text {
   color: #e5484d;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 24rpx;
+  line-height: 32rpx;
+}
+
+/* 字符限制提示文字 */
+.profile-page__limit-text {
+  color: #d97706;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
 }
 
 /* ===== 验证码行 ===== */
 .profile-page__code-row {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .profile-page__code-btn {
-  width: 96px;
-  height: 44px;
-  padding: 0 12px;
+  width: 192rpx;
+  height: 88rpx;
+  padding: 0 24rpx;
   box-sizing: border-box;
-  border-radius: 8px;
+  border-radius: 16rpx;
   border: 1px solid #c1cab5;
   display: flex;
   justify-content: center;
@@ -900,8 +931,8 @@ function handleLogout() {
 
 .profile-page__code-btn-text {
   color: #0e0f0c;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
@@ -910,15 +941,15 @@ function handleLogout() {
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 24rpx;
+  margin-top: 32rpx;
 }
 
 .profile-page__btn {
-  height: 36px;
-  padding: 0 20px;
+  height: 72rpx;
+  padding: 0 40rpx;
   box-sizing: border-box;
-  border-radius: 18px;
+  border-radius: 36rpx;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -934,8 +965,8 @@ function handleLogout() {
 
 .profile-page__btn-text {
   color: #0e0f0c;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 28rpx;
+  line-height: 40rpx;
   font-weight: 400;
 }
 
@@ -943,14 +974,14 @@ function handleLogout() {
 .profile-page__avatar-list {
   display: flex;
   flex-direction: row;
-  gap: 16px;
-  padding: 8px 0;
+  gap: 32rpx;
+  padding: 16rpx 0;
 }
 
 .profile-page__avatar-option {
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 24rpx;
   border: 2px solid transparent;
   box-sizing: border-box;
   display: flex;
@@ -965,7 +996,126 @@ function handleLogout() {
 }
 
 .profile-page__avatar-image {
-  width: 56px;
-  height: 56px;
+  width: 112rpx;
+  height: 112rpx;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
+ */
+@media screen and (min-width: 768px) {
+  /* 页面主容器：锁定 padding 与分组间距 */
+  .profile-page__main {
+    padding: 105px 24px 32px;
+    gap: 32px;
+  }
+
+  /* 分组卡片圆角 */
+  .profile-page__group {
+    border-radius: 24px;
+  }
+
+  /* 列表项高度与内边距 */
+  .profile-page__group-item {
+    padding: 12px 16px;
+    height: 49px;
+  }
+
+  /* 主文字字号 */
+  .profile-page__group-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  /* 表单区域内边距 */
+  .profile-page__form-section {
+    padding: 12px 16px;
+  }
+
+  .profile-page__form-field {
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .profile-page__form-label {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* 输入框尺寸 */
+  .profile-page__input {
+    height: 44px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  .profile-page__placeholder {
+    font-size: 14px;
+  }
+
+  .profile-page__error-text {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .profile-page__limit-text {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
+  }
+
+  /* 验证码行 */
+  .profile-page__code-row {
+    gap: 8px;
+  }
+
+  .profile-page__code-btn {
+    width: 96px;
+    height: 44px;
+    padding: 0 12px;
+    border-radius: 8px;
+  }
+
+  .profile-page__code-btn-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* 表单操作按钮 */
+  .profile-page__form-actions {
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .profile-page__btn {
+    height: 36px;
+    padding: 0 20px;
+    border-radius: 18px;
+  }
+
+  .profile-page__btn-text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* 头像选择列表 */
+  .profile-page__avatar-list {
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  .profile-page__avatar-option {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+  }
+
+  .profile-page__avatar-image {
+    width: 56px;
+    height: 56px;
+  }
 }
 </style>

@@ -184,6 +184,14 @@ useShare({ title: '隐私政策' })
 </script>
 
 <style lang="scss">
+/* ==========================================================================
+ * 响应式单位说明（px → rpx 转换）
+ * --------------------------------------------------------------------------
+ * 基准：375px 设计稿，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
+ * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
+ * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
+ * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * ========================================================================== */
 .privacy-page {
   min-height: 100vh;
   background-color: var(--page-bg-color);
@@ -194,7 +202,7 @@ useShare({ title: '隐私政策' })
 /* ===== 主容器（对应设计稿 Container 390x3005）===== */
 /* padding-top 100px：通知按钮 top45px + 高40px = 底部85px，留 15px 间隙避免与标题重叠 */
 .privacy-page__container {
-  padding: 105px 16px 48px;
+  padding: 210rpx 32rpx 96rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -202,39 +210,39 @@ useShare({ title: '隐私政策' })
 
 /* ===== 标题区（对应设计稿 Heading 1）===== */
 .privacy-page__heading {
-  padding: 8px 0 16px;
+  padding: 16rpx 0 32rpx;
 }
 
 .privacy-page__title {
   color: #0e0f0c;
-  font-size: 32px;
-  line-height: 36px;
+  font-size: 64rpx;
+  line-height: 72rpx;
   font-weight: 600;
 }
 
 /* ===== 前言（对应设计稿前言段落）===== */
 .privacy-page__intro {
-  padding-bottom: 24px;
+  padding-bottom: 48rpx;
 }
 
 .privacy-page__intro-text {
   color: #0e0f0c;
-  font-size: 20px;
-  line-height: 32.6px;
+  font-size: 40rpx;
+  line-height: 65.2rpx;
   font-weight: 400;
   white-space: pre-line;
 }
 
 /* ===== 主内容卡片（对应设计稿 Main Content Card）===== */
 .privacy-page__card {
-  padding: 24px;
+  padding: 48rpx;
   box-sizing: border-box;
   background: #ffffff;
-  border-radius: 24px;
+  border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 64rpx;
 }
 
 /* ===== 章节（对应设计稿 Section）===== */
@@ -246,42 +254,42 @@ useShare({ title: '隐私政策' })
 /* 章节标题（对应 Heading 3，24px/32px #0e0f0c） */
 .privacy-page__section-title {
   color: #0e0f0c;
-  font-size: 24px;
-  line-height: 32px;
+  font-size: 48rpx;
+  line-height: 64rpx;
   font-weight: 600;
-  padding-bottom: 12px;
+  padding-bottom: 24rpx;
   white-space: pre-line;
 }
 
 /* 普通段落（对应 Container，16px/24px #454745，padding-bottom 16px） */
 .privacy-page__para {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
-  padding-bottom: 16px;
+  padding-bottom: 32rpx;
   white-space: pre-line;
 }
 
 .privacy-page__para--footer {
-  padding-top: 16px;
+  padding-top: 32rpx;
 }
 
 /* 子标题（对应 Heading 4，16px/24px #0e0f0c，padding-bottom 8px） */
 .privacy-page__sub-title {
   color: #0e0f0c;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 600;
-  padding-bottom: 8px;
+  padding-bottom: 16rpx;
 }
 
 /* ===== 列表（对应设计稿 List，padding-left 20px，gap 8px）===== */
 .privacy-page__list {
-  padding: 0 0 16px 20px;
+  padding: 0 0 32rpx 40rpx;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16rpx;
 }
 
 .privacy-page__list-item {
@@ -292,17 +300,17 @@ useShare({ title: '隐私政策' })
 
 .privacy-page__bullet {
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
-  width: 7px;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  width: 14rpx;
   flex-shrink: 0;
 }
 
 .privacy-page__list-text {
   flex: 1;
   color: #454745;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
   white-space: pre-line;
 }
@@ -310,14 +318,14 @@ useShare({ title: '隐私政策' })
 /* ===== 表格（对应设计稿 Table，横向滚动）===== */
 /* scroll-view 横向滚动容器：宽度 100%，内部表格固定 600px 触发滚动 */
 .privacy-page__table-scroll {
-  margin-bottom: 16px;
+  margin-bottom: 32rpx;
   width: 100%;
   white-space: nowrap;
 }
 
 .privacy-page__table {
   /* 三列总宽 114.48 + 266.95 + 218.57 ≈ 600px，超出卡片内容区（310px）触发横向滚动 */
-  width: 600px;
+  width: 1200rpx;
   border: 1px solid #c1cab5;
   border-radius: 0;
   display: flex;
@@ -339,9 +347,9 @@ useShare({ title: '隐私政策' })
 }
 
 .privacy-page__table-cell {
-  padding: 12px 8px;
-  font-size: 16px;
-  line-height: 24px;
+  padding: 24rpx 16rpx;
+  font-size: 32rpx;
+  line-height: 48rpx;
   border-right: 1px solid #c1cab5;
   box-sizing: border-box;
 }
@@ -352,17 +360,17 @@ useShare({ title: '隐私政策' })
 
 /* 列宽：第三方名称 114.48 / 涉及个人信息 266.95 / 使用目的 218.56（总宽 600） */
 .privacy-page__table-cell--name {
-  width: 114.48px;
+  width: 228.96rpx;
   flex-shrink: 0;
 }
 
 .privacy-page__table-cell--info {
-  width: 266.95px;
+  width: 533.9rpx;
   flex-shrink: 0;
 }
 
 .privacy-page__table-cell--purpose {
-  width: 218.57px;
+  width: 437.14rpx;
   flex-shrink: 0;
 }
 
@@ -376,5 +384,84 @@ useShare({ title: '隐私政策' })
 .privacy-page__table-row--header .privacy-page__table-cell {
   color: #0e0f0c;
   font-weight: 600;
+}
+
+/* ===== 平板/折叠屏断点（≥768px）=====
+ * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
+ */
+@media screen and (min-width: 768px) {
+  .privacy-page__container {
+    padding: 105px 16px 48px;
+  }
+  .privacy-page__heading {
+    padding: 8px 0 16px;
+  }
+  .privacy-page__title {
+    font-size: 32px;
+    line-height: 36px;
+  }
+  .privacy-page__intro {
+    padding-bottom: 24px;
+  }
+  .privacy-page__intro-text {
+    font-size: 20px;
+    line-height: 32.6px;
+  }
+  .privacy-page__card {
+    padding: 24px;
+    border-radius: 24px;
+    gap: 32px;
+  }
+  .privacy-page__section-title {
+    font-size: 24px;
+    line-height: 32px;
+    padding-bottom: 12px;
+  }
+  .privacy-page__para {
+    font-size: 16px;
+    line-height: 24px;
+    padding-bottom: 16px;
+  }
+  .privacy-page__para--footer {
+    padding-top: 16px;
+  }
+  .privacy-page__sub-title {
+    font-size: 16px;
+    line-height: 24px;
+    padding-bottom: 8px;
+  }
+  .privacy-page__list {
+    padding: 0 0 16px 20px;
+    gap: 8px;
+  }
+  .privacy-page__bullet {
+    font-size: 16px;
+    line-height: 24px;
+    width: 7px;
+  }
+  .privacy-page__list-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .privacy-page__table-scroll {
+    margin-bottom: 16px;
+  }
+  .privacy-page__table {
+    width: 600px;
+  }
+  .privacy-page__table-cell {
+    padding: 12px 8px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .privacy-page__table-cell--name {
+    width: 114.48px;
+  }
+  .privacy-page__table-cell--info {
+    width: 266.95px;
+  }
+  .privacy-page__table-cell--purpose {
+    width: 218.57px;
+  }
 }
 </style>

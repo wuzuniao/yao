@@ -32,16 +32,16 @@ page {
   --color-border: #e8ebe6;          /* 卡片内描边、分隔线 */
   --color-border-input: #c1cab5;    /* 输入框外描边 */
 
-  /* ----- 阴影 ----- */
+  /* ----- 阴影（box-shadow 偏移与模糊半径保留 px，视觉效果不应缩放）----- */
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-  /* ----- 圆角 ----- */
-  --radius-card: 12px;              /* 普通卡片 */
-  --radius-card-lg: 24px;           /* 大卡片（登录/注册/联系等） */
+  /* ----- 圆角（1px = 2rpx，9999px 胶囊圆角保留）----- */
+  --radius-card: 24rpx;              /* 普通卡片 */
+  --radius-card-lg: 48rpx;           /* 大卡片（登录/注册/联系等） */
   --radius-btn: 9999px;             /* 胶囊按钮 */
 
   /* ----- 间距：通知按钮（top45px + 高40px = 底部85px）+ 15px 间隙 = 100px ----- */
-  --page-padding-top: 100px;
+  --page-padding-top: 200rpx;
 }
 
 /* ==========================================================================
@@ -59,7 +59,15 @@ page {
 .u-arrow-right {
   width: 0;
   height: 0;
-  border-top: 6px solid transparent;
-  border-bottom: 6px solid transparent;
-  border-left: 7.4px solid var(--color-text-tertiary);
+  border-top: 12rpx solid transparent;
+  border-bottom: 12rpx solid transparent;
+  border-left: 14.8rpx solid var(--color-text-tertiary);
 }
+
+/* ==========================================================================
+ * 多端断点说明
+ * --------------------------------------------------------------------------
+ * 本文件为全局样式，CSS 变量值会被各页面通过 var() 引用，故此处不添加媒体查询。
+ * 宽屏设备（≥768px）的关键尺寸锁定由各页面/组件级样式的断点处理，
+ * 以确保在不同设备上变量值可被精准覆盖。
+ * ========================================================================== */
