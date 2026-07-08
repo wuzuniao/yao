@@ -169,6 +169,22 @@
       "init_db.py": "初始化数据库表结构脚本",
       "test_db_connection.py": "数据库连接测试脚本"
     },
+    ".trae": {
+      "描述": "Trae IDE 配置目录（AI 规则与任务规格说明）",
+      "rules": {
+        "描述": "AI 规则文件目录，定义 AI 在特定场景下的行为约束",
+        "git-commit-message.md": "Git 提交信息生成规则，定义 AI 协助提交时应遵循的 Conventional Commits 风格，含 type/scope/body/footer 规范、示例与禁止事项"
+      },
+      "specs": {
+        "描述": "任务规格说明目录，存放复杂需求的规划与验收文档",
+        "clarify-checkin-logic": {
+          "描述": "首页打卡逻辑梳理规格",
+          "spec.md": "首页打卡按钮状态机、时间窗口、交互逻辑的期望行为说明文档",
+          "tasks.md": "打卡逻辑梳理任务的执行清单与完成状态",
+          "checklist.md": "验证 spec.md 完整性与准确性的检查清单"
+        }
+      }
+    },
     ".gitignore": "Git忽略文件配置",
     "README.md": "项目说明文档",
     "AGENTS.md": "AI编程助手开发指南与约束文件",
