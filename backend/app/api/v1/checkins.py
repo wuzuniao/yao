@@ -1,8 +1,9 @@
-from datetime import datetime, date
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
+from ...core.deps import get_current_user_id
 from ...schemas.checkin_record import CreateCheckin
 from ...services.checkin_service import CheckinService
 from ...utils.timezone import SHANGHAI_TZ
@@ -22,9 +23,13 @@ def _record_to_dict(record) -> dict:
 
 
 @router.post("")
-async def create_checkin(payload: CreateCheckin, db: AsyncSession = Depends(get_db)):
+async def create_checkin(
+    payload: CreateCheckin,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    创建打卡记录
+    创建打卡记录（user_id 来自 JWT）
     - 同一天同一计划同一时间点只能打卡一次
     """
     service = CheckinService(db)
@@ -39,7 +44,7 @@ async def create_checkin(payload: CreateCheckin, db: AsyncSession = Depends(get_
         actual_time = actual_time.astimezone(SHANGHAI_TZ).replace(tzinfo=None)
     try:
         record = await service.create_checkin(
-            user_id=payload.user_id,
+            user_id=user_id,
             plan_id=payload.plan_id,
             plan_time_id=payload.plan_time_id,
             actual_time=actual_time,
@@ -53,9 +58,12 @@ async def create_checkin(payload: CreateCheckin, db: AsyncSession = Depends(get_
     }
 
 
-@router.get("/{user_id}/today")
-async def list_today_checkins(user_id: int, db: AsyncSession = Depends(get_db)):
-    """查询用户今日所有打卡记录"""
+@router.get("/today")
+async def list_today_checkins(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询当前登录用户今日所有打卡记录（user_id 来自 JWT）"""
     service = CheckinService(db)
     records = await service.list_today_by_user(user_id)
     return {
@@ -65,11 +73,13 @@ async def list_today_checkins(user_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{user_id}/today/{plan_id}")
+@router.get("/today/{plan_id}")
 async def list_today_checkins_by_plan(
-    user_id: int, plan_id: int, db: AsyncSession = Depends(get_db)
+    plan_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
 ):
-    """查询用户今日某计划的打卡记录（返回已打卡的时间点ID列表）"""
+    """查询当前登录用户今日某计划的打卡记录（user_id 来自 JWT，返回已打卡的时间点ID列表）"""
     service = CheckinService(db)
     records = await service.list_today_by_plan(user_id, plan_id)
     return {
@@ -82,15 +92,15 @@ async def list_today_checkins_by_plan(
     }
 
 
-@router.get("/{user_id}/month")
+@router.get("/month")
 async def list_month_checkins(
-    user_id: int,
     year: int = Query(..., description="年份，如 2026"),
     month: int = Query(..., ge=1, le=12, description="月份，1-12"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    查询用户某月有打卡记录的日期列表
+    查询当前登录用户某月有打卡记录的日期列表（user_id 来自 JWT）
     - 用于日历小绿点标识
     - 返回 checked_days：当月有打卡记录的日期（day of month）列表
     """
@@ -105,14 +115,14 @@ async def list_month_checkins(
     }
 
 
-@router.get("/{user_id}/day")
+@router.get("/day")
 async def list_day_checkins(
-    user_id: int,
     date: str = Query(..., description="日期，格式 YYYY-MM-DD，如 2026-06-15"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    查询用户某天的打卡详情（含计划提醒时间）
+    查询当前登录用户某天的打卡详情（user_id 来自 JWT，含计划提醒时间）
     - 返回当天所有进行中计划的提醒时间及打卡状态
     - 已打卡：checked=true + actual_time
     - 未打卡：checked=false，actual_time=null

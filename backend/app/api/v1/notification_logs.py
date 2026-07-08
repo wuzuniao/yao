@@ -2,21 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
+from ...core.deps import get_current_user_id
 from ...schemas.notification_log import MarkRead
 from ...services.notification_log_service import NotificationLogService
 
 router = APIRouter()
 
 
-@router.get("/{user_id}/list")
+@router.get("/list")
 async def list_notification_logs(
-    user_id: int,
     page: int = Query(1, ge=1, description="页码，从1开始"),
     limit: int = Query(20, ge=1, le=100, description="每页数量，1-100"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    查询用户站内信列表（分页）
+    查询当前登录用户站内信列表（user_id 来自 JWT，分页）
     - 返回当前用户所有站内信（含计划名称/备注），未读卡片前端高亮显示
     - 返回 unread_count 用于通知按钮图标切换
     """
@@ -26,15 +27,19 @@ async def list_notification_logs(
 
 
 @router.put("/read")
-async def mark_as_read(payload: MarkRead, db: AsyncSession = Depends(get_db)):
+async def mark_as_read(
+    payload: MarkRead,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    标记站内信为已读（status 2 → 0）
+    标记站内信为已读（status 2 → 0，user_id 来自 JWT）
     - 校验消息归属后更新状态
     - 已读记录重复标记不报错
     """
     service = NotificationLogService(db)
     try:
-        log = await service.mark_as_read(payload.log_id, payload.user_id)
+        log = await service.mark_as_read(payload.log_id, user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {
@@ -48,9 +53,12 @@ async def mark_as_read(payload: MarkRead, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{user_id}/unread-count")
-async def get_unread_count(user_id: int, db: AsyncSession = Depends(get_db)):
-    """查询用户未读站内信数量（用于通知图标实时切换）"""
+@router.get("/unread-count")
+async def get_unread_count(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询当前登录用户未读站内信数量（user_id 来自 JWT，用于通知图标实时切换）"""
     service = NotificationLogService(db)
     count = await service.count_unread(user_id)
     return {"code": 0, "msg": "success", "data": {"unread_count": count}}

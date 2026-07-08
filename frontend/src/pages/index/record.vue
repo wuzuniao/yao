@@ -225,7 +225,7 @@ async function loadMonthCheckins() {
     return
   }
   try {
-    const res = await listMonthCheckins(userStore.userInfo.id, currentYear.value, currentMonth.value)
+    const res = await listMonthCheckins(currentYear.value, currentMonth.value)
     if (res.code === 0 && res.data) {
       checkedDays.value = res.data.checked_days || []
     }
@@ -242,7 +242,7 @@ async function loadDayCheckins(day) {
   isLoadingDay.value = true
   hasLoadError.value = false
   try {
-    const res = await listDayCheckins(userStore.userInfo.id, dateStr)
+    const res = await listDayCheckins(dateStr)
     if (res.code === 0 && res.data) {
       dayRecords.value = res.data
     } else {

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
+from ...core.deps import get_current_user_id
 from ...schemas.plan import CreatePlan, UpdatePlan
 from ...services.plan_service import PlanService
 
@@ -29,9 +30,12 @@ def _plan_to_dict(plan) -> dict:
     }
 
 
-@router.get("/{user_id}/list")
-async def list_plans(user_id: int, db: AsyncSession = Depends(get_db)):
-    """查询用户的所有计划"""
+@router.get("/list")
+async def list_plans(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询当前登录用户的所有计划（user_id 来自 JWT）"""
     service = PlanService(db)
     plans = await service.list_by_user(user_id)
     return {
@@ -42,12 +46,16 @@ async def list_plans(user_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("")
-async def create_plan(payload: CreatePlan, db: AsyncSession = Depends(get_db)):
-    """创建计划（含通知时间点和关联渠道）"""
+async def create_plan(
+    payload: CreatePlan,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """创建计划（user_id 来自 JWT，含通知时间点和关联渠道）"""
     service = PlanService(db)
     try:
         plan = await service.create_plan(
-            user_id=payload.user_id,
+            user_id=user_id,
             name=payload.name,
             remark=payload.remark,
             start_date=payload.start_date,
@@ -69,8 +77,12 @@ async def create_plan(payload: CreatePlan, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/{plan_id}")
-async def delete_plan(plan_id: int, user_id: int, db: AsyncSession = Depends(get_db)):
-    """删除计划（同时删除关联的时间点和渠道）"""
+async def delete_plan(
+    plan_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除计划（user_id 来自 JWT，同时删除关联的时间点和渠道）"""
     service = PlanService(db)
     try:
         await service.delete_plan(plan_id=plan_id, user_id=user_id)
@@ -80,13 +92,18 @@ async def delete_plan(plan_id: int, user_id: int, db: AsyncSession = Depends(get
 
 
 @router.put("/{plan_id}")
-async def update_plan(plan_id: int, payload: UpdatePlan, db: AsyncSession = Depends(get_db)):
-    """更新计划（含通知时间点和关联渠道）"""
+async def update_plan(
+    plan_id: int,
+    payload: UpdatePlan,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新计划（user_id 来自 JWT，含通知时间点和关联渠道）"""
     service = PlanService(db)
     try:
         plan = await service.update_plan(
             plan_id=plan_id,
-            user_id=payload.user_id,
+            user_id=user_id,
             name=payload.name,
             remark=payload.remark,
             start_date=payload.start_date,

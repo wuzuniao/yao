@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from ..core.security import Security
 
 
 # 通知发送状态常量（与 notification_logs.status 字段对应）
@@ -29,7 +31,11 @@ TRIGGER_DESC: dict[int, str] = {
 
 
 class MarkRead(BaseModel):
-    """标记站内信为已读请求 Schema"""
+    """标记站内信为已读请求 Schema（user_id 由 JWT 提供，不入请求体）"""
 
     log_id: int
-    user_id: int
+
+    @field_validator("log_id")
+    @classmethod
+    def validate_log_id(cls, v: int) -> int:
+        return Security.validate_positive_int(v, "消息ID")

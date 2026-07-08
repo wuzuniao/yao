@@ -1,5 +1,7 @@
 from pydantic import BaseModel, field_validator
 
+from ..core.security import Security
+
 
 # 允许的通知类型（站内信不允许用户主动创建/修改，仅邮件可由用户配置）
 CHANNEL_TYPE_ZNX = "站内信"
@@ -17,23 +19,17 @@ class EmailChannelValue(BaseModel):
     @field_validator("smtp_host")
     @classmethod
     def validate_smtp_host(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("SMTP服务器地址不能为空")
-        return v.strip()
+        return Security.validate_smtp_host(v)
 
     @field_validator("smtp_port")
     @classmethod
     def validate_smtp_port(cls, v: int) -> int:
-        if v <= 0 or v > 65535:
-            raise ValueError("SMTP服务器端口范围 1-65535")
-        return v
+        return Security.validate_smtp_port(v)
 
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        if not v or "@" not in v:
-            raise ValueError("发件邮箱地址格式不正确")
-        return v.strip()
+        return Security.validate_email(v)
 
     @field_validator("password")
     @classmethod
@@ -44,9 +40,8 @@ class EmailChannelValue(BaseModel):
 
 
 class CreateEmailChannel(BaseModel):
-    """创建邮件通知渠道请求 Schema"""
+    """创建邮件通知渠道请求 Schema（user_id 由 JWT 提供，不入请求体）"""
 
-    user_id: int
     smtp_host: str
     smtp_port: int
     email: str
@@ -56,23 +51,17 @@ class CreateEmailChannel(BaseModel):
     @field_validator("smtp_host")
     @classmethod
     def validate_smtp_host(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("SMTP服务器地址不能为空")
-        return v.strip()
+        return Security.validate_smtp_host(v)
 
     @field_validator("smtp_port")
     @classmethod
     def validate_smtp_port(cls, v: int) -> int:
-        if v <= 0 or v > 65535:
-            raise ValueError("SMTP服务器端口范围 1-65535")
-        return v
+        return Security.validate_smtp_port(v)
 
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        if not v or "@" not in v:
-            raise ValueError("发件邮箱地址格式不正确")
-        return v.strip()
+        return Security.validate_email(v)
 
     @field_validator("password")
     @classmethod
@@ -83,40 +72,42 @@ class CreateEmailChannel(BaseModel):
 
 
 class UpdateEmailChannel(BaseModel):
-    """更新邮件通知渠道请求 Schema"""
+    """更新邮件通知渠道请求 Schema（user_id 由 JWT 提供，不入请求体）"""
 
     channel_id: int
-    user_id: int
     smtp_host: str
     smtp_port: int
     email: str
     password: str = ""  # 空字符串表示保留原密码（前端修改时不展示密码）
     enabled: bool = True  # 是否启用
 
+    @field_validator("channel_id")
+    @classmethod
+    def validate_channel_id(cls, v: int) -> int:
+        return Security.validate_positive_int(v, "渠道ID")
+
     @field_validator("smtp_host")
     @classmethod
     def validate_smtp_host(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("SMTP服务器地址不能为空")
-        return v.strip()
+        return Security.validate_smtp_host(v)
 
     @field_validator("smtp_port")
     @classmethod
     def validate_smtp_port(cls, v: int) -> int:
-        if v <= 0 or v > 65535:
-            raise ValueError("SMTP服务器端口范围 1-65535")
-        return v
+        return Security.validate_smtp_port(v)
 
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        if not v or "@" not in v:
-            raise ValueError("发件邮箱地址格式不正确")
-        return v.strip()
+        return Security.validate_email(v)
 
 
 class DeleteChannel(BaseModel):
-    """删除通知渠道请求 Schema（仅允许删除邮件渠道）"""
+    """删除通知渠道请求 Schema（user_id 由 JWT 提供，不入请求体；仅允许删除邮件渠道）"""
 
     channel_id: int
-    user_id: int
+
+    @field_validator("channel_id")
+    @classmethod
+    def validate_channel_id(cls, v: int) -> int:
+        return Security.validate_positive_int(v, "渠道ID")

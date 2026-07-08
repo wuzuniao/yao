@@ -483,7 +483,7 @@ const planDisplayStatus = computed(() => {
 async function loadPlans() {
   if (!userStore.userInfo) return
   try {
-    const res = await listPlans(userStore.userInfo.id)
+    const res = await listPlans()
     if (res.code === 0 && res.data) {
       plans.value = res.data
     }
@@ -496,7 +496,7 @@ async function loadPlans() {
 async function loadChannels() {
   if (!userStore.userInfo) return
   try {
-    const res = await listNotificationChannels(userStore.userInfo.id)
+    const res = await listNotificationChannels()
     if (res.code === 0 && res.data) {
       // 仅显示状态为可用的通知方式
       availableChannels.value = res.data.filter(ch => ch.enabled)
@@ -527,7 +527,7 @@ function handleDeletePlan(planId) {
     success: async (res) => {
       if (!res.confirm) return
       try {
-        const r = await deletePlan(planId, userStore.userInfo.id)
+        const r = await deletePlan(planId)
         if (r.code === 0) {
           uni.showToast({ title: '删除成功', icon: 'success' })
           // 如果正在编辑被删除的计划，收起编辑表单
@@ -683,7 +683,6 @@ async function handleSave() {
   isSubmitting.value = true
   try {
     const res = await createPlan({
-      user_id: userStore.userInfo.id,
       name: form.name,
       remark: form.remark,
       start_date: form.startDate,
@@ -739,7 +738,6 @@ async function handleSaveEdit(planId) {
   isSubmitting.value = true
   try {
     const res = await updatePlan(planId, {
-      user_id: userStore.userInfo.id,
       name: editingForm.name,
       remark: editingForm.remark,
       start_date: editingForm.startDate,

@@ -70,43 +70,40 @@ export function resetPassword({ email, code, new_password }) {
 }
 
 /**
- * 更新用户签名
+ * 更新用户签名（user_id 由 JWT 提供，无需前端传递）
  * @param {Object} param0 更新签名数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.signature 新签名
  */
-export function updateSignature({ user_id, signature }) {
+export function updateSignature({ signature }) {
   return request({
     url: '/api/v1/users/update-signature',
     method: 'PUT',
-    data: { user_id, signature }
+    data: { signature }
   })
 }
 
 /**
- * 修改密码
+ * 修改密码（user_id 由 JWT 提供）
  * @param {Object} param0 修改密码数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.old_password 旧密码
  * @param {string} param0.new_password 新密码
  */
-export function changePassword({ user_id, old_password, new_password }) {
+export function changePassword({ old_password, new_password }) {
   return request({
     url: '/api/v1/users/change-password',
     method: 'PUT',
-    data: { user_id, old_password, new_password }
+    data: { old_password, new_password }
   })
 }
 
 /**
- * 发送修改邮箱的旧邮箱验证码
- * @param {number} user_id 用户ID
+ * 发送修改邮箱的旧邮箱验证码（user_id 由 JWT 提供）
  */
-export function sendChangeEmailOldCode(user_id) {
+export function sendChangeEmailOldCode() {
   return request({
     url: '/api/v1/users/send-change-email-old-code',
     method: 'POST',
-    data: { user_id }
+    data: {}
   })
 }
 
@@ -124,56 +121,52 @@ export function sendChangeEmailNewCode(new_email, allow_existing = false) {
 }
 
 /**
- * 修改邮箱
+ * 修改邮箱（user_id 由 JWT 提供）
  * @param {Object} param0 修改邮箱数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.old_code 旧邮箱验证码
  * @param {string} param0.new_email 新邮箱地址
  * @param {string} param0.new_code 新邮箱验证码
  */
-export function changeEmail({ user_id, old_code, new_email, new_code }) {
+export function changeEmail({ old_code, new_email, new_code }) {
   return request({
     url: '/api/v1/users/change-email',
     method: 'PUT',
-    data: { user_id, old_code, new_email, new_code }
+    data: { old_code, new_email, new_code }
   })
 }
 
 /**
- * 更新用户头像
+ * 更新用户头像（user_id 由 JWT 提供）
  * @param {Object} param0 更新头像数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.avatar_url 头像地址
  */
-export function updateAvatar({ user_id, avatar_url }) {
+export function updateAvatar({ avatar_url }) {
   return request({
     url: '/api/v1/users/update-avatar',
     method: 'PUT',
-    data: { user_id, avatar_url }
+    data: { avatar_url }
   })
 }
 
 /**
- * 计划删除账号（将 status 置为 0，后台任务在 1 分钟后自动清理）
- * @param {number} user_id 用户ID
+ * 计划删除账号（user_id 由 JWT 提供，将 status 置为 0，后台任务在 1 分钟后自动清理）
  */
-export function scheduleDeletion(user_id) {
+export function scheduleDeletion() {
   return request({
     url: '/api/v1/users/schedule-deletion',
     method: 'POST',
-    data: { user_id }
+    data: {}
   })
 }
 
 /**
- * 取消账号删除计划（将 status 恢复为 1）
- * @param {number} user_id 用户ID
+ * 取消账号删除计划（user_id 由 JWT 提供，将 status 恢复为 1）
  */
-export function cancelDeletion(user_id) {
+export function cancelDeletion() {
   return request({
     url: '/api/v1/users/cancel-deletion',
     method: 'POST',
-    data: { user_id }
+    data: {}
   })
 }
 
@@ -191,55 +184,51 @@ export function wechatLogin(code) {
 }
 
 /**
- * 更新用户名（含唯一性校验）
+ * 更新用户名（user_id 由 JWT 提供，含唯一性校验）
  * @param {Object} param0 更新用户名数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.new_username 新用户名
  */
-export function updateUsername({ user_id, new_username }) {
+export function updateUsername({ new_username }) {
   return request({
     url: '/api/v1/users/update-username',
     method: 'PUT',
-    data: { user_id, new_username }
+    data: { new_username }
   })
 }
 
 /**
- * 设置密码（用于无密码用户首次设置密码）
+ * 设置密码（user_id 由 JWT 提供，用于无密码用户首次设置密码）
  * @param {Object} param0 设置密码数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.new_password 新密码
  */
-export function setPassword({ user_id, new_password }) {
+export function setPassword({ new_password }) {
   return request({
     url: '/api/v1/users/set-password',
     method: 'PUT',
-    data: { user_id, new_password }
+    data: { new_password }
   })
 }
 
 /**
- * 绑定邮箱（用于无邮箱用户首次绑定邮箱）
+ * 绑定邮箱（user_id 由 JWT 提供，用于无邮箱用户首次绑定邮箱）
  * @param {Object} param0 绑定邮箱数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.new_email 新邮箱地址
  * @param {string} param0.new_code 新邮箱验证码
  */
-export function bindEmail({ user_id, new_email, new_code }) {
+export function bindEmail({ new_email, new_code }) {
   return request({
     url: '/api/v1/users/bind-email',
     method: 'PUT',
-    data: { user_id, new_email, new_code }
+    data: { new_email, new_code }
   })
 }
 
 /**
- * 获取用户信息（验证账号是否存在及刷新状态）
- * @param {number} user_id 用户ID
+ * 获取当前登录用户信息（user_id 由 JWT 提供，用于验证账号是否存在及刷新状态）
  */
-export function getUserInfo(user_id) {
+export function getUserInfo() {
   return request({
-    url: `/api/v1/users/${user_id}/info`,
+    url: '/api/v1/users/info',
     method: 'GET'
   })
 }

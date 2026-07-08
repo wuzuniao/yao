@@ -117,7 +117,7 @@ const notificationTypeName = computed(() => {
 async function loadChannels() {
   if (!userStore.userInfo) return
   try {
-    const res = await listNotificationChannels(userStore.userInfo.id)
+    const res = await listNotificationChannels()
     if (res.code === 0 && res.data) {
       channels.value = res.data
     }
@@ -131,7 +131,7 @@ async function loadChannels() {
 async function loadPlans() {
   if (!userStore.userInfo) return
   try {
-    const res = await listPlans(userStore.userInfo.id)
+    const res = await listPlans()
     if (res.code === 0 && res.data) {
       plans.value = res.data
     }

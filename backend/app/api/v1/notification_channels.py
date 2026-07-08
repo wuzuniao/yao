@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
+from ...core.deps import get_current_user_id
 from ...schemas.notification_channel import (
     CHANNEL_TYPE_EMAIL,
     CHANNEL_TYPE_ZNX,
@@ -35,9 +36,12 @@ def _channel_to_dict(channel) -> dict:
     return item
 
 
-@router.get("/{user_id}/list")
-async def list_channels(user_id: int, db: AsyncSession = Depends(get_db)):
-    """查询用户的所有通知渠道"""
+@router.get("/list")
+async def list_channels(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询当前登录用户的所有通知渠道（user_id 来自 JWT）"""
     service = NotificationChannelService(db)
     channels = await service.list_by_user(user_id)
     return {
@@ -48,12 +52,16 @@ async def list_channels(user_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/email")
-async def create_email_channel(payload: CreateEmailChannel, db: AsyncSession = Depends(get_db)):
-    """创建邮件通知渠道（站内信在用户注册时自动创建，不允许用户主动添加）"""
+async def create_email_channel(
+    payload: CreateEmailChannel,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """创建邮件通知渠道（user_id 来自 JWT，站内信在用户注册时自动创建，不允许用户主动添加）"""
     service = NotificationChannelService(db)
     try:
         channel = await service.create_email_channel(
-            user_id=payload.user_id,
+            user_id=user_id,
             smtp_host=payload.smtp_host,
             smtp_port=payload.smtp_port,
             email=payload.email,
@@ -70,13 +78,17 @@ async def create_email_channel(payload: CreateEmailChannel, db: AsyncSession = D
 
 
 @router.put("/email")
-async def update_email_channel(payload: UpdateEmailChannel, db: AsyncSession = Depends(get_db)):
-    """更新邮件通知渠道配置"""
+async def update_email_channel(
+    payload: UpdateEmailChannel,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新邮件通知渠道配置（user_id 来自 JWT）"""
     service = NotificationChannelService(db)
     try:
         channel = await service.update_email_channel(
             channel_id=payload.channel_id,
-            user_id=payload.user_id,
+            user_id=user_id,
             smtp_host=payload.smtp_host,
             smtp_port=payload.smtp_port,
             email=payload.email,
@@ -93,11 +105,15 @@ async def update_email_channel(payload: UpdateEmailChannel, db: AsyncSession = D
 
 
 @router.delete("")
-async def delete_channel(payload: DeleteChannel, db: AsyncSession = Depends(get_db)):
-    """删除通知渠道（站内信不允许删除）"""
+async def delete_channel(
+    payload: DeleteChannel,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除通知渠道（user_id 来自 JWT，站内信不允许删除）"""
     service = NotificationChannelService(db)
     try:
-        await service.delete_channel(channel_id=payload.channel_id, user_id=payload.user_id)
+        await service.delete_channel(channel_id=payload.channel_id, user_id=user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"code": 0, "msg": "通知方式删除成功", "data": None}

@@ -308,7 +308,7 @@ async function loadActivePlans() {
     return
   }
   try {
-    const res = await listPlans(userStore.userInfo.id)
+    const res = await listPlans()
     if (res.code === 0 && res.data) {
       // 仅保留进行中的计划，按 priority 升序排序
       activePlans.value = res.data
@@ -328,7 +328,7 @@ async function loadTodayCheckins() {
     return
   }
   try {
-    const res = await listTodayCheckinsByPlan(userStore.userInfo.id, primaryPlan.value.id)
+    const res = await listTodayCheckinsByPlan(primaryPlan.value.id)
     if (res.code === 0 && res.data) {
       const records = res.data.records || []
       todayCheckinMinutes.value = records
@@ -397,7 +397,6 @@ async function handleCheckin() {
     const pad = (n) => String(n).padStart(2, '0')
     const localTimeStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     const res = await createCheckin({
-      user_id: userStore.userInfo.id,
       plan_id: primaryPlan.value.id,
       plan_time_id: timeId,
       actual_time: localTimeStr

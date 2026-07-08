@@ -401,7 +401,7 @@ function validateHost(v) {
 async function loadChannels() {
   if (!userStore.userInfo) return
   try {
-    const res = await listNotificationChannels(userStore.userInfo.id)
+    const res = await listNotificationChannels()
     if (res.code === 0 && res.data) {
       channels.value = res.data
     }
@@ -490,7 +490,6 @@ async function handleSave() {
   }
   try {
     const res = await createEmailChannel({
-      user_id: userStore.userInfo.id,
       smtp_host: form.smtp_host,
       smtp_port: Number(form.smtp_port),
       email: form.email,
@@ -557,7 +556,6 @@ async function handleUpdateEmail(channelId) {
   try {
     const res = await updateEmailChannel({
       channel_id: channelId,
-      user_id: userStore.userInfo.id,
       smtp_host: editForm.smtp_host,
       smtp_port: Number(editForm.smtp_port),
       email: editForm.email,
@@ -586,8 +584,7 @@ async function handleDeleteEmail(channelId) {
       if (!res.confirm) return
       try {
         const r = await deleteNotificationChannel({
-          channel_id: channelId,
-          user_id: userStore.userInfo.id
+          channel_id: channelId
         })
         if (r.code === 0) {
           uni.showToast({ title: '删除成功', icon: 'success' })

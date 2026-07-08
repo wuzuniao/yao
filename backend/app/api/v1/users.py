@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
+from ...core.deps import get_current_user_id
+from ...core.security import Security
 from ...schemas.user import (
     BindEmail,
     ChangeEmail,
@@ -25,12 +27,32 @@ from ...services.user_service import User
 router = APIRouter()
 
 
+def _user_payload(db_user) -> dict:
+    """构造登录/注册等接口的响应数据（含 JWT access_token）"""
+    try:
+        token = Security.generate_token(db_user.id)
+    except ValueError as e:
+        # JWT 配置异常时返回 500，避免静默失败
+        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "id": db_user.id,
+        "username": db_user.username or "",
+        "signature": db_user.signature or "",
+        "avatar_url": db_user.avatar_url or "",
+        "email": db_user.email or "",
+        "has_password": bool(db_user.password_hash),
+        "status": db_user.status,
+        "access_token": token,
+    }
+
+
 @router.post("/register")
 async def register(payload: RegisterUser, db: AsyncSession = Depends(get_db)):
     """
     用户注册接口
     - 校验由 Pydantic Schema（字段规则）+ User 业务类（验证码/唯一性）共同完成
     - 验证码后端二次校验通过后才允许入库
+    - 注册成功后签发 JWT，前端可直接登录态
     """
     user_service = User(db)
     try:
@@ -49,11 +71,7 @@ async def register(payload: RegisterUser, db: AsyncSession = Depends(get_db)):
     return {
         "code": 0,
         "msg": "注册成功",
-        "data": {
-            "id": db_user.id,
-            "username": db_user.username,
-            "email": db_user.email,
-        },
+        "data": _user_payload(db_user),
     }
 
 
@@ -78,7 +96,7 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     """
     用户登录接口
     - 支持用户名或邮箱 + 密码登录
-    - 返回用户信息（id、username、signature、avatar_url）
+    - 返回用户信息（id、username、signature、avatar_url）和 JWT access_token
     """
     user_service = User(db)
     try:
@@ -92,15 +110,7 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     return {
         "code": 0,
         "msg": "登录成功",
-        "data": {
-            "id": db_user.id,
-            "username": db_user.username or "",
-            "signature": db_user.signature or "",
-            "avatar_url": db_user.avatar_url or "",
-            "email": db_user.email or "",
-            "has_password": bool(db_user.password_hash),
-            "status": db_user.status,
-        },
+        "data": _user_payload(db_user),
     }
 
 
@@ -125,6 +135,7 @@ async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_
     """
     重置密码接口
     - 验证验证码后更新密码
+    - 重置成功后签发 JWT，用户无需再次登录
     """
     user_service = User(db)
     try:
@@ -140,23 +151,21 @@ async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_
     return {
         "code": 0,
         "msg": "密码重置成功",
-        "data": {
-            "id": db_user.id,
-            "username": db_user.username,
-            "email": db_user.email,
-        },
+        "data": _user_payload(db_user),
     }
 
 
 @router.put("/update-signature")
-async def update_signature(payload: UpdateSignature, db: AsyncSession = Depends(get_db)):
-    """
-    更新用户签名接口
-    """
+async def update_signature(
+    payload: UpdateSignature,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新用户签名接口（user_id 来自 JWT）"""
     user_service = User(db)
     try:
         db_user = await user_service.update_signature(
-            user_id=payload.user_id,
+            user_id=user_id,
             signature=payload.signature,
         )
     except ValueError as e:
@@ -173,15 +182,16 @@ async def update_signature(payload: UpdateSignature, db: AsyncSession = Depends(
 
 
 @router.put("/change-password")
-async def change_password(payload: ChangePassword, db: AsyncSession = Depends(get_db)):
-    """
-    修改密码接口
-    - 验证旧密码后更新新密码
-    """
+async def change_password(
+    payload: ChangePassword,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改密码接口（user_id 来自 JWT，验证旧密码后更新新密码）"""
     user_service = User(db)
     try:
         db_user = await user_service.change_password(
-            user_id=payload.user_id,
+            user_id=user_id,
             old_password=payload.old_password,
             new_password=payload.new_password,
         )
@@ -200,13 +210,15 @@ async def change_password(payload: ChangePassword, db: AsyncSession = Depends(ge
 
 
 @router.post("/send-change-email-old-code")
-async def send_change_email_old_code(payload: SendChangeEmailOldCode, db: AsyncSession = Depends(get_db)):
-    """
-    发送修改邮箱的旧邮箱验证码接口
-    """
+async def send_change_email_old_code(
+    payload: SendChangeEmailOldCode,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """发送修改邮箱的旧邮箱验证码接口（user_id 来自 JWT）"""
     user_service = User(db)
     try:
-        await user_service.send_change_email_old_code(payload.user_id)
+        await user_service.send_change_email_old_code(user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -215,10 +227,12 @@ async def send_change_email_old_code(payload: SendChangeEmailOldCode, db: AsyncS
 
 
 @router.post("/send-change-email-new-code")
-async def send_change_email_new_code(payload: SendChangeEmailNewCode, db: AsyncSession = Depends(get_db)):
-    """
-    发送修改邮箱的新邮箱验证码接口
-    """
+async def send_change_email_new_code(
+    payload: SendChangeEmailNewCode,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """发送修改邮箱的新邮箱验证码接口（user_id 来自 JWT，用于记录操作上下文）"""
     user_service = User(db)
     try:
         await user_service.send_change_email_new_code(payload.new_email, payload.allow_existing)
@@ -230,15 +244,16 @@ async def send_change_email_new_code(payload: SendChangeEmailNewCode, db: AsyncS
 
 
 @router.put("/change-email")
-async def change_email(payload: ChangeEmail, db: AsyncSession = Depends(get_db)):
-    """
-    修改邮箱接口
-    - 验证旧邮箱验证码和新邮箱验证码后更新邮箱
-    """
+async def change_email(
+    payload: ChangeEmail,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改邮箱接口（user_id 来自 JWT，验证旧邮箱验证码和新邮箱验证码后更新）"""
     user_service = User(db)
     try:
         db_user = await user_service.change_email(
-            user_id=payload.user_id,
+            user_id=user_id,
             old_code=payload.old_code,
             new_email=payload.new_email,
             new_code=payload.new_code,
@@ -259,14 +274,16 @@ async def change_email(payload: ChangeEmail, db: AsyncSession = Depends(get_db))
 
 
 @router.put("/update-avatar")
-async def update_avatar(payload: UpdateAvatar, db: AsyncSession = Depends(get_db)):
-    """
-    更新用户头像接口
-    """
+async def update_avatar(
+    payload: UpdateAvatar,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新用户头像接口（user_id 来自 JWT）"""
     user_service = User(db)
     try:
         db_user = await user_service.update_avatar(
-            user_id=payload.user_id,
+            user_id=user_id,
             avatar_url=payload.avatar_url,
         )
     except ValueError as e:
@@ -283,14 +300,15 @@ async def update_avatar(payload: UpdateAvatar, db: AsyncSession = Depends(get_db
 
 
 @router.post("/schedule-deletion")
-async def schedule_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(get_db)):
-    """
-    计划删除账号接口
-    - 将 status 置为 0，后台任务在 updated_at 1分钟后自动清理
-    """
+async def schedule_deletion(
+    payload: ScheduleDeletion,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """计划删除账号接口（user_id 来自 JWT，将 status 置为 0，后台任务在1分钟后自动清理）"""
     user_service = User(db)
     try:
-        db_user = await user_service.schedule_deletion(payload.user_id)
+        db_user = await user_service.schedule_deletion(user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {
@@ -304,13 +322,15 @@ async def schedule_deletion(payload: ScheduleDeletion, db: AsyncSession = Depend
 
 
 @router.post("/cancel-deletion")
-async def cancel_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(get_db)):
-    """
-    取消账号删除接口
-    """
+async def cancel_deletion(
+    payload: ScheduleDeletion,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """取消账号删除接口（user_id 来自 JWT）"""
     user_service = User(db)
     try:
-        db_user = await user_service.cancel_deletion(payload.user_id)
+        db_user = await user_service.cancel_deletion(user_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {
@@ -324,15 +344,16 @@ async def cancel_deletion(payload: ScheduleDeletion, db: AsyncSession = Depends(
 
 
 @router.put("/update-username")
-async def update_username(payload: UpdateUsername, db: AsyncSession = Depends(get_db)):
-    """
-    更新用户名接口
-    - 含用户名唯一性校验
-    """
+async def update_username(
+    payload: UpdateUsername,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新用户名接口（user_id 来自 JWT，含用户名唯一性校验）"""
     user_service = User(db)
     try:
         db_user = await user_service.update_username(
-            user_id=payload.user_id,
+            user_id=user_id,
             new_username=payload.new_username,
         )
     except ValueError as e:
@@ -348,14 +369,16 @@ async def update_username(payload: UpdateUsername, db: AsyncSession = Depends(ge
 
 
 @router.put("/set-password")
-async def set_password(payload: SetPassword, db: AsyncSession = Depends(get_db)):
-    """
-    设置密码接口（用于无密码用户首次设置密码）
-    """
+async def set_password(
+    payload: SetPassword,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """设置密码接口（user_id 来自 JWT，用于无密码用户首次设置密码）"""
     user_service = User(db)
     try:
         db_user = await user_service.set_password(
-            user_id=payload.user_id,
+            user_id=user_id,
             new_password=payload.new_password,
         )
     except ValueError as e:
@@ -371,15 +394,16 @@ async def set_password(payload: SetPassword, db: AsyncSession = Depends(get_db))
 
 
 @router.put("/bind-email")
-async def bind_email(payload: BindEmail, db: AsyncSession = Depends(get_db)):
-    """
-    绑定邮箱接口（用于无邮箱用户首次绑定邮箱）
-    - 验证新邮箱验证码后绑定邮箱
-    """
+async def bind_email(
+    payload: BindEmail,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """绑定邮箱接口（user_id 来自 JWT，用于无邮箱用户首次绑定邮箱）"""
     user_service = User(db)
     try:
         db_user = await user_service.bind_email(
-            user_id=payload.user_id,
+            user_id=user_id,
             new_email=payload.new_email,
             new_code=payload.new_code,
         )
@@ -400,12 +424,16 @@ async def bind_email(payload: BindEmail, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{user_id}/info")
-async def get_user_info(user_id: int, db: AsyncSession = Depends(get_db)):
+@router.get("/info")
+async def get_user_info(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    获取用户信息接口
+    获取当前登录用户信息接口（user_id 来自 JWT）
     - 用于前端验证账号是否存在（如账号删除后状态同步）
-    - 返回与登录接口一致的用户信息格式
+    - 若账号已被删除，get_current_user_id 仍可通过 token 解析出 user_id，
+      此处查询数据库返回 404，前端据此清除本地状态
     """
     user_service = User(db)
     user = await user_service.get_by_id(user_id)
@@ -433,7 +461,7 @@ async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db))
     - 接收前端 wx.login() 获取的 code
     - 调用微信 jscode2session 接口换取 openid 和 session_key
     - 查找或创建用户，session_key 安全存储于后端（不下发到前端）
-    - 返回用户信息（id、username、signature、avatar_url）
+    - 返回用户信息（id、username、signature、avatar_url）和 JWT access_token
     """
     user_service = User(db)
     try:
@@ -445,13 +473,5 @@ async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db))
     return {
         "code": 0,
         "msg": "登录成功",
-        "data": {
-            "id": db_user.id,
-            "username": db_user.username or "",
-            "signature": db_user.signature or "",
-            "avatar_url": db_user.avatar_url or "",
-            "email": db_user.email or "",
-            "has_password": bool(db_user.password_hash),
-            "status": db_user.status,
-        },
+        "data": _user_payload(db_user),
     }

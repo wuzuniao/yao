@@ -109,7 +109,7 @@ async function loadMessages(reset = false) {
     loadingMore.value = true
   }
   try {
-    const res = await listMessages(userStore.userInfo.id, page.value, PAGE_SIZE)
+    const res = await listMessages(page.value, PAGE_SIZE)
     if (res.code === 0 && res.data) {
       const items = res.data.items || []
       // reset 替换列表，分页追加
@@ -136,7 +136,7 @@ async function loadMessages(reset = false) {
 async function pollUnreadCount() {
   if (!userStore.userInfo) return
   try {
-    const res = await getUnreadCount(userStore.userInfo.id)
+    const res = await getUnreadCount()
     if (res.code === 0 && res.data) {
       const newCount = res.data.unread_count || 0
       // 未读数量增加说明有新消息，刷新列表以展示新消息
@@ -158,7 +158,7 @@ async function pollUnreadCount() {
 async function handleCardClick(item) {
   if (!item.is_unread || !userStore.userInfo) return
   try {
-    const res = await markMessageRead({ log_id: item.id, user_id: userStore.userInfo.id })
+    const res = await markMessageRead({ log_id: item.id })
     if (res.code === 0) {
       // 状态更新成功：前端实时移除高亮（卡片保留在列表）
       item.is_unread = false

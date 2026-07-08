@@ -3,10 +3,13 @@ from typing import List
 
 from pydantic import BaseModel, field_validator
 
+from ..core.security import Security
+
 
 class CreatePlan(BaseModel):
     """
     创建计划请求 Schema
+    - user_id 由 JWT 提供，不入请求体
     - 日期为起止日期范围（start_date / end_date）
     - 时间为单个时间数组（支持多个通知时间点）
     - 通知方式为通知渠道ID数组
@@ -14,7 +17,6 @@ class CreatePlan(BaseModel):
     - priority：优先级，数字越小优先级越高（范围0-7，默认3）
     """
 
-    user_id: int
     name: str
     remark: str = ""
     start_date: date
@@ -27,18 +29,15 @@ class CreatePlan(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        if not v or not v.strip():
+        v = Security.sanitize_string(v, max_length=100, field_name="计划名称")
+        if not v:
             raise ValueError("计划名称不能为空")
-        if len(v) > 100:
-            raise ValueError("计划名称不能超过100个字符")
-        return v.strip()
+        return v
 
     @field_validator("remark")
     @classmethod
     def validate_remark(cls, v: str) -> str:
-        if v and len(v) > 255:
-            raise ValueError("备注不能超过255个字符")
-        return v
+        return Security.sanitize_string(v, max_length=255, field_name="备注")
 
     @field_validator("notification_times")
     @classmethod
@@ -84,3 +83,8 @@ class UpdatePlan(CreatePlan):
     """更新计划请求 Schema（复用 CreatePlan 全部字段校验，新增 plan_id）"""
 
     plan_id: int
+
+    @field_validator("plan_id")
+    @classmethod
+    def validate_plan_id(cls, v: int) -> int:
+        return Security.validate_positive_int(v, "计划ID")

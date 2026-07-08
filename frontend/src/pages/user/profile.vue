@@ -430,7 +430,6 @@ async function handleUpdateUsername() {
   }
   try {
     const result = await updateUsername({
-      user_id: userStore.userInfo.id,
       new_username: usernameForm.value.trim()
     })
     // 同步更新本地用户信息
@@ -455,7 +454,6 @@ async function handleUpdateAvatar() {
   }
   try {
     await updateAvatar({
-      user_id: userStore.userInfo.id,
       avatar_url: avatarValue
     })
     // 同步更新本地用户信息
@@ -483,7 +481,6 @@ async function handleUpdateSignature() {
   }
   try {
     await updateSignature({
-      user_id: userStore.userInfo.id,
       signature: signatureForm.value.trim()
     })
     // 同步更新本地用户信息，settings.vue 通过 computed 自动刷新签名显示
@@ -551,16 +548,14 @@ async function handleChangePassword() {
     if (hasPassword.value) {
       // 修改密码：验证旧密码后更新
       await changePassword({
-        user_id: userStore.userInfo.id,
-        old_password: passwordForm.oldPassword,
+          old_password: passwordForm.oldPassword,
         new_password: passwordForm.newPassword
       })
       uni.showToast({ title: '密码修改成功', icon: 'success' })
     } else {
       // 设置密码：无密码用户首次设置
       await setPassword({
-        user_id: userStore.userInfo.id,
-        new_password: passwordForm.newPassword
+          new_password: passwordForm.newPassword
       })
       // 设置密码成功后更新本地 has_password 状态
       userStore.userInfo.has_password = true
@@ -627,7 +622,7 @@ function startCountdown(targetText, targetCounting) {
 async function handleGetOldEmailCode() {
   if (emailOldCodeCounting.value) return
   try {
-    await sendChangeEmailOldCode(userStore.userInfo.id)
+    await sendChangeEmailOldCode()
     uni.showToast({ title: '验证码已发送', icon: 'none' })
     startCountdown(emailOldCodeText, emailOldCodeCounting)
   } catch (e) {
@@ -687,8 +682,7 @@ async function handleChangeEmail() {
     if (hasEmail.value) {
       // 修改邮箱：需旧邮箱验证码 + 新邮箱验证码
       await changeEmail({
-        user_id: userStore.userInfo.id,
-        old_code: emailForm.oldCode,
+          old_code: emailForm.oldCode,
         new_email: emailForm.newEmail,
         new_code: emailForm.newCode
       })
@@ -697,8 +691,7 @@ async function handleChangeEmail() {
       // 绑定邮箱：无邮箱用户首次绑定，仅需新邮箱验证码
       // 若邮箱已存在会触发账号合并，返回的主账号 id 可能与当前不同
       const result = await bindEmail({
-        user_id: userStore.userInfo.id,
-        new_email: emailForm.newEmail,
+          new_email: emailForm.newEmail,
         new_code: emailForm.newCode
       })
       // 账号合并后用后端返回的完整用户信息更新本地状态（id/username/email/avatar_url/signature 等均可能变化）
@@ -723,7 +716,7 @@ function handleDeletion() {
       success: async (res) => {
         if (res.confirm) {
           try {
-            await cancelDeletion(userStore.userInfo.id)
+            await cancelDeletion()
             userStore.userInfo.status = 1
             try {
               uni.setStorageSync('userInfo', userStore.userInfo)
@@ -749,7 +742,7 @@ function handleDeletion() {
       success: async (res) => {
         if (res.confirm) {
           try {
-            const result = await scheduleDeletion(userStore.userInfo.id)
+            const result = await scheduleDeletion()
             userStore.userInfo.status = result.data.status
             try {
               uni.setStorageSync('userInfo', userStore.userInfo)

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.config import settings
-from ..core.security import get_password_hash, verify_password
+from ..core.security import Security
 from ..models.user import User as UserModel
 from ..models.user_miniapp_account import UserMiniappAccount
 from ..models.notification_channel import NotificationChannel
@@ -141,7 +141,7 @@ class User:
         db_user = UserModel(
             username=username,
             email=email,
-            password_hash=get_password_hash(password),
+            password_hash=Security.hash_password(password),
             avatar_url="hei",
             signature="蜗角虚名，蝇头微利，算来著甚干忙。事皆前定，谁弱又谁强。",
             status=1,
@@ -196,7 +196,7 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         # 4. 校验密码
-        if not verify_password(password, user.password_hash):
+        if not Security.verify_password(password, user.password_hash):
             raise ValueError("密码错误")
         # 5. 返回用户对象（包含 username、signature、avatar_url）
         return user
@@ -230,7 +230,7 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         # 3. 更新密码
-        user.password_hash = get_password_hash(new_password)
+        user.password_hash = Security.hash_password(new_password)
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -265,10 +265,10 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         # 2. 验证旧密码
-        if not verify_password(old_password, user.password_hash):
+        if not Security.verify_password(old_password, user.password_hash):
             raise ValueError("旧密码错误")
         # 3. 更新新密码
-        user.password_hash = get_password_hash(new_password)
+        user.password_hash = Security.hash_password(new_password)
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -532,7 +532,7 @@ class User:
             raise ValueError("用户不存在")
         if user.password_hash:
             raise ValueError("用户已设置密码，请使用修改密码功能")
-        user.password_hash = get_password_hash(new_password)
+        user.password_hash = Security.hash_password(new_password)
         await self.db.commit()
         await self.db.refresh(user)
         return user

@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # 用于加密邮件客户端专用密码等敏感信息
     ENCRYPTION_SECRET_KEY: str = ""
 
+    # JWT 认证配置（用户登录态签名密钥与过期时间）
+    JWT_SECRET_KEY: str = ""
+    JWT_EXPIRE_DAYS: int = 7
+
     class Config:
         env_file = str(_BASE_DIR / ".env")
         extra = "allow"

@@ -1,20 +1,18 @@
 import { request } from '../request'
 
 /**
- * 查询用户的所有计划
- * @param {number} user_id 用户ID
+ * 查询当前登录用户的所有计划（user_id 由 JWT 提供）
  */
-export function listPlans(user_id) {
+export function listPlans() {
   return request({
-    url: `/api/v1/plans/${user_id}/list`,
+    url: '/api/v1/plans/list',
     method: 'GET'
   })
 }
 
 /**
- * 创建计划（含通知时间点和关联渠道）
+ * 创建计划（user_id 由 JWT 提供，含通知时间点和关联渠道）
  * @param {Object} param0 计划数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.name 计划名称
  * @param {string} param0.remark 备注
  * @param {string} param0.start_date 开始日期（YYYY-MM-DD）
@@ -24,31 +22,29 @@ export function listPlans(user_id) {
  * @param {number} param0.status 任务状态：1-进行中，2-暂停，0-已结束（默认1）
  * @param {number} param0.priority 优先级：0-7，数字越小优先级越高（默认3）
  */
-export function createPlan({ user_id, name, remark, start_date, end_date, notification_times, channel_ids, status = 1, priority = 3 }) {
+export function createPlan({ name, remark, start_date, end_date, notification_times, channel_ids, status = 1, priority = 3 }) {
   return request({
     url: '/api/v1/plans',
     method: 'POST',
-    data: { user_id, name, remark, start_date, end_date, notification_times, channel_ids, status, priority }
+    data: { name, remark, start_date, end_date, notification_times, channel_ids, status, priority }
   })
 }
 
 /**
- * 删除计划
+ * 删除计划（user_id 由 JWT 提供）
  * @param {number} plan_id 计划ID
- * @param {number} user_id 用户ID
  */
-export function deletePlan(plan_id, user_id) {
+export function deletePlan(plan_id) {
   return request({
-    url: `/api/v1/plans/${plan_id}?user_id=${user_id}`,
+    url: `/api/v1/plans/${plan_id}`,
     method: 'DELETE'
   })
 }
 
 /**
- * 更新计划（含通知时间点和关联渠道）
+ * 更新计划（user_id 由 JWT 提供，含通知时间点和关联渠道）
  * @param {number} plan_id 计划ID
  * @param {Object} param0 计划数据
- * @param {number} param0.user_id 用户ID
  * @param {string} param0.name 计划名称
  * @param {string} param0.remark 备注
  * @param {string} param0.start_date 开始日期（YYYY-MM-DD）
@@ -58,10 +54,10 @@ export function deletePlan(plan_id, user_id) {
  * @param {number} param0.status 任务状态：1-进行中，2-暂停，0-已结束
  * @param {number} param0.priority 优先级：0-7，数字越小优先级越高
  */
-export function updatePlan(plan_id, { user_id, name, remark, start_date, end_date, notification_times, channel_ids, status, priority }) {
+export function updatePlan(plan_id, { name, remark, start_date, end_date, notification_times, channel_ids, status, priority }) {
   return request({
     url: `/api/v1/plans/${plan_id}`,
     method: 'PUT',
-    data: { plan_id, user_id, name, remark, start_date, end_date, notification_times, channel_ids, status, priority }
+    data: { name, remark, start_date, end_date, notification_times, channel_ids, status, priority }
   })
 }
