@@ -118,7 +118,7 @@
           "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",
           "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面",
           "useInputLimit.js": "输入框字符过滤与长度限制工具，导出 useInputLimit(maxLength, allowedPattern?) 组合式函数，返回 { max, filter, handleInput, wasAtLimit, limitReached, limitHint, checkLimit }。实现字符限制与后端字段严格匹配（配合 input 组件 :maxlength）与白名单正则过滤特殊字符；提示仅在达到上限后继续输入时触发（非达到上限时立即触发），通过 limitHint 返回已达 X 字上限。用于 login/register/forgot-password/profile/plan/notification 页面",
-          "useShare.js": "微信分享统一配置组合式函数，导出 useShare(options?)，内部注册 onShareAppMessage（转发给朋友）与 onShareTimeline（分享到朋友圈）两个页面生命周期钩子。复制链接由微信小程序菜单默认提供。用于全部 13 个页面"
+          "useShare.js": "微信分享统一配置组合式函数，导出 useShare(options?)，内部注册 onShareAppMessage（转发给朋友）与 onShareTimeline（分享到朋友圈）两个页面生命周期钩子，并在 onLoad 中调用 wx.showShareMenu({menus:['shareAppMessage','shareTimeline']}) 显式启用右上角菜单分享按钮（否则按钮显示为灰色不可点击）。复制链接依赖转发功能启用后自动可用。用于全部 13 个页面"
         },
         "store": {
           "描述": "Pinia 状态管理目录，管理全局共享状态（用户登录信息等）",
