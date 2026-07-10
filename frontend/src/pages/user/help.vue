@@ -48,10 +48,9 @@
             <text class="help-page__card-title">打卡逻辑如何设置的？</text>
             <text class="help-page__card-text">只允许在打卡日期范围内进行打卡。</text>
             <text class="help-page__card-text">未到打卡时间：打卡按钮为“未到打卡时间”。</text>
-            <text class="help-page__card-text">只有有一次提醒时间时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。</text>
-            <text class="help-page__card-text">当存在多个提醒时间且两次打卡间隔大于两小时时：提前一小时打卡按钮会变为“立即打卡”，此时允许打卡。</text>
-            <text class="help-page__card-text">当存在多个提醒时间且两次打卡间隔在两小时以下时：两次提醒时间的间隔时间中，前半部分时间为已完成，后半部分时间重置按钮为"立即打卡"，此时允许打卡。</text>
-            <text class="help-page__card-text">当任何时候需要打卡，可长按任何非“立即打卡”按钮3秒，会重置按钮为"立即打卡"，此时允许打卡。</text>
+            <text class="help-page__card-text">提醒时间前后2小时，打卡按钮会变为“立即打卡”，此时允许打卡；已打卡则将打卡按钮变为“已打卡”。</text>
+            <text class="help-page__card-text">当存在多个提醒时间时：取两个提醒时间的中间点，分别进行是否打卡判断，未打卡则将打卡按钮会变为“立即打卡”，已打卡则将打卡按钮变为“已打卡”。</text>
+            <text class="help-page__card-text">当需要打卡时，可长按“未到打卡时间”或“已打卡”按钮3秒，重置按钮为"立即打卡"，此时允许打卡。</text>
           </view>
         </view>
 
@@ -59,9 +58,9 @@
         <view class="help-page__card">
           <view class="help-page__card-body">
             <text class="help-page__card-title">通知逻辑如何设置的？</text>
-            <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡的，发送通知。</text>
-            <text class="help-page__card-text">当存在多个提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天的打卡记录数量小于提醒时间数量时，发送通知。</text>
-            <text class="help-page__card-text">当超过提醒时间5分钟、30分钟、1小时，依旧没有打卡记录时，在对应时间点发送通知。</text>
+            <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡时，发送通知。</text>
+            <text class="help-page__card-text">当存在多个提醒时间时：到达打卡计划的通知时间，且当前提醒时间的匹配范围内打卡记录数量小于1时，发送通知。</text>
+            <text class="help-page__card-text">当超过提醒时间10分钟、1小时（或与下一次提醒时间的中间点，取先到的时间），依旧没有打卡记录时，发送通知。</text>
           </view>
         </view>
       </view>

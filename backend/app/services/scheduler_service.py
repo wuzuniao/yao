@@ -10,8 +10,10 @@
 3. 定时通知派发循环（每 60 秒）：根据打卡计划提醒时间发送站内信/邮件通知
 
 通知派发逻辑：
-- 准时触发（trigger_type=0）：到达提醒时间，且当天打卡记录数 < 提醒时间数时发送
-- 超时催办（trigger_type=1/2/3）：超过提醒时间 5 分钟/30 分钟/1 小时，该时间点仍无打卡记录时发送
+- 准时触发（trigger_type=0）：到达提醒时间，且该提醒时间对应匹配区间内无打卡记录时发送
+- 催办两档：
+  - 档位1（trigger_type=1）：超过提醒时间 10 分钟，匹配区间内无打卡记录时发送
+  - 档位2（trigger_type=2）：1 小时 与 下一次提醒中点 择先到达者触发（末次提醒固定 +1 小时），匹配区间内无打卡记录时发送
 - 防重：以 (plan_time_id, trigger_type, notify_date, channel_id) 为去重键查询 notification_logs
 - 站内信：直接写 notification_logs（status=2 未读）
 - 邮件：读取用户 notification_channels.channel_value 作为 SMTP 发送，收件人取 users.email
@@ -38,7 +40,9 @@ from ..schemas.notification_log import (
     LOG_STATUS_FAILED,
     LOG_STATUS_UNREAD,
     TRIGGER_ON_TIME,
-    FOLLOWUP_OFFSETS,
+    TRIGGER_OFFSET_10MIN,
+    TRIGGER_OFFSET_1HOUR_OR_MIDPOINT,
+    FOLLOWUP_OFFSET_10MIN,
     TRIGGER_DESC,
 )
 from ..utils.timezone import now_shanghai
@@ -123,6 +127,13 @@ class NotificationDispatcher:
     通知派发器（单次执行，由 SchedulerService 每分钟实例化调用）
     --------------------------------------------------------------------------
     将派发逻辑独立成类，避免 SchedulerService 承载过多职责。
+
+    派发规则（详见 clarify-notification-logic spec）：
+    - 准时触发（trigger_type=0）：当前 HH:MM 命中提醒时间，且该提醒时间对应匹配区间内无打卡记录
+    - 档位1催办（trigger_type=1）：当前 HH:MM == 提醒时间+10分钟，且匹配区间内无打卡记录
+    - 档位2催办（trigger_type=2）：当前 HH:MM == 档位2触发时间（1小时与中点择先到达者），
+      且匹配区间内无打卡记录；末次提醒固定 +1 小时
+    - 匹配区间定义同 clarify-checkin-logic spec（按相邻提醒中点划分，覆盖全天 0:00-24:00）
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -130,28 +141,27 @@ class NotificationDispatcher:
 
     async def dispatch_for_now(self) -> int:
         """
-        派发当前时刻应触发的所有通知（准时 + 三档催办）
-        - 准时：当前 HH:MM 命中提醒时间
-        - 催办：当前 HH:MM == 提醒时间 + 5/30/60 分钟
+        派发当前时刻应触发的所有通知（准时 + 两档催办）
         返回成功派发的通知数（不含被去重跳过的）
         """
         now = now_shanghai()
         sent = 0
-        # 准时触发
-        sent += await self._dispatch_trigger(now, TRIGGER_ON_TIME)
-        # 三档催办：now 反推提醒时间 = now - offset
-        for trigger_type, offset_min in FOLLOWUP_OFFSETS:
-            target = now - timedelta(minutes=offset_min)
-            sent += await self._dispatch_trigger(target, trigger_type)
+        # 准时触发：reminder = now（offset=0）
+        sent += await self._dispatch_fixed_offset(now, 0, TRIGGER_ON_TIME)
+        # 档位1：reminder = now - 10分钟
+        sent += await self._dispatch_fixed_offset(now, FOLLOWUP_OFFSET_10MIN, TRIGGER_OFFSET_10MIN)
+        # 档位2：动态触发时间，正向查询今日+昨日有效计划
+        sent += await self._dispatch_followup_2(now)
         return sent
 
-    async def _dispatch_trigger(self, target_dt: datetime, trigger_type: int) -> int:
+    async def _dispatch_fixed_offset(self, now: datetime, offset_min: int, trigger_type: int) -> int:
         """
-        派发某一触发类型的通知
-        :param target_dt: 提醒时间所在的 datetime（准时=now，催办=now-offset）
-        :param trigger_type: TRIGGER_ON_TIME / TRIGGER_OFFSET_5MIN / ...
+        处理准时触发和档位1催办（反推提醒时间）
+        :param now: 当前时间
+        :param offset_min: 偏移分钟数（准时=0，档位1=10）
+        :param trigger_type: TRIGGER_ON_TIME / TRIGGER_OFFSET_10MIN
         """
-        # 截断到分钟（秒数置零），与 DB 中 TIME 列 HH:MM:SS 对齐
+        target_dt = now - timedelta(minutes=offset_min)
         target_time = dt_time(target_dt.hour, target_dt.minute)
         notify_date = target_dt.date()
 
@@ -174,17 +184,19 @@ class NotificationDispatcher:
         sent = 0
         for pt in plan_times:
             plan = pt.plan
-            # 准时触发：当天打卡记录数 < 提醒时间数 才发送
-            # 催办触发：该提醒时间点当天无打卡记录 才发送
-            if trigger_type == TRIGGER_ON_TIME:
-                times_count = len(plan.notification_times)
-                checkin_count = await self._count_checkins(plan.id, plan.user_id, notify_date)
-                if checkin_count >= times_count:
-                    continue
-            else:
-                if await self._has_checkin_for_slot(plan.id, pt.id, plan.user_id, notify_date):
-                    continue
-
+            # 在计划提醒时间列表中定位 pt 的索引，用于取匹配区间
+            times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
+            idx = next((i for i, nt in enumerate(times) if nt.id == pt.id), None)
+            if idx is None:
+                continue
+            intervals = self._get_match_intervals_minutes(times)
+            start_min, end_min = intervals[idx]
+            # 匹配区间内已有打卡记录则跳过
+            checkin_count = await self._count_checkins_in_interval(
+                plan.user_id, plan.id, notify_date, start_min, end_min
+            )
+            if checkin_count >= 1:
+                continue
             # 遍历该计划绑定的通知渠道
             channels = await self._get_channels_for_plan(plan.id)
             for channel in channels:
@@ -195,6 +207,97 @@ class NotificationDispatcher:
                     continue
                 await self._send_via_channel(plan, pt, channel, trigger_type, notify_date)
                 sent += 1
+        return sent
+
+    async def _dispatch_followup_2(self, now: datetime) -> int:
+        """档位2催办：动态触发时间，正向查询今日+昨日有效计划"""
+        now_min = now.hour * 60 + now.minute
+        sent = 0
+        # 今日有效计划
+        sent += await self._dispatch_followup_2_for_date(now, now.date(), now_min, is_today=True)
+        # 昨日有效计划（处理末次提醒+1小时跨天的情况）
+        sent += await self._dispatch_followup_2_for_date(
+            now, now.date() - timedelta(days=1), now_min, is_today=False
+        )
+        return sent
+
+    async def _dispatch_followup_2_for_date(
+        self, now: datetime, plan_date, now_min: int, is_today: bool
+    ) -> int:
+        """
+        查询某日有效计划的档位2触发
+        :param plan_date: 计划有效期判定日期
+        :param now_min: 当前时间的分钟数
+        :param is_today: plan_date 是否为今日（用于区分当日触发与跨天触发）
+        """
+        result = await self.db.execute(
+            select(CheckinPlan)
+            .where(
+                CheckinPlan.status == 1,
+                CheckinPlan.start_date <= plan_date,
+                CheckinPlan.end_date >= plan_date,
+            )
+            .options(selectinload(CheckinPlan.notification_times))
+        )
+        plans = result.scalars().all()
+
+        sent = 0
+        for plan in plans:
+            times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
+            if not times:
+                continue
+            intervals = self._get_match_intervals_minutes(times)
+            for idx, pt in enumerate(times):
+                reminder_min = pt.notification_time.hour * 60 + pt.notification_time.minute
+                # 计算档位2触发分钟数
+                if idx < len(times) - 1:
+                    next_min = (
+                        times[idx + 1].notification_time.hour * 60
+                        + times[idx + 1].notification_time.minute
+                    )
+                    midpoint = (reminder_min + next_min) // 2
+                    trigger_min = min(reminder_min + 60, midpoint)
+                else:
+                    # 末次提醒：固定 +1 小时
+                    trigger_min = reminder_min + 60
+
+                # 判断命中
+                hit = False
+                notify_date = plan_date
+                if trigger_min < 1440:
+                    # 当日触发：仅今日计划可命中
+                    if is_today and now_min == trigger_min:
+                        hit = True
+                else:
+                    # 跨天触发（仅末次提醒+1小时可能发生）：仅昨日计划可命中
+                    mapped_min = trigger_min - 1440
+                    if not is_today and now_min == mapped_min:
+                        hit = True
+
+                if not hit:
+                    continue
+
+                # 匹配区间内已有打卡记录则跳过
+                start_min, end_min = intervals[idx]
+                checkin_count = await self._count_checkins_in_interval(
+                    plan.user_id, plan.id, notify_date, start_min, end_min
+                )
+                if checkin_count >= 1:
+                    continue
+
+                # 遍历渠道发送（档位2对同一提醒时间点同一渠道当天只发一次，靠防重键去重）
+                channels = await self._get_channels_for_plan(plan.id)
+                for channel in channels:
+                    if not channel.enabled:
+                        continue
+                    if await self._already_sent(
+                        pt.id, TRIGGER_OFFSET_1HOUR_OR_MIDPOINT, notify_date, channel.id
+                    ):
+                        continue
+                    await self._send_via_channel(
+                        plan, pt, channel, TRIGGER_OFFSET_1HOUR_OR_MIDPOINT, notify_date
+                    )
+                    sent += 1
         return sent
 
     # ==================== 查询辅助 ====================
@@ -208,34 +311,52 @@ class NotificationDispatcher:
         )
         return list(result.scalars().all())
 
-    async def _count_checkins(self, plan_id: int, user_id: int, notify_date) -> int:
-        """统计某计划某日的打卡记录总数（日期范围比较避免时区问题）"""
+    @staticmethod
+    def _get_match_intervals_minutes(times: list) -> list[tuple[int, int]]:
+        """
+        计算匹配区间（分钟数），算法同 checkin_service._get_match_intervals
+        - 第一次提醒：[0:00, midpoint(t1, t2)]
+        - 中间提醒：[midpoint(t_{i-1}, t_i), midpoint(t_i, t_{i+1})]
+        - 最后一次提醒：[midpoint(t_{n-1}, t_n), 24:00]
+        """
+        intervals: list[tuple[int, int]] = []
+        for i in range(len(times)):
+            t_min = times[i].notification_time.hour * 60 + times[i].notification_time.minute
+            if i == 0:
+                start = 0  # 0:00
+            else:
+                prev_min = (
+                    times[i - 1].notification_time.hour * 60
+                    + times[i - 1].notification_time.minute
+                )
+                start = (prev_min + t_min) // 2
+            if i == len(times) - 1:
+                end = 1440  # 24:00
+            else:
+                next_min = (
+                    times[i + 1].notification_time.hour * 60
+                    + times[i + 1].notification_time.minute
+                )
+                end = (t_min + next_min) // 2
+            intervals.append((start, end))
+        return intervals
+
+    async def _count_checkins_in_interval(
+        self, user_id: int, plan_id: int, notify_date, start_min: int, end_min: int
+    ) -> int:
+        """查询某计划某日匹配区间内的打卡记录数"""
         day_start = datetime.combine(notify_date, dt_time(0, 0, 0))
-        day_end = datetime.combine(notify_date + timedelta(days=1), dt_time(0, 0, 0))
+        interval_start = day_start + timedelta(minutes=start_min)
+        interval_end = day_start + timedelta(minutes=end_min)
         result = await self.db.execute(
             select(sa_func.count(CheckinRecord.id)).where(
                 CheckinRecord.user_id == user_id,
                 CheckinRecord.plan_id == plan_id,
-                CheckinRecord.actual_time >= day_start,
-                CheckinRecord.actual_time < day_end,
+                CheckinRecord.actual_time >= interval_start,
+                CheckinRecord.actual_time < interval_end,
             )
         )
         return int(result.scalar() or 0)
-
-    async def _has_checkin_for_slot(self, plan_id: int, plan_time_id: int, user_id: int, notify_date) -> bool:
-        """判断某计划某提醒时间点在指定日期是否已有打卡记录"""
-        day_start = datetime.combine(notify_date, dt_time(0, 0, 0))
-        day_end = datetime.combine(notify_date + timedelta(days=1), dt_time(0, 0, 0))
-        result = await self.db.execute(
-            select(sa_func.count(CheckinRecord.id)).where(
-                CheckinRecord.user_id == user_id,
-                CheckinRecord.plan_id == plan_id,
-                CheckinRecord.plan_time_id == plan_time_id,
-                CheckinRecord.actual_time >= day_start,
-                CheckinRecord.actual_time < day_end,
-            )
-        )
-        return int(result.scalar() or 0) > 0
 
     async def _already_sent(self, plan_time_id: int, trigger_type: int, notify_date, channel_id: int) -> bool:
         """防重查询：当日该时间点+触发类型+渠道是否已发过通知（含失败记录）"""

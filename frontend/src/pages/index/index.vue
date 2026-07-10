@@ -89,15 +89,17 @@
  *  - 空状态：未登录显示欢迎语，已登录无计划显示创建提示
  *  - 立即打卡按钮（多状态）：
  *    - 灰色"无打卡任务"：未登录/无任务/不在计划日期范围内/无提醒时间
- *    - 橙色"未到打卡时间"：未到任何提醒时间的"开始打卡时间"（提醒时间前1小时），不显示图标
- *    - 红色"立即打卡"：已到开始打卡时间且当前提醒未打卡（从提醒前1小时持续到打卡为止）
- *    - 绿色"已打卡"：当前提醒已匹配到打卡记录，持续到下一次提醒开始打卡时间或当日24:00
+ *    - 橙色"未到打卡时间"：未到第一个提醒时间的"开始打卡时间"（提醒时间前2小时），不显示图标
+ *    - 红色"立即打卡"：已到开始打卡时间且当前匹配区间未打卡
+ *    - 绿色"已打卡"：当前匹配区间已匹配到打卡记录，持续到匹配区间结束（下一个中点或24:00）
  *    - 长按3秒：waiting/done 状态可长按3秒重置为"立即打卡"
  *    - 打卡成功后不弹窗，按钮直接转为绿色"已打卡"状态
- *    - 打卡记录匹配：单条提醒看全天任意记录；多条提醒看提醒时间前后各1小时区间记录
+ *    - 打卡防抖：同一任务3秒内只允许点击一次
+ *    - 打卡记录匹配：按相邻提醒的中点划分匹配区间，覆盖全天0:00-24:00无间隙、无留白
+ *    - 用户不在线时（onHide）不进行检查，清除定时器；onShow 时重启并立即同步
  */
 import { ref, computed, onUnmounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
 import { useUserStore } from '../../store/modules/user'
@@ -130,6 +132,8 @@ let refreshTimer = null
 const forceActive = ref(false)
 // 长按计时器
 let longPressTimer = null
+// 打卡防抖时间戳：同一任务3秒内只允许点击一次
+let lastCheckinTime = 0
 
 // ===== 计算属性 =====
 
@@ -189,47 +193,55 @@ function parseIsoToMinutes(isoStr) {
   return (parts[0] || 0) * 60 + (parts[1] || 0)
 }
 
-// 判定某提醒时间 t 是否已打卡（基于今日打卡记录的"匹配打卡记录"规则）
-// - 单条提醒时间：全天有任意一条打卡记录即视为已打卡
-// - 多条提醒时间：在 t 的前后各1小时 [t-60, t+60] 内存在打卡记录即视为已打卡
-function isTimeChecked(t, allTimes) {
-  if (todayCheckinMinutes.value.length === 0) return false
-  if (allTimes.length === 1) {
-    return true
+// 计算每个提醒时间的匹配区间（按相邻中点划分，覆盖全天 0:00-24:00，无间隙、无留白）
+// - 第一次提醒：[0:00, midpoint(t1, t2)]
+// - 中间提醒：[midpoint(t_{i-1}, t_i), midpoint(t_i, t_{i+1})]
+// - 最后一次提醒：[midpoint(t_{n-1}, t_n), 24:00]
+function getMatchIntervals(times) {
+  const intervals = []
+  for (let i = 0; i < times.length; i++) {
+    let start
+    let end
+    if (i === 0) {
+      start = 0 // 0:00
+    } else {
+      start = Math.floor((times[i - 1].minutes + times[i].minutes) / 2)
+    }
+    if (i === times.length - 1) {
+      end = 1440 // 24:00
+    } else {
+      end = Math.floor((times[i].minutes + times[i + 1].minutes) / 2)
+    }
+    intervals.push({ start, end })
   }
-  const lo = t.minutes - 60
-  const hi = t.minutes + 60
-  return todayCheckinMinutes.value.some(r => r.minutes >= lo && r.minutes <= hi)
+  return intervals
 }
 
-// 找当前时间应针对的提醒时间索引（从后往前找第一个 nowMinutes >= t-60 的）
-// 小间隔（gap≤120）前半段归属前一个提醒
+// 找当前时间所在的匹配区间索引（全天无留白，必定能找到）
 function findCurrentTargetIndex(times, nowMinutes) {
-  for (let i = times.length - 1; i >= 0; i--) {
-    if (nowMinutes >= times[i].minutes - 60) {
-      // 小间隔前半段归属前一个提醒
-      if (i > 0) {
-        const prev = times[i - 1]
-        const gap = times[i].minutes - prev.minutes
-        if (gap <= 120) {
-          const midpoint = (prev.minutes + times[i].minutes) / 2
-          if (nowMinutes < midpoint) {
-            return i - 1
-          }
-        }
-      }
+  const intervals = getMatchIntervals(times)
+  for (let i = 0; i < intervals.length; i++) {
+    if (nowMinutes >= intervals[i].start && nowMinutes < intervals[i].end) {
       return i
     }
   }
-  return -1
+  // 边界情况：恰好 24:00（1440分钟），归属最后一个区间
+  return intervals.length - 1
+}
+
+// 判定某匹配区间是否已打卡（基于今日打卡记录）
+function isIntervalChecked(times, intervalIndex) {
+  if (todayCheckinMinutes.value.length === 0) return false
+  const intervals = getMatchIntervals(times)
+  const interval = intervals[intervalIndex]
+  return todayCheckinMinutes.value.some(r => r.minutes >= interval.start && r.minutes < interval.end)
 }
 
 // 打卡状态计算：'disabled' | 'waiting' | 'active' | 'done'
 // - disabled: 未登录/无任务/不在日期范围/无提醒时间
-// - waiting: 未到任何提醒时间的"开始打卡时间"（t-60）
-// - active: 已到开始打卡时间且当前提醒未匹配到打卡记录（从 t-60 持续到用户打卡为止，
-//           超过提醒时间 t 仍未打卡仍为 active，直到下一个提醒开始打卡时间或当日24:00）
-// - done: 当前提醒已匹配到打卡记录，持续到下一次提醒开始打卡时间或当日24:00后重置为 waiting
+// - waiting: 未到第一个提醒时间的"开始打卡时间"（t_1 - 120）
+// - active: 已到开始打卡时间且当前匹配区间未打卡
+// - done: 当前匹配区间已匹配到打卡记录，持续到匹配区间结束（下一个中点或24:00）
 const checkinState = computed(() => {
   if (!isLoggedIn.value || !hasActivePlans.value) return { status: 'disabled' }
   if (!primaryPlan.value) return { status: 'disabled' }
@@ -240,32 +252,26 @@ const checkinState = computed(() => {
   const now = new Date()
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
+  // 找当前时间所在的匹配区间索引（全天无留白，必定能找到）
   const idx = findCurrentTargetIndex(times, nowMinutes)
-  // 未到任何提醒的开始打卡时间 → waiting
-  if (idx === -1) {
-    // 长按重置：强制为 active，针对第一个未来提醒
+  const target = times[idx]
+
+  // 未到第一个提醒的开始打卡时间（t_1 - 120）→ waiting
+  if (nowMinutes < times[0].minutes - 120) {
+    // 长按重置：强制为 active
     if (forceActive.value) {
-      let target = times[0]
-      for (let i = 0; i < times.length; i++) {
-        if (times[i].minutes >= nowMinutes) {
-          target = times[i]
-          break
-        }
-      }
       return { status: 'active', timeId: target.id }
     }
     return { status: 'waiting' }
   }
-
-  const target = times[idx]
 
   // 长按重置：强制为 active（允许已打卡后重新打卡）
   if (forceActive.value) {
     return { status: 'active', timeId: target.id }
   }
 
-  // 判定当前提醒是否已匹配打卡记录
-  if (isTimeChecked(target, times)) {
+  // 判定当前匹配区间是否已打卡
+  if (isIntervalChecked(times, idx)) {
     return { status: 'done', timeId: target.id }
   }
   return { status: 'active', timeId: target.id }
@@ -301,7 +307,26 @@ const checkinIcon = computed(() => {
 
 // ===== 数据加载 =====
 
-// 加载进行中的计划（仅 status=1，按 priority 升序）
+// 计算默认主要卡片索引（当前时间在提醒时间前后2小时范围内的优先；都在范围内时优先级高的为主；优先级相同时先创建的为主）
+function computeDefaultPrimaryIndex(plans, nowMinutes) {
+  if (plans.length === 0) return -1
+  if (plans.length === 1) return 0
+  // 找出当前时间在提醒时间前后2小时范围内的计划（plans 已按 priority 升序、created_at 升序排序）
+  for (let i = 0; i < plans.length; i++) {
+    const plan = plans[i]
+    const times = (plan.notification_times || []).map(t => {
+      const [h, m] = t.notification_time.split(':').map(Number)
+      return h * 60 + m
+    })
+    if (times.some(t => Math.abs(nowMinutes - t) <= 120)) {
+      return i
+    }
+  }
+  // 没有在范围内的，回退到第一个（优先级最高且先创建）
+  return 0
+}
+
+// 加载进行中的计划（仅 status=1，按 priority 升序、created_at 升序排序）
 async function loadActivePlans() {
   if (!isLoggedIn.value) {
     activePlans.value = []
@@ -310,10 +335,24 @@ async function loadActivePlans() {
   try {
     const res = await listPlans()
     if (res.code === 0 && res.data) {
-      // 仅保留进行中的计划，按 priority 升序排序
+      // 仅保留进行中的计划，按 priority 升序排序；同优先级时先创建的在前
       activePlans.value = res.data
         .filter(p => p.status === 1)
-        .sort((a, b) => (a.priority ?? 3) - (b.priority ?? 3))
+        .sort((a, b) => {
+          const pa = a.priority ?? 3
+          const pb = b.priority ?? 3
+          if (pa !== pb) return pa - pb
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        })
+      // 设置默认主要卡片（当前时间在提醒时间前后2小时范围内的优先）
+      const now = new Date()
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      const currentPrimary = primaryPlanId.value
+      const primaryExists = currentPrimary !== null && activePlans.value.some(p => p.id === currentPrimary)
+      if (!primaryExists) {
+        const defaultIdx = computeDefaultPrimaryIndex(activePlans.value, nowMinutes)
+        primaryPlanId.value = defaultIdx >= 0 ? activePlans.value[defaultIdx].id : null
+      }
     }
   } catch (e) {
     console.warn('加载计划失败', e)
@@ -385,11 +424,17 @@ function handleSelectTask(plan) {
 
 // 立即打卡：生成当前主要卡片任务的打卡记录并写入数据库
 // 打卡成功后立即将记录加入本地列表，触发 checkinState 重算为 done（绿色"已打卡"，不弹窗）
+// 防抖：同一任务3秒内只允许点击一次
 async function handleCheckin() {
   // 仅 active 状态可点击打卡（done/waiting/disabled 均被拦截）
   if (checkinState.value.status !== 'active') return
   const timeId = checkinState.value.timeId
   if (!primaryPlan.value || !isLoggedIn.value || !timeId) return
+
+  // 防抖：3秒内只允许一次打卡
+  const nowMs = Date.now()
+  if (nowMs - lastCheckinTime < 3000) return
+  lastCheckinTime = nowMs
 
   try {
     // 构造本地时间字符串（无时区后缀），避免 toISOString() 转为 UTC 导致时区偏差
@@ -431,20 +476,28 @@ function handleLongPress() {
 
 // ===== 生命周期 =====
 
-// 页面显示时加载数据（含从其他页面返回时刷新）
+// 页面显示时加载数据（含从其他页面返回时刷新），并启动每分钟刷新定时器
 onShow(() => {
   loadActivePlans().then(() => {
     if (primaryPlan.value) {
       loadTodayCheckins()
     }
   })
-  // 每分钟刷新打卡时段状态（检测打卡窗口是否打开）
+  // 每分钟刷新打卡时段状态（用户在线时才检查）
   if (!refreshTimer) {
     refreshTimer = setInterval(() => {
       if (primaryPlan.value) {
         loadTodayCheckins()
       }
     }, 60000)
+  }
+})
+
+// 页面隐藏时清除定时器（用户不在线时不进行检查）
+onHide(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
   }
 })
 
@@ -775,12 +828,12 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
-/* 已完成态（多提醒时间间隔≤2小时，处于两次提醒间隔的前半部分）：绿色背景 */
+/* 已完成态（当前匹配区间内已打卡）：绿色背景 */
 .index-page__checkin-button--done {
   background: #2ead4b;
 }
 
-/* 未到打卡时间态（在日期范围内但未到任何提醒时间的提前一小时窗口）：橙色背景 */
+/* 未到打卡时间态（未到第一个提醒时间的开始打卡时间，即提醒前2小时）：橙色背景 */
 .index-page__checkin-button--waiting {
   background: #d97706;
 }

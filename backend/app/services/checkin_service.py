@@ -151,9 +151,11 @@ class CheckinService:
         - 查询当天有效的所有计划（start_date <= day_date <= end_date，不限制 status）
           确保已结束但当天有效的计划也会显示
         - 查询用户当天的打卡记录
-        - 打卡记录与提醒时间的匹配规则（与首页 index.vue 的 isTimeChecked 一致）：
-          - 单条提醒时间：当日有任意一条该计划的打卡记录即视为已打卡
-          - 多条提醒时间：在提醒时间的前后各1小时 [t-60, t+60] 内存在打卡记录即视为已打卡
+        - 打卡记录与提醒时间的匹配规则（与首页 index.vue 一致）：
+          - 按相邻提醒的中点划分匹配区间，覆盖全天 0:00-24:00 无间隙、无留白
+          - 单条提醒时间：匹配区间为 [0:00, 24:00]（全天）
+          - 多条提醒时间：第一个 [0:00, midpoint]；中间 [midpoint, midpoint]；最后一个 [midpoint, 24:00]
+          - 在匹配区间内有打卡记录即视为已打卡
         - 同一提醒时间多次打卡：每条记录单独占一行，确保所有记录完整展示
         - 返回格式：[{ plan_id, plan_name, plan_remark, notification_time, checked, actual_time }]
         """
@@ -188,16 +190,16 @@ class CheckinService:
                 )
             )
             .options(selectinload(CheckinPlan.notification_times))
-            .order_by(CheckinPlan.priority.asc(), CheckinPlan.created_at.desc())
+            .order_by(CheckinPlan.priority.asc(), CheckinPlan.created_at.asc())
         )
         plans = plans_result.scalars().all()
         valid_plan_ids = {p.id for p in plans}
 
         detail: list[dict] = []
-        # 已被时间区间匹配的打卡记录 id（用于后续识别未匹配的偏离记录）
+        # 已被匹配区间匹配的打卡记录 id（用于后续识别未匹配的偏离记录）
         matched_record_ids: set[int] = set()
 
-        # 3a. 当天有效计划：每个提醒时间按"时间区间匹配"判定是否已打卡
+        # 3a. 当天有效计划：每个提醒时间按"匹配区间"判定是否已打卡
         for plan in plans:
             # 该计划当天所有打卡记录（含 actual_time 转分钟数）
             plan_records = []
@@ -207,17 +209,12 @@ class CheckinService:
                     plan_records.append((record, r_minutes))
 
             times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
-            for t in times:
-                t_minutes = t.notification_time.hour * 60 + t.notification_time.minute
-                # 时间区间匹配（与 index.vue isTimeChecked 规则一致）
-                if len(times) == 1:
-                    # 单条提醒时间：当日有任意记录即视为已打卡
-                    matched = plan_records
-                else:
-                    # 多条提醒时间：[t-60, t+60] 区间内存在记录
-                    lo = t_minutes - 60
-                    hi = t_minutes + 60
-                    matched = [(r, m) for (r, m) in plan_records if m >= lo and m <= hi]
+            # 计算匹配区间（按相邻中点划分，覆盖全天 0:00-24:00）
+            intervals = self._get_match_intervals(times)
+            for i, t in enumerate(times):
+                interval_start, interval_end = intervals[i]
+                # 匹配区间内有打卡记录即视为已打卡
+                matched = [(r, m) for (r, m) in plan_records if m >= interval_start and m < interval_end]
 
                 if matched:
                     # 每条匹配记录单独占一行，确保多次打卡完整展示
@@ -241,9 +238,9 @@ class CheckinService:
                         "actual_time": None,
                     })
 
-        # 3b. 孤儿记录：计划已删除 / 不在当天有效计划中 / 偏离所有提醒区间，单独展示
+        # 3b. 孤儿记录：计划已删除 / 不在当天有效计划中 / 偏离所有匹配区间，单独展示
         for record, plan, plan_time in records:
-            # 跳过已被时间区间匹配的记录
+            # 跳过已被匹配区间匹配的记录
             if record.id in matched_record_ids:
                 continue
             detail.append({
@@ -258,3 +255,27 @@ class CheckinService:
         # 按提醒时间排序，同一提醒时间已打卡在前
         detail.sort(key=lambda x: (x["notification_time"], 0 if x["checked"] else 1))
         return detail
+
+    @staticmethod
+    def _get_match_intervals(times: list) -> list[tuple[int, int]]:
+        """
+        计算匹配区间（按相邻中点划分，覆盖全天 0:00-24:00，无间隙、无留白）
+        - 第一次提醒：[0:00, midpoint(t1, t2)]
+        - 中间提醒：[midpoint(t_{i-1}, t_i), midpoint(t_i, t_{i+1})]
+        - 最后一次提醒：[midpoint(t_{n-1}, t_n), 24:00]
+        """
+        intervals: list[tuple[int, int]] = []
+        for i in range(len(times)):
+            t_min = times[i].notification_time.hour * 60 + times[i].notification_time.minute
+            if i == 0:
+                start = 0  # 0:00
+            else:
+                prev_min = times[i - 1].notification_time.hour * 60 + times[i - 1].notification_time.minute
+                start = (prev_min + t_min) // 2
+            if i == len(times) - 1:
+                end = 1440  # 24:00
+            else:
+                next_min = times[i + 1].notification_time.hour * 60 + times[i + 1].notification_time.minute
+                end = (t_min + next_min) // 2
+            intervals.append((start, end))
+        return intervals

@@ -42,7 +42,7 @@
           "notification_channel.py": "通知渠道Schema：EmailChannelValue（邮件JSON结构）、CreateEmailChannel、UpdateEmailChannel（password空字符串表示保留原密码）、DeleteChannel（不再含 user_id，由 token 解析）；常量 CHANNEL_TYPE_ZNX/CHANNEL_TYPE_EMAIL",
           "plan.py": "计划Schema：CreatePlan（含 notification_times 时间数组、channel_ids 渠道ID数组、priority 优先级0-7，Pydantic v2 校验，不再含 user_id）、UpdatePlan（继承 CreatePlan 复用全部校验，新增 plan_id 字段）",
           "checkin_record.py": "打卡记录Schema：CreateCheckin（含 actual_time ISO格式校验，不再含 user_id）、CheckinOut",
-          "notification_log.py": "通知记录Schema：状态常量 LOG_STATUS_SUCCESS/FAILED/UNREAD、触发类型常量 TRIGGER_ON_TIME/OFFSET_5MIN/OFFSET_30MIN/OFFSET_1HOUR、FOLLOWUP_OFFSETS 催办偏移映射、TRIGGER_DESC 中文描述、MarkRead（标记已读请求 log_id，user_id 由 token 解析）"
+          "notification_log.py": "通知记录Schema：状态常量 LOG_STATUS_SUCCESS/FAILED/UNREAD、触发类型常量 TRIGGER_ON_TIME(准时)/OFFSET_10MIN(超10分钟)/OFFSET_1HOUR_OR_MIDPOINT(1小时或中点催办)、FOLLOWUP_OFFSET_10MIN 档位1固定偏移、TRIGGER_DESC 中文描述、MarkRead（标记已读请求 log_id，user_id 由 token 解析）"
         },
         "services": {
           "描述": "业务逻辑层，供api层调用，与框架无关",
@@ -53,7 +53,7 @@
           "plan_service.py": "计划业务服务（PlanService 类：list_by_user（CASE表达式排序：进行中>暂停>已结束，再按priority升序+created_at降序）/get_by_id/create_plan（含priority参数）/update_plan（含priority参数）/delete_plan（级联删除）/auto_close_expired_plans（自动关闭过期计划：status=1且end_date<today更新为0））",
           "checkin_service.py": "打卡记录业务服务（CheckinService 类：create_checkin（校验计划/时间点归属，允许重复打卡）/list_today_by_user/list_today_by_plan（均使用日期范围比较避免DATE()时区问题）/get_latest_checkin/list_by_month（查询某月有打卡记录的日期列表）/list_day_detail（查询某天打卡详情含计划提醒时间））",
           "notification_log_service.py": "通知记录业务服务（NotificationLogService 类：list_znx_by_user（JOIN notification_channels 过滤站内信+LEFT JOIN checkin_plans 取计划名称/备注，分页+未读计数）/count_unread（未读站内信数量）/mark_as_read（status 2→0，校验归属，已读不重复标记））",
-          "scheduler_service.py": "定时任务调度服务（SchedulerService 定时计划类 + NotificationDispatcher 通知派发器）。SchedulerService 集中管理3个后台循环：账号清理(30秒,委托User)/计划关闭(30分钟,委托PlanService)/通知派发(60秒,实例化NotificationDispatcher)。main.py lifespan 调用 start_all/stop_all。NotificationDispatcher.dispatch_for_now 每分钟执行：准时触发(打卡记录数<提醒时间数则发)+三档催办(超5分/30分/1小时该时间点无打卡则发)；防重键(plan_time_id,trigger_type,notify_date,channel_id)查notification_logs；站内信直接写log(status=2未读)，邮件读取channel_value作SMTP发件+users.email收件+解密密码+记录发送结果"
+          "scheduler_service.py": "定时任务调度服务（SchedulerService 定时计划类 + NotificationDispatcher 通知派发器）。SchedulerService 集中管理3个后台循环：账号清理(30秒,委托User)/计划关闭(30分钟,委托PlanService)/通知派发(60秒,实例化NotificationDispatcher)。main.py lifespan 调用 start_all/stop_all。NotificationDispatcher.dispatch_for_now 每分钟执行：准时触发(当前HH:MM命中提醒时间且对应匹配区间内无打卡记录则发)+两档催办(档位1超10分钟/档位2为1小时与下一次提醒中点择先到达者,末次固定+1小时,均按匹配区间判定)；档位2正向查询今日+昨日有效计划处理跨天情况；防重键(plan_time_id,trigger_type,notify_date,channel_id)查notification_logs；站内信直接写log(status=2未读)，邮件读取channel_value作SMTP发件+users.email收件+解密密码+记录发送结果"
         },
         "utils": {
           "描述": "通用工具函数，非业务相关",
@@ -182,6 +182,12 @@
           "spec.md": "首页打卡按钮状态机、时间窗口、交互逻辑的期望行为说明文档",
           "tasks.md": "打卡逻辑梳理任务的执行清单与完成状态",
           "checklist.md": "验证 spec.md 完整性与准确性的检查清单"
+        },
+        "clarify-notification-logic": {
+          "描述": "后端通知派发逻辑梳理与重写规格",
+          "spec.md": "后端定时通知派发的期望行为说明：准时触发(匹配区间内无打卡记录)+两档催办(10分钟/1小时或中点择先到达者,末次固定+1小时)+匹配区间定义(引用 clarify-checkin-logic)+防重去重键+站内信/邮件发送方式",
+          "tasks.md": "通知逻辑梳理与代码重写的执行清单与完成状态",
+          "checklist.md": "验证 spec.md 完整性与代码实现一致性的检查清单"
         }
       }
     },
