@@ -62,3 +62,25 @@ async def get_unread_count(
     service = NotificationLogService(db)
     count = await service.count_unread(user_id)
     return {"code": 0, "msg": "success", "data": {"unread_count": count}}
+
+
+@router.put("/read-all")
+async def read_all(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    全部标记为已读（user_id 来自 JWT，无请求体）
+    - 将当前用户所有未读站内信（status=2）批量更新为已读（status=0）
+    - 无未读记录时不报错，返回 updated_count=0
+    """
+    service = NotificationLogService(db)
+    try:
+        updated_count = await service.mark_all_as_read(user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "已全部标记为已读",
+        "data": {"updated_count": updated_count},
+    }

@@ -7,6 +7,16 @@
       <!-- 页面标题区（复用 PageHeader 组件，结构与 help/notification 等页面保持一致） -->
       <PageHeader title="站内信" desc="查看您的打卡提醒消息，点击未读消息可标记为已读。" />
 
+      <!-- 全部已读按钮（仅当存在未读消息且非加载中时显示） -->
+      <view
+        v-if="hasUnread && !loading && !loadingMore"
+        class="messages-page__mark-all"
+        :class="{ 'messages-page__mark-all--disabled': markingAll }"
+        @click="handleMarkAllRead"
+      >
+        全部已读
+      </view>
+
       <!-- 消息卡片列表 -->
       <view class="messages-page__list">
         <!-- 加载中（初次加载） -->
@@ -63,19 +73,20 @@
  * 功能：展示当前用户的站内信消息列表，支持标记已读
  *  - 数据来源：notification_logs 表（channel_type='站内信'，按 send_time 倒序）
  *  - 卡片内容：计划名称 + 备注说明 + 发送时间
- *  - 未读消息（status=2）：左侧绿色高亮条 + 浅绿背景
- *  - 点击未读卡片：调用 API 更新 status 为 0，前端实时移除高亮（卡片保留）
+ *  - 未读消息（is_unread=true）：左侧绿色高亮条 + 浅绿背景
+ *  - 点击未读卡片：调用 API 标记已读，前端实时移除高亮（卡片保留）
+ *  - 全部已读：一键将所有未读消息标记为已读（按钮仅在存在未读时显示）
  *  - 通知按钮图标：有未读显示 tongzhi_1.png，全部已读显示 tongzhi_0.png（实时切换）
  *  - 分页加载：触底加载下一页（onReachBottom）
- *  - 定时轮询：每 30 秒查询未读数量，有新消息时自动刷新列表
+ *  - 定时轮询：每 60 秒查询未读数量，数量变化时自动刷新列表
  *  - 加载中/空数据/加载失败三种状态反馈，失败可点击重试
  */
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow, onHide, onReachBottom } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useUserStore } from '../../store/modules/user'
-import { listMessages, markMessageRead, getUnreadCount } from '../../api/modules/message'
+import { listMessages, markMessageRead, markAllMessagesRead, getUnreadCount } from '../../api/modules/message'
 import { useShare } from '../../composables/useShare'
 
 useShare({ title: '站内信' })
@@ -88,9 +99,13 @@ const loadingMore = ref(false)
 const error = ref(false)
 const hasMore = ref(false)
 const page = ref(1)
+const markingAll = ref(false) // 全部已读按钮防抖（点击后立即置灰，避免重复点击）
+
+// 列表中是否存在未读消息（控制"全部已读"按钮显示）
+const hasUnread = computed(() => messages.value.some((item) => item.is_unread))
 
 const PAGE_SIZE = 20
-const POLL_INTERVAL = 30000 // 30 秒轮询（与项目后台清理任务节奏一致）
+const POLL_INTERVAL = 60000 // 60 秒轮询（与项目后台清理任务节奏一致）
 let pollTimer = null
 
 // ===== 数据加载 =====
@@ -132,19 +147,19 @@ async function loadMessages(reset = false) {
   }
 }
 
-// 轮询未读数量（轻量请求；检测到新消息时刷新列表）
+// 轮询未读数量（轻量请求；数量变化时刷新列表以保持一致性）
 async function pollUnreadCount() {
   if (!userStore.userInfo) return
   try {
     const res = await getUnreadCount()
     if (res.code === 0 && res.data) {
       const newCount = res.data.unread_count || 0
-      // 未读数量增加说明有新消息，刷新列表以展示新消息
-      if (newCount > userStore.unreadCount) {
-        await loadMessages(true)
-      } else {
-        userStore.setUnreadCount(newCount)
-      }
+      const oldCount = userStore.unreadCount
+      // 数量未变：无需操作
+      if (newCount === oldCount) return
+      // 数量变化（增加或减少）：先同步未读数量，再刷新列表以保持一致
+      userStore.setUnreadCount(newCount)
+      await loadMessages(true)
     }
   } catch (e) {
     // 轮询失败静默，不打断用户
@@ -162,13 +177,35 @@ async function handleCardClick(item) {
     if (res.code === 0) {
       // 状态更新成功：前端实时移除高亮（卡片保留在列表）
       item.is_unread = false
-      item.status = 0
       // 同步全局未读数量，所有页面 NoticeButton 图标即时切换
       userStore.decrementUnread()
     }
   } catch (e) {
     // 优雅的错误提示，不中断用户操作
     uni.showToast({ title: e.message || '标记失败，请重试', icon: 'none' })
+  }
+}
+
+// 全部标记已读：批量将所有未读站内信置为已读（防抖，点击后立即置灰）
+async function handleMarkAllRead() {
+  if (markingAll.value) return
+  markingAll.value = true
+  try {
+    const res = await markAllMessagesRead()
+    if (res.code === 0) {
+      // 成功：将列表中所有卡片置为已读（移除高亮，卡片保留）
+      messages.value.forEach((item) => {
+        item.is_unread = false
+      })
+      userStore.setUnreadCount(0)
+      uni.showToast({ title: '已全部标记为已读', icon: 'none' })
+    } else {
+      uni.showToast({ title: res.msg || '操作失败，请重试', icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: e.message || '操作失败，请重试', icon: 'none' })
+  } finally {
+    markingAll.value = false
   }
 }
 
@@ -234,6 +271,22 @@ onReachBottom(() => {
   flex-direction: column;
   gap: 64rpx;
   min-height: 100vh;
+}
+
+/* ===== 全部已读按钮 ===== */
+.messages-page__mark-all {
+  align-self: flex-end;
+  padding: 12rpx 24rpx;
+  font-size: 28rpx;
+  line-height: 40rpx;
+  color: var(--color-brand);
+  border: 1px solid var(--color-brand);
+  border-radius: 32rpx;
+}
+
+/* 防抖置灰（点击后等待接口返回期间禁用交互） */
+.messages-page__mark-all--disabled {
+  opacity: 0.5;
 }
 
 /* ===== 消息卡片列表 ===== */
@@ -323,6 +376,12 @@ onReachBottom(() => {
   .messages-page__canvas {
     padding: 105px 24px 32px;
     gap: 32px;
+  }
+  .messages-page__mark-all {
+    padding: 6px 12px;
+    font-size: 14px;
+    line-height: 20px;
+    border-radius: 16px;
   }
   .messages-page__list {
     gap: 16px;

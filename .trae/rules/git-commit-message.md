@@ -1,8 +1,8 @@
 ---
-alwaysApply: true
+alwaysApply: false
+description: 
 scene: git_message
 ---
-
 # 提交信息生成规则
 
 本规则定义 AI 在协助 Git 提交时应遵循的提交信息风格，确保项目提交历史清晰、一致、可追溯。

@@ -15,7 +15,7 @@
             "notification_channels.py": "通知渠道API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询通知渠道列表、POST /email 创建邮件渠道（密码AES-256-GCM加密存储）、PUT /email 更新邮件渠道（password空字符串保留原密码）、DELETE / 删除渠道（站内信禁删）。响应中邮件渠道password字段始终返回空值",
             "plans.py": "计划API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询用户计划列表（按status+priority+created_at排序）、POST 创建计划（含通知时间点/关联渠道/priority优先级）、PUT /{plan_id} 更新计划、DELETE /{plan_id} 删除计划",
             "checkins.py": "打卡记录API接口（均 JWT 保护，user_id 由 token 解析）：POST /checkins 创建打卡记录（允许重复打卡，解析时间后去除时区确保 naive Shanghai datetime）、GET /checkins/today 查询今日所有打卡、GET /checkins/today/{plan_id} 查询某计划今日打卡（返回checked_time_ids数组）、GET /checkins/month?year=&month= 查询某月有打卡记录的日期列表、GET /checkins/day?date= 查询某天打卡详情（含计划提醒时间及打卡状态）",
-            "notification_logs.py": "站内信API接口（均 JWT 保护，user_id 由 token 解析）：GET /notification-logs/list 分页查询站内信列表（JOIN过滤站内信渠道+LEFT JOIN计划取名称备注，返回items/total/has_more/unread_count）、PUT /notification-logs/read 标记已读（status 2→0，校验归属）、GET /notification-logs/unread-count 查询未读数量（用于通知图标切换）"
+            "notification_logs.py": "站内信API接口（均 JWT 保护，user_id 由 token 解析）：GET /notification-logs/list 分页查询站内信列表（返回所有站内信，先自动标记已读再返回精简字段 id/plan_name/plan_remark/send_time/is_unread+unread_count）、PUT /notification-logs/read 标记单条已读（status 2→0，校验归属）、PUT /notification-logs/read-all 全部标记已读（批量更新 status=0，返回 updated_count）、GET /notification-logs/unread-count 查询未读数量（用于通知图标切换）"
           }
         },
         "core": {
@@ -52,7 +52,7 @@
           "notification_channel_service.py": "通知渠道业务服务（NotificationChannelService 类：list_by_user/get_by_id/ensure_znx_channel/create_email_channel（密码AES-256-GCM加密存储）/update_email_channel（password空保留原密码）/delete_channel（站内信禁删）/parse_email_channel_value）",
           "plan_service.py": "计划业务服务（PlanService 类：list_by_user（CASE表达式排序：进行中>暂停>已结束，再按priority升序+created_at降序）/get_by_id/create_plan（含priority参数）/update_plan（含priority参数）/delete_plan（级联删除）/auto_close_expired_plans（自动关闭过期计划：status=1且end_date<today更新为0））",
           "checkin_service.py": "打卡记录业务服务（CheckinService 类：create_checkin（校验计划/时间点归属，允许重复打卡）/list_today_by_user/list_today_by_plan（均使用日期范围比较避免DATE()时区问题）/get_latest_checkin/list_by_month（查询某月有打卡记录的日期列表）/list_day_detail（查询某天打卡详情含计划提醒时间））",
-          "notification_log_service.py": "通知记录业务服务（NotificationLogService 类：list_znx_by_user（JOIN notification_channels 过滤站内信+LEFT JOIN checkin_plans 取计划名称/备注，分页+未读计数）/count_unread（未读站内信数量）/mark_as_read（status 2→0，校验归属，已读不重复标记））",
+          "notification_log_service.py": "通知记录业务服务（NotificationLogService 类：list_znx_by_user（先调用 _auto_mark_read_if_checked 自动标记已读，再 JOIN notification_channels 过滤站内信+LEFT JOIN checkin_plans 取计划名称/备注，分页返回精简字段 id/plan_name/plan_remark/send_time/is_unread+未读计数）/_auto_mark_read_if_checked（扫描未读站内信，复用 CheckinService._get_match_intervals 计算匹配区间，若区间内有打卡记录则自动标记已读；plan_time_id 为 NULL/计划已删除/无打卡记录则保持未读）/count_unread（未读站内信数量）/mark_as_read（status 2→0，校验归属，已读不重复标记）/mark_all_as_read（全部标记已读，批量更新 status=0））",
           "scheduler_service.py": "定时任务调度服务（SchedulerService 定时计划类 + NotificationDispatcher 通知派发器）。SchedulerService 集中管理3个后台循环：账号清理(30秒,委托User)/计划关闭(30分钟,委托PlanService)/通知派发(60秒,实例化NotificationDispatcher)。main.py lifespan 调用 start_all/stop_all。NotificationDispatcher.dispatch_for_now 每分钟执行：准时触发(当前HH:MM命中提醒时间且对应匹配区间内无打卡记录则发)+两档催办(档位1超10分钟/档位2为1小时与下一次提醒中点择先到达者,末次固定+1小时,均按匹配区间判定)；档位2正向查询今日+昨日有效计划处理跨天情况；防重键(plan_time_id,trigger_type,notify_date,channel_id)查notification_logs；站内信直接写log(status=2未读)，邮件读取channel_value作SMTP发件+users.email收件+解密密码+记录发送结果"
         },
         "utils": {
@@ -91,7 +91,7 @@
             "notification.js": "通知渠道模块接口：listNotificationChannels(查询渠道列表)/createEmailChannel(创建邮件渠道)/updateEmailChannel(更新邮件渠道配置，password空字符串保留原密码)/deleteNotificationChannel(删除渠道)，均无 user_id 参数",
             "plan.js": "计划模块接口：listPlans(查询计划列表)/createPlan(创建计划，含通知时间点/关联渠道/priority优先级)/updatePlan(更新计划，PUT请求)/deletePlan(删除计划)，均无 user_id 参数",
             "checkin.js": "打卡记录模块接口：createCheckin(创建打卡记录)/listTodayCheckins(查询今日打卡)/listTodayCheckinsByPlan(查询某计划今日打卡)/listMonthCheckins(查询某月打卡日期)/listDayCheckins(查询某天打卡详情)，均无 user_id 参数",
-            "message.js": "站内信模块接口：listMessages(分页查询站内信列表，返回未读数量)/markMessageRead(标记已读)/getUnreadCount(查询未读数量，用于通知图标切换)，均无 user_id 参数"
+            "message.js": "站内信模块接口：listMessages(分页查询站内信列表，返回精简字段+未读数量)/markMessageRead(标记单条已读)/markAllMessagesRead(全部标记已读)/getUnreadCount(查询未读数量，用于通知图标切换)，均无 user_id 参数"
           }
         },
         "assets": {
@@ -145,7 +145,7 @@
             "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单（前后端双重验证，失焦实时校验）。用户名 2-15 字符仅允许中文英文数字；密码 8-20 位含大小写字母/数字/特殊符号至少三种；邮箱标准格式；验证码 6 位数字。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'",
             "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
             "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
-            "messages.vue": "站内信页面，从 notification_logs 表查询当前用户站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注）。卡片展示计划名称+备注说明+发送时间；未读(status=2)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读(status→0)，前端实时移除高亮(卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；onShow拉取数据+启动30秒轮询(检测新消息自动刷新)；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
+            "messages.vue": "站内信页面，从 notification_logs 表查询当前用户所有站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注，后端自动标记已读后返回精简字段 id/plan_name/plan_remark/send_time/is_unread）。卡片展示计划名称+备注说明+发送时间；未读(is_unread=true)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读，前端实时移除高亮(卡片保留)；全部已读按钮(存在未读时显示，防抖置灰，点击后移除所有高亮卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；onShow拉取数据+启动60秒轮询(未读数量变化时刷新列表保持一致)；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
             "privacy.vue": "隐私政策页面，静态展示七章节政策条款含第三方信息共享表格",
             "forgot-password.vue": "找回密码页面，两步流程：步骤1输入邮箱+验证码验证身份，步骤2设置新密码。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'"
           }

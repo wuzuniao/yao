@@ -35,3 +35,14 @@ export function getUnreadCount() {
     method: 'GET'
   })
 }
+
+/**
+ * 全部标记为已读（user_id 由 JWT 提供，无请求体）
+ * 将当前用户所有未读站内信（status=2）批量更新为已读（status=0）
+ */
+export function markAllMessagesRead() {
+  return request({
+    url: '/api/v1/notification-logs/read-all',
+    method: 'PUT'
+  })
+}
