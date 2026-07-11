@@ -150,33 +150,31 @@ class CheckinService:
         查询用户某天的打卡详情（含计划提醒时间）
         - 查询当天有效的所有计划（start_date <= day_date <= end_date，不限制 status）
           确保已结束但当天有效的计划也会显示
-        - 查询用户当天的打卡记录
+        - 查询用户当天的打卡记录（仅查 CheckinRecord）
         - 打卡记录与提醒时间的匹配规则（与首页 index.vue 一致）：
           - 按相邻提醒的中点划分匹配区间，覆盖全天 0:00-24:00 无间隙、无留白
           - 单条提醒时间：匹配区间为 [0:00, 24:00]（全天）
           - 多条提醒时间：第一个 [0:00, midpoint]；中间 [midpoint, midpoint]；最后一个 [midpoint, 24:00]
           - 在匹配区间内有打卡记录即视为已打卡
-        - 同一提醒时间多次打卡：每条记录单独占一行，确保所有记录完整展示
-        - 返回格式：[{ plan_id, plan_name, plan_remark, notification_time, checked, actual_time }]
+        - 同一提醒时间多次打卡：合并为一行展示，返回首次/末次打卡时间及打卡次数
+        - 打卡记录必须依附于提醒时间显示，无对应提醒时间的记录不展示
+        - 返回格式：[{ plan_name, plan_remark, notification_time, checked,
+                      first_actual_time, last_actual_time, checkin_count }]
         """
         day_start = datetime.combine(day_date, dt_time(0, 0, 0))
         day_end = datetime.combine(day_date + timedelta(days=1), dt_time(0, 0, 0))
 
-        # 1. 查询用户当天所有打卡记录（outerjoin 计划与提醒时间，保留已删除的孤儿记录）
+        # 1. 查询用户当天所有打卡记录
         records_result = await self.db.execute(
-            select(CheckinRecord, CheckinPlan, PlanNotificationTime)
-            .outerjoin(CheckinPlan, CheckinRecord.plan_id == CheckinPlan.id)
-            .outerjoin(PlanNotificationTime, CheckinRecord.plan_time_id == PlanNotificationTime.id)
-            .where(
+            select(CheckinRecord).where(
                 and_(
                     CheckinRecord.user_id == user_id,
                     CheckinRecord.actual_time >= day_start,
                     CheckinRecord.actual_time < day_end,
                 )
-            )
-            .order_by(CheckinRecord.actual_time.asc())
+            ).order_by(CheckinRecord.actual_time.asc())
         )
-        records = records_result.all()
+        records = list(records_result.scalars().all())
 
         # 2. 查询当天有效的所有计划（按日期范围过滤，不限制 status）
         # 这样即使计划后来被定时任务标记为已结束，只要当天在计划范围内，就会显示
@@ -193,67 +191,52 @@ class CheckinService:
             .order_by(CheckinPlan.priority.asc(), CheckinPlan.created_at.asc())
         )
         plans = plans_result.scalars().all()
-        valid_plan_ids = {p.id for p in plans}
 
         detail: list[dict] = []
-        # 已被匹配区间匹配的打卡记录 id（用于后续识别未匹配的偏离记录）
-        matched_record_ids: set[int] = set()
 
-        # 3a. 当天有效计划：每个提醒时间按"匹配区间"判定是否已打卡
+        # 3. 当天有效计划：每个提醒时间按"匹配区间"判定是否已打卡
         for plan in plans:
-            # 该计划当天所有打卡记录（含 actual_time 转分钟数）
-            plan_records = []
-            for record, p, _pt in records:
-                if p is not None and p.id == plan.id and record.actual_time is not None:
-                    r_minutes = record.actual_time.hour * 60 + record.actual_time.minute
-                    plan_records.append((record, r_minutes))
+            # 该计划当天所有打卡记录
+            plan_records = [r for r in records if r.plan_id == plan.id and r.actual_time is not None]
 
             times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
             # 计算匹配区间（按相邻中点划分，覆盖全天 0:00-24:00）
             intervals = self._get_match_intervals(times)
             for i, t in enumerate(times):
                 interval_start, interval_end = intervals[i]
-                # 匹配区间内有打卡记录即视为已打卡
-                matched = [(r, m) for (r, m) in plan_records if m >= interval_start and m < interval_end]
+                # 匹配区间内的打卡记录
+                matched = []
+                for r in plan_records:
+                    r_minutes = r.actual_time.hour * 60 + r.actual_time.minute
+                    if r_minutes >= interval_start and r_minutes < interval_end:
+                        matched.append(r)
 
                 if matched:
-                    # 每条匹配记录单独占一行，确保多次打卡完整展示
-                    for r, _m in matched:
-                        matched_record_ids.add(r.id)
-                        detail.append({
-                            "plan_id": plan.id,
-                            "plan_name": plan.name,
-                            "plan_remark": plan.remark or "",
-                            "notification_time": t.notification_time.strftime("%H:%M"),
-                            "checked": True,
-                            "actual_time": r.actual_time.isoformat() if r.actual_time else None,
-                        })
+                    # 已按 actual_time 升序查询，首条为首次，末条为末次
+                    first = matched[0]
+                    last = matched[-1]
+                    detail.append({
+                        "plan_name": plan.name,
+                        "plan_remark": plan.remark or "",
+                        "notification_time": t.notification_time.strftime("%H:%M"),
+                        "checked": True,
+                        "first_actual_time": first.actual_time.isoformat() if first.actual_time else None,
+                        "last_actual_time": last.actual_time.isoformat() if last.actual_time else None,
+                        "checkin_count": len(matched),
+                    })
                 else:
                     detail.append({
-                        "plan_id": plan.id,
                         "plan_name": plan.name,
                         "plan_remark": plan.remark or "",
                         "notification_time": t.notification_time.strftime("%H:%M"),
                         "checked": False,
-                        "actual_time": None,
+                        "first_actual_time": None,
+                        "last_actual_time": None,
+                        "checkin_count": 0,
                     })
 
-        # 3b. 孤儿记录：计划已删除 / 不在当天有效计划中 / 偏离所有匹配区间，单独展示
-        for record, plan, plan_time in records:
-            # 跳过已被匹配区间匹配的记录
-            if record.id in matched_record_ids:
-                continue
-            detail.append({
-                "plan_id": plan.id if plan else record.plan_id,
-                "plan_name": plan.name if plan else "(已删除计划)",
-                "plan_remark": (plan.remark or "") if plan else "",
-                "notification_time": plan_time.notification_time.strftime("%H:%M") if plan_time else "",
-                "checked": True,
-                "actual_time": record.actual_time.isoformat() if record.actual_time else None,
-            })
-
-        # 按提醒时间排序，同一提醒时间已打卡在前
-        detail.sort(key=lambda x: (x["notification_time"], 0 if x["checked"] else 1))
+        # 按提醒时间升序排序
+        detail.sort(key=lambda x: x["notification_time"])
         return detail
 
     @staticmethod

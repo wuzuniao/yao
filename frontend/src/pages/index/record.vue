@@ -98,7 +98,9 @@
             <view class="record-page__list-item-content">
               <view class="record-page__list-item-time-row">
                 <text class="record-page__list-item-time">{{ item.notification_time }}</text>
-                <text v-if="item.checked && item.actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.actual_time) }}</text>
+                <text v-if="item.checked && item.first_actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.first_actual_time) }}</text>
+                <text v-if="item.checked && item.last_actual_time && item.last_actual_time !== item.first_actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.last_actual_time) }}</text>
+                <text v-if="item.checkin_count > 2" class="record-page__list-item-count">共 {{ item.checkin_count }} 次</text>
               </view>
               <text class="record-page__list-item-name">{{ item.plan_name }}</text>
               <text v-if="item.plan_remark" class="record-page__list-item-remark">{{ item.plan_remark }}</text>
@@ -110,10 +112,6 @@
               mode="aspectFit"
             />
           </view>
-        </view>
-        <!-- 无数据 -->
-        <view v-else class="record-page__list-empty">
-          <text class="record-page__list-empty-text">当天暂无打卡记录</text>
         </view>
       </view>
     </view>
@@ -134,11 +132,12 @@
  *    - 动态生成当月日期（含月初前空格占位）
  *    - 已打卡日期下方显示小绿点
  *    - 点击日期选中，点击有打卡记录的日期显示详情卡片
- *  - 当日明细：列出当天所有进行中计划的提醒时间及打卡状态
+ *  - 当日明细：列出当天所有有效计划（在打卡日期范围内）的提醒时间及打卡状态
  *    - 页面加载时（onShow）自动查询并展示当天打卡详情（仅当已登录且查看当前月份时）
  *    - 其他日期需用户点击日期单元格才触发查询
  *    - 加载中显示"加载中..."，加载失败显示"加载失败，点击重试"
- *    - 已打卡：绿点 + 提醒时间 + 实际打卡时间（→ HH:MM，绿色小字） + 计划名称/备注 + jilu_wc.png 图标
+ *    - 无计划时不显示明细卡片
+ *    - 已打卡：绿点 + 提醒时间 + 首次/末次打卡时间（→ HH:MM，绿色小字）+ 次数>2时显示"共N次" + 计划名称/备注 + jilu_wc.png 图标
  *    - 未打卡：灰点 + 提醒时间 + 计划名称/备注（无图标）
  *  - 底部固定导航栏（BottomNav），当前激活项为"记录"
  */
@@ -181,8 +180,14 @@ const isLoadingDay = ref(false)
 // 当日打卡详情加载是否失败（失败时显示"加载失败，点击重试"）
 const hasLoadError = ref(false)
 
-// 是否显示详情卡片（选中日期后显示）
-const selectedDayDetail = computed(() => selectedDay.value !== null)
+// 是否显示详情卡片（选中日期后显示；无计划时隐藏整张卡片）
+const selectedDayDetail = computed(() => {
+  if (selectedDay.value === null) return false
+  // 加载中或加载失败时显示卡片（展示加载/错误状态）
+  if (isLoadingDay.value || hasLoadError.value) return true
+  // 加载完成且无数据（无计划）时隐藏卡片
+  return dayRecords.value.length > 0
+})
 
 // 选中日期的标题文本
 const selectedDateText = computed(() => {
@@ -624,6 +629,13 @@ onShow(() => {
   font-weight: 400;
 }
 
+.record-page__list-item-count {
+  color: #888888;
+  font-size: 28rpx;
+  line-height: 40rpx;
+  font-weight: 400;
+}
+
 .record-page__list-item-name {
   color: #0e0f0c;
   font-size: 32rpx;
@@ -651,20 +663,6 @@ onShow(() => {
   height: 40rpx;
   display: block;
   margin-top: 4rpx;
-}
-
-.record-page__list-empty {
-  padding: 32rpx 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.record-page__list-empty-text {
-  color: #888888;
-  font-size: 28rpx;
-  line-height: 40rpx;
-  font-weight: 400;
 }
 
 .record-page__list-loading {
@@ -811,6 +809,10 @@ onShow(() => {
     font-size: 14px;
     line-height: 20px;
   }
+  .record-page__list-item-count {
+    font-size: 14px;
+    line-height: 20px;
+  }
   .record-page__list-item-name {
     font-size: 16px;
     line-height: 24px;
@@ -823,13 +825,6 @@ onShow(() => {
     width: 20px;
     height: 20px;
     margin-top: 2px;
-  }
-  .record-page__list-empty {
-    padding: 16px 0;
-  }
-  .record-page__list-empty-text {
-    font-size: 14px;
-    line-height: 20px;
   }
   .record-page__list-loading {
     padding: 16px 0;
