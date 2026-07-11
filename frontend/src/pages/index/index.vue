@@ -238,10 +238,12 @@ function isIntervalChecked(times, intervalIndex) {
 }
 
 // 打卡状态计算：'disabled' | 'waiting' | 'active' | 'done'
-// - disabled: 未登录/无任务/不在日期范围/无提醒时间
-// - waiting: 未到第一个提醒时间的"开始打卡时间"（t_1 - 120）
-// - active: 已到开始打卡时间且当前匹配区间未打卡
-// - done: 当前匹配区间已匹配到打卡记录，持续到匹配区间结束（下一个中点或24:00）
+// 判定优先级（从高到低）：
+// 1. disabled: 未登录/无任务/不在日期范围/无提醒时间
+// 2. forceActive: 用户长按3秒强制重置 → active（允许从 done/waiting 重新打卡）
+// 3. done: 当前匹配区间已匹配到打卡记录（优先于时间窗口判断，不受 t_1-120 阻断）
+// 4. waiting: 未到第一个提醒时间的"开始打卡时间"（t_1 - 120）
+// 5. active: 已到开始打卡时间且当前匹配区间未打卡
 const checkinState = computed(() => {
   if (!isLoggedIn.value || !hasActivePlans.value) return { status: 'disabled' }
   if (!primaryPlan.value) return { status: 'disabled' }
@@ -256,24 +258,21 @@ const checkinState = computed(() => {
   const idx = findCurrentTargetIndex(times, nowMinutes)
   const target = times[idx]
 
-  // 未到第一个提醒的开始打卡时间（t_1 - 120）→ waiting
-  if (nowMinutes < times[0].minutes - 120) {
-    // 长按重置：强制为 active
-    if (forceActive.value) {
-      return { status: 'active', timeId: target.id }
-    }
-    return { status: 'waiting' }
-  }
-
-  // 长按重置：强制为 active（允许已打卡后重新打卡）
+  // 长按重置：强制为 active（优先级最高，允许已打卡后重新打卡）
   if (forceActive.value) {
     return { status: 'active', timeId: target.id }
   }
 
-  // 判定当前匹配区间是否已打卡
+  // 判定当前匹配区间是否已打卡（优先于时间窗口判断）
   if (isIntervalChecked(times, idx)) {
     return { status: 'done', timeId: target.id }
   }
+
+  // 未到第一个提醒的开始打卡时间（t_1 - 120）→ waiting
+  if (nowMinutes < times[0].minutes - 120) {
+    return { status: 'waiting' }
+  }
+
   return { status: 'active', timeId: target.id }
 })
 
