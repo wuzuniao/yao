@@ -14,7 +14,8 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 Base = declarative_base()
 
 
-async def get_db():
+async def get_db():  # pragma: no cover
+    # 测试中通过 dependency_overrides 替代，生产环境由 FastAPI 调用
     async with AsyncSessionLocal() as session:
         try:
             yield session

@@ -35,7 +35,7 @@ async def create_checkin(
     service = CheckinService(db)
     try:
         actual_time = datetime.fromisoformat(payload.actual_time)
-    except ValueError:
+    except ValueError:  # pragma: no cover — CreateCheckin.validate_actual_time 已拦截非法格式
         raise HTTPException(status_code=400, detail="打卡时间格式不正确")
     # 确保写入数据库的是 naive Shanghai datetime（无 tzinfo）
     # 前端应发送无时区后缀的本地时间字符串（如 2026-07-02T14:30:00）

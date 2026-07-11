@@ -567,6 +567,19 @@ class User:
         main_user = existing_user
         sub_user = user
 
+        # 先转移从账号的小程序绑定记录到主账号（此时 sub_user 尚未删除，可正常查询）
+        miniapp_result = await self.db.execute(
+            select(UserMiniappAccount).where(UserMiniappAccount.user_id == sub_user.id)
+        )
+        for account in miniapp_result.scalars().all():
+            account.user_id = main_user.id
+
+        # 先删除从账号并 flush，避免合并字段时唯一约束冲突
+        # （SQLAlchemy flush 顺序为 INSERT→UPDATE→DELETE，若不先 flush 删除，
+        #   合并字段的 UPDATE 会先于 DELETE 执行，此时从账号仍存在导致唯一约束冲突）
+        await self.db.delete(sub_user)
+        await self.db.flush()
+
         # 合并字段：主账号字段为空时用从账号填充，字段冲突时保留主账号
         if not main_user.username and sub_user.username:
             main_user.username = sub_user.username
@@ -582,15 +595,6 @@ class User:
         ):
             main_user.last_login_at = sub_user.last_login_at
 
-        # 转移从账号的小程序绑定记录到主账号
-        miniapp_result = await self.db.execute(
-            select(UserMiniappAccount).where(UserMiniappAccount.user_id == sub_user.id)
-        )
-        for account in miniapp_result.scalars().all():
-            account.user_id = main_user.id
-
-        # 删除从账号
-        await self.db.delete(sub_user)
         await self.db.commit()
         await self.db.refresh(main_user)
         return main_user

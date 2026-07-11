@@ -12,7 +12,7 @@ _scheduler = SchedulerService()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # pragma: no cover
     # 启动全部后台定时任务循环（账号清理/计划关闭/通知派发）
     await _scheduler.start_all()
     yield

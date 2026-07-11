@@ -11,6 +11,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -26,6 +27,14 @@ from app.models.user_miniapp_account import UserMiniappAccount  # noqa: F401
 TEST_DATABASE_URL = (
     "mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao_test?charset=utf8mb4"
 )
+# 测试专用用户库（与开发库 wuzuniao_yonghu 完全隔离）
+TEST_USER_DB = "wuzuniao_yonghu_test"
+
+# 用户库测试隔离：将 User/UserMiniappAccount 的 schema 从开发库 wuzuniao_yonghu
+# 重映射到测试库 wuzuniao_yonghu_test，确保测试不污染开发环境用户数据
+for _table in Base.metadata.tables.values():
+    if _table.schema == "wuzuniao_yonghu":
+        _table.schema = TEST_USER_DB
 
 # 测试专用引擎（NullPool 不缓存连接，避免跨事件循环的连接失效问题）
 _test_engine = create_async_engine(
@@ -43,6 +52,13 @@ async def _ensure_tables():
     global _tables_created
     if not _tables_created:
         async with _test_engine.begin() as conn:
+            # 确保测试用户库存在（users/user_miniapp_accounts 通过 schema 跨库创建于此库）
+            await conn.execute(
+                text(
+                    f"CREATE DATABASE IF NOT EXISTS {TEST_USER_DB} "
+                    "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                )
+            )
             await conn.run_sync(Base.metadata.create_all)
         _tables_created = True
 
