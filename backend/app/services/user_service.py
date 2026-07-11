@@ -68,21 +68,16 @@ class User:
         :param email: 收件人邮箱
         :param purpose: 验证码用途（register/reset/change_old/change_new）
         :return: 生成的 6 位验证码
+        :raises RuntimeError: 邮件发送失败（由 API 层捕获并返回给用户）
         """
         # 生成 6 位数字验证码
         code = "".join(secrets.choice("0123456789") for _ in range(6))
         key = self._get_code_key(email, purpose)
         _verification_codes[key] = (code, time.time() + CODE_EXPIRE_SECONDS)
-        # 异步发送验证邮件（不阻塞响应，失败仅记录日志）
-        asyncio.create_task(self._send_email_async(email, code))
+        # 同步发送验证邮件（在线程池中执行同步 SMTP 调用，避免阻塞事件循环）
+        # 失败时 RuntimeError 向上传播，由 API 层返回 500，前端提示用户可重试
+        await asyncio.to_thread(Email().send_verification_code, email, code)
         return code
-
-    async def _send_email_async(self, email: str, code: str) -> None:
-        """异步发送验证码邮件（在线程池中执行同步 SMTP 调用，避免阻塞事件循环）"""
-        try:
-            await asyncio.to_thread(Email().send_verification_code, email, code)
-        except Exception:
-            logger.exception(f"发送验证码邮件失败: {email}")
 
     def verify_code_for_purpose(self, email: str, code: str, purpose: str) -> bool:
         """

@@ -108,7 +108,11 @@
                 @focus="handleFocus('code')"
                 @blur="handleBlur('code')"
               />
-              <view class="register-page__code-btn" @click="handleGetCode">
+              <view
+                class="register-page__code-btn"
+                :class="{ 'register-page__code-btn--disabled': counting || isSending }"
+                @click="handleGetCode"
+              >
                 <text class="register-page__code-btn-text">{{ codeText }}</text>
               </view>
             </view>
@@ -188,6 +192,7 @@ const errors = reactive({
 const agreed = ref(false)
 const codeText = ref('获取验证码')
 const counting = ref(false)
+const isSending = ref(false)
 const submitting = ref(false)
 
 // 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
@@ -266,7 +271,7 @@ function toggleAgree() {
 
 // ===== 获取验证码：前端校验邮箱 → 调用后端发送邮件 → 倒计时 =====
 async function handleGetCode() {
-  if (counting.value) return
+  if (counting.value || isSending.value) return
   const emailErr = validateEmail(form.email)
   if (emailErr) {
     errors.email = emailErr
@@ -278,11 +283,15 @@ async function handleGetCode() {
 
 // 网络错误时提供重试机制：modal 提示原因，确认则重试
 async function requestCode() {
+  isSending.value = true
+  codeText.value = '发送中...'
   try {
     await sendRegisterCode(form.email)
     uni.showToast({ title: '验证码已发送', icon: 'none' })
     startCountdown()
   } catch (e) {
+    // 发送失败恢复按钮，允许用户立即重试
+    codeText.value = '获取验证码'
     if (e.isNetworkError) {
       // 网络错误：弹窗提示原因并提供重试入口
       uni.showModal({
@@ -298,6 +307,8 @@ async function requestCode() {
       // 业务错误（如邮箱已注册）：toast 提示
       uni.showToast({ title: e.message, icon: 'none' })
     }
+  } finally {
+    isSending.value = false
   }
 }
 
@@ -552,6 +563,10 @@ function goPrivacy() {
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
+}
+
+.register-page__code-btn--disabled {
+  opacity: 0.6;
 }
 
 .register-page__code-btn-text {

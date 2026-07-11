@@ -46,7 +46,11 @@
               @focus="handleFocus('code')"
               @blur="handleBlur('code')"
             />
-            <view class="forgot-password-page__code-btn" @click="handleGetCode">
+            <view
+              class="forgot-password-page__code-btn"
+              :class="{ 'forgot-password-page__code-btn--disabled': counting || isSending }"
+              @click="handleGetCode"
+            >
               <text class="forgot-password-page__code-btn-text">{{ codeText }}</text>
             </view>
           </view>
@@ -151,6 +155,7 @@ const errors = reactive({
 })
 const codeText = ref('获取验证码')
 const counting = ref(false)
+const isSending = ref(false)
 const submitting = ref(false)
 
 const { onFocus, onBlur, phStyle } = usePlaceholder()
@@ -214,19 +219,25 @@ function handleFocus(field) {
 
 // ===== 获取验证码 =====
 async function handleGetCode() {
-  if (counting.value) return
+  if (counting.value || isSending.value) return
   const emailErr = validateEmail(form.email)
   if (emailErr) {
     errors.email = emailErr
     uni.showToast({ title: emailErr, icon: 'none' })
     return
   }
+  isSending.value = true
+  codeText.value = '发送中...'
   try {
     await sendResetCode(form.email)
     uni.showToast({ title: '验证码已发送', icon: 'none' })
     startCountdown()
   } catch (e) {
+    // 发送失败恢复按钮，允许用户立即重试
+    codeText.value = '获取验证码'
     uni.showToast({ title: e.message, icon: 'none' })
+  } finally {
+    isSending.value = false
   }
 }
 
@@ -444,6 +455,10 @@ function goLogin() {
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
+}
+
+.forgot-password-page__code-btn--disabled {
+  opacity: 0.6;
 }
 
 .forgot-password-page__code-btn-text {

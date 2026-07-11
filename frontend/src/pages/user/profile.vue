@@ -184,7 +184,11 @@
                 :maxlength="oldCodeLimit.max"
                 @input="e => emailForm.oldCode = oldCodeLimit.handleInput(e)"
               />
-                <view class="profile-page__code-btn" @click="handleGetOldEmailCode">
+                <view
+                  class="profile-page__code-btn"
+                  :class="{ 'profile-page__code-btn--disabled': emailOldCodeCounting || emailOldCodeSending }"
+                  @click="handleGetOldEmailCode"
+                >
                   <text class="profile-page__code-btn-text">{{ emailOldCodeText }}</text>
                 </view>
               </view>
@@ -229,7 +233,11 @@
                   :maxlength="newCodeLimit.max"
                   @input="e => emailForm.newCode = newCodeLimit.handleInput(e)"
                 />
-                <view class="profile-page__code-btn" @click="handleGetNewEmailCode">
+                <view
+                  class="profile-page__code-btn"
+                  :class="{ 'profile-page__code-btn--disabled': emailNewCodeCounting || emailNewCodeSending }"
+                  @click="handleGetNewEmailCode"
+                >
                   <text class="profile-page__code-btn-text">{{ emailNewCodeText }}</text>
                 </view>
               </view>
@@ -588,8 +596,10 @@ const emailErrors = reactive({
 
 const emailOldCodeCounting = ref(false)
 const emailOldCodeText = ref('获取验证码')
+const emailOldCodeSending = ref(false)
 const emailNewCodeCounting = ref(false)
 const emailNewCodeText = ref('获取验证码')
+const emailNewCodeSending = ref(false)
 
 function validateEmail(v) {
   if (!v) return '请输入邮箱地址'
@@ -620,13 +630,19 @@ function startCountdown(targetText, targetCounting) {
 }
 
 async function handleGetOldEmailCode() {
-  if (emailOldCodeCounting.value) return
+  if (emailOldCodeCounting.value || emailOldCodeSending.value) return
+  emailOldCodeSending.value = true
+  emailOldCodeText.value = '发送中...'
   try {
     await sendChangeEmailOldCode()
     uni.showToast({ title: '验证码已发送', icon: 'none' })
     startCountdown(emailOldCodeText, emailOldCodeCounting)
   } catch (e) {
+    // 发送失败恢复按钮，允许用户立即重试
+    emailOldCodeText.value = '获取验证码'
     uni.showToast({ title: e.message, icon: 'none' })
+  } finally {
+    emailOldCodeSending.value = false
   }
 }
 
@@ -650,20 +666,26 @@ function handleResetEmailStep() {
 }
 
 async function handleGetNewEmailCode() {
-  if (emailNewCodeCounting.value) return
+  if (emailNewCodeCounting.value || emailNewCodeSending.value) return
   const emailErr = validateEmail(emailForm.newEmail)
   if (emailErr) {
     emailErrors.newEmail = emailErr
     uni.showToast({ title: emailErr, icon: 'none' })
     return
   }
+  emailNewCodeSending.value = true
+  emailNewCodeText.value = '发送中...'
   try {
     // 绑定邮箱场景（无邮箱用户）允许邮箱已存在以触发账号合并；修改邮箱场景禁止已存在
     await sendChangeEmailNewCode(emailForm.newEmail, !hasEmail.value)
     uni.showToast({ title: '验证码已发送', icon: 'none' })
     startCountdown(emailNewCodeText, emailNewCodeCounting)
   } catch (e) {
+    // 发送失败恢复按钮，允许用户立即重试
+    emailNewCodeText.value = '获取验证码'
     uni.showToast({ title: e.message, icon: 'none' })
+  } finally {
+    emailNewCodeSending.value = false
   }
 }
 
@@ -920,6 +942,10 @@ function handleLogout() {
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
+}
+
+.profile-page__code-btn--disabled {
+  opacity: 0.6;
 }
 
 .profile-page__code-btn-text {
