@@ -305,7 +305,7 @@ async def schedule_deletion(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """计划删除账号接口（user_id 来自 JWT，将 status 置为 0，后台任务在1分钟后自动清理）"""
+    """计划删除账号接口（user_id 来自 JWT，将 status 置为 0，后台任务在24小时后自动清理）"""
     user_service = User(db)
     try:
         db_user = await user_service.schedule_deletion(user_id)
@@ -313,7 +313,7 @@ async def schedule_deletion(
         raise HTTPException(status_code=400, detail=str(e))
     return {
         "code": 0,
-        "msg": "账号将在1分钟后自动删除，且无法恢复，请保留个人数据",
+        "msg": "账号将在24小时后自动删除，且无法恢复，请保留个人数据",
         "data": {
             "id": db_user.id,
             "status": db_user.status,

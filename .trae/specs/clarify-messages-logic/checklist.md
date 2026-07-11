@@ -1,0 +1,30 @@
+# Checklist
+
+- [ ] 后端 `list_znx_by_user` 查询条件包含 `status=2` 过滤（只返回未读）
+- [ ] 后端 `list_znx_by_user` 在返回前执行自动标记已读逻辑（未读但匹配区间内有打卡记录的消息更新为 status=0）
+- [ ] 后端自动标记已读复用 `CheckinService._get_match_intervals` 计算匹配区间（按相邻中点划分，覆盖全天 0:00-24:00 无间隙）
+- [ ] 后端打卡记录查询使用 `notification_logs.notify_date` 作为当天日期范围
+- [ ] 后端打卡记录查询使用 `notification_logs.plan_time_id` 关联的提醒时间计算匹配区间
+- [ ] 后端 `plan_time_id` 为 NULL 时视为无打卡记录，按未读返回（保守展示）
+- [ ] 后端计划已删除时 `plan_name` 显示"(已删除计划)"，`plan_remark` 为空，按未读返回
+- [ ] 后端 `unread_count` 反映自动标记已读后的真实未读数量
+- [ ] 后端新增 PUT `/api/v1/notification-logs/read-all` 接口
+- [ ] 后端 `mark_all_as_read(user_id)` 批量更新所有 `status=2` 的站内信为 `status=0`
+- [ ] 后端"全部已读"接口返回 `{ code: 0, msg: "已全部标记为已读", data: { updated_count: <int> } }`
+- [ ] 后端"全部已读"接口在无未读记录时返回 `updated_count=0`，不报错
+- [ ] 前端 `message.js` 新增 `markAllMessagesRead()` 函数
+- [ ] 前端列表只展示未读消息（后端已过滤，前端无需额外处理已读消息）
+- [ ] 前端单条标记已读后从列表移除该卡片（不再保留已读卡片）
+- [ ] 前端新增"全部已读"按钮，位于 PageHeader 下方或同级
+- [ ] 前端"全部已读"按钮在列表为空或加载中时隐藏/置灰
+- [ ] 前端点击"全部已读"成功后清空列表、`hasMore=false`、`userStore.setUnreadCount(0)`，显示成功 toast
+- [ ] 前端点击"全部已读"失败时显示错误 toast，列表与未读数量保持原状
+- [ ] 前端"全部已读"按钮有防抖（点击后立即置灰，避免重复点击）
+- [ ] 前端 30 秒轮询保留
+- [ ] 前端轮询发现未读数量增加时重新加载列表
+- [ ] 前端轮询发现未读数量减少时同步 store，列表长度 > newCount 时重新加载列表
+- [ ] 前端卡片字段保留 plan_name、plan_remark、send_time
+- [ ] 前端未读卡片左侧绿色竖条 + 浅绿背景高亮保留
+- [ ] 前端 `userStore.setUnreadCount` / `decrementUnread` 调用正确，NoticeButton 图标切换正常
+- [ ] `目录结构.json` 已同步更新（如无新增文件则注明修改内容）
+- [ ] `更新记录.md` 已追加本次变更说明

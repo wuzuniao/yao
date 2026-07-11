@@ -9,6 +9,10 @@ rotate_encryption_key.py - 邮箱专用密码加密密钥轮换脚本
   4. 用新密钥重新加密
   5. 在数据库事务中更新所有记录（全部成功提交，否则全部回滚）
   6. 事务提交成功后，原子替换 .env 中的 ENCRYPTION_SECRET_KEY
+  7. 用新密钥解密验证更新后的密码
+  8. 自动重启后端服务以加载新密钥
+     - Docker 环境：提示从宿主机执行 docker restart
+     - 开发环境：终止占用 8000 端口的旧进程并后台启动新 uvicorn 进程
 
 用法：
   python3 backend/sql/rotate_encryption_key.py
@@ -109,6 +113,122 @@ def update_env_key(new_key: str) -> None:
     os.replace(tmp_path, str(_ENV_FILE))
 
 
+def restart_backend() -> None:
+    """
+    重启后端服务以加载新密钥。
+
+    pydantic-settings 的 settings 实例在进程启动时读取 .env 并缓存，
+    无法跨进程动态刷新；uvicorn --reload 仅监控 .py 文件变化，
+    .env 变更不触发重启。因此轮换成功后必须重启后端进程。
+
+    - Docker 环境（检测 /.dockerenv）：容器内无法重启自身容器，
+      提示从宿主机执行 docker restart
+    - 开发环境：杀掉占用 8000 端口的旧 uvicorn 进程树，
+      后台启动新进程（非 reload 单进程模式）并轮询 /health 验证启动成功
+
+    注意：run.py 使用 uvicorn --reload 模式（主进程 + 子进程），
+    若用 reload 模式启动，taskkill 只杀主进程会导致子进程残留并继续占用端口，
+    因此脚本启动时改用非 reload 单进程模式，杀进程时用 /T 终止整个进程树。
+    """
+    import subprocess
+    import time
+    import urllib.request
+
+    port = 8000
+    health_url = f"http://localhost:{port}/health"
+
+    # 检测 Docker 环境
+    if Path("/.dockerenv").exists():
+        print("")
+        print("【Docker 环境提示】当前运行在容器内，无法自动重启容器。")
+        print("请在宿主机执行以下命令重启后端容器以加载新密钥：")
+        print("  docker restart <backend_container_name>")
+        print("（容器启动时会重新读取 .env，新密钥自动生效）")
+        return
+
+    print("")
+    print("正在重启后端服务以加载新密钥...")
+
+    # 杀掉占用端口的旧 uvicorn 进程树
+    # uvicorn --reload 模式有主进程 + 子进程，必须用 /T 终止整个进程树
+    if sys.platform == "win32":
+        try:
+            result = subprocess.run(
+                ["netstat", "-ano"], capture_output=True, text=True, timeout=5,
+            )
+            killed_pids: set[int] = set()
+            for line in result.stdout.splitlines():
+                if f":{port}" in line and "LISTENING" in line:
+                    parts = line.split()
+                    if parts and parts[-1].isdigit():
+                        pid = int(parts[-1])
+                        if pid not in killed_pids:
+                            # /T 终止指定进程及其所有子进程
+                            subprocess.run(
+                                ["taskkill", "/T", "/F", "/PID", str(pid)],
+                                capture_output=True, timeout=5,
+                            )
+                            killed_pids.add(pid)
+                            print(f"  已终止旧进程树 PID={pid}")
+        except Exception as e:
+            print(f"  警告：终止旧进程失败 - {e}", file=sys.stderr)
+    else:
+        try:
+            import signal
+            result = subprocess.run(
+                ["lsof", "-t", "-i", f":{port}"],
+                capture_output=True, text=True, timeout=5,
+            )
+            for line in result.stdout.splitlines():
+                pid = int(line.strip())
+                # 杀掉整个进程组（uvicorn --reload 的子进程同属一个进程组）
+                os.killpg(os.getpgid(pid), signal.SIGTERM)
+                print(f"  已终止旧进程树 PID={pid}")
+        except Exception as e:
+            print(f"  警告：终止旧进程失败 - {e}", file=sys.stderr)
+
+    time.sleep(2)  # 等待端口释放
+
+    # 后台启动新 uvicorn 进程（非 reload 单进程模式，避免子进程残留问题）
+    log_dir = _BACKEND_DIR / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_file = open(log_dir / "uvicorn.log", "a", encoding="utf-8")
+
+    creation_flags = 0
+    if sys.platform == "win32":
+        # Windows: 创建独立进程组，不继承父进程控制台
+        creation_flags = (
+            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+
+    subprocess.Popen(
+        [
+            sys.executable, "-m", "uvicorn",
+            "app.main:app", "--host", "0.0.0.0", "--port", str(port),
+        ],
+        cwd=str(_BACKEND_DIR),
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
+        creationflags=creation_flags,
+        close_fds=True,
+    )
+
+    # 轮询健康检查，确认新进程启动成功（最多等待 20 秒）
+    for _ in range(20):
+        time.sleep(1)
+        try:
+            with urllib.request.urlopen(health_url, timeout=2) as resp:
+                if resp.status == 200:
+                    print("  后端服务已重启，新密钥已生效")
+                    return
+        except Exception:
+            continue
+
+    print("  警告：后端服务可能未在预期时间内启动完成，请检查日志：")
+    print(f"    {log_dir / 'uvicorn.log'}", file=sys.stderr)
+
+
 async def main() -> int:
     # 从项目配置读取旧密钥和数据库连接信息（均来自 backend/.env）
     old_key = settings.ENCRYPTION_SECRET_KEY
@@ -160,6 +280,7 @@ async def main() -> int:
             # 即使没有邮件渠道，也更新 .env 中的密钥
             update_env_key(new_key)
             print(".env 文件已更新")
+            restart_backend()
             return 0
 
         # 2. 逐条解密 + 重新加密（在内存中完成，无副作用）
@@ -208,6 +329,7 @@ async def main() -> int:
             await conn.commit()
             update_env_key(new_key)
             print(".env 文件已更新")
+            restart_backend()
             return 0
 
         # 3. 事务更新数据库（全部成功才提交，否则回滚）
@@ -239,6 +361,22 @@ async def main() -> int:
             print(f"错误详情: {e}", file=sys.stderr)
             return 1
 
+        # 6. 用新密钥解密更新后的密码，验证轮换结果正确
+        for new_value, channel_id in updates:
+            cfg_verify = json.loads(new_value)
+            try:
+                decrypted = decrypt_with_key(new_key, cfg_verify.get("password", ""))
+                print(
+                    f"  渠道 {channel_id}：新密钥解密验证通过"
+                    f"（明文长度 {len(decrypted)}）"
+                )
+            except Exception as e:
+                print(
+                    f"错误：渠道 {channel_id} 新密钥解密验证失败: {e}",
+                    file=sys.stderr,
+                )
+                return 1
+
         print("")
         print("==========================================")
         print("  轮换成功完成")
@@ -246,6 +384,10 @@ async def main() -> int:
         print(f"新密钥: {new_key}")
         print(f".env 文件已更新: {_ENV_FILE}")
         print("==========================================")
+
+        # 7. 自动重启后端服务以加载新密钥
+        #    pydantic-settings 无法跨进程动态刷新，必须重启后端进程
+        restart_backend()
         return 0
 
     except Exception as e:

@@ -80,11 +80,4 @@ class CreatePlan(BaseModel):
 
 
 class UpdatePlan(CreatePlan):
-    """更新计划请求 Schema（复用 CreatePlan 全部字段校验，新增 plan_id）"""
-
-    plan_id: int
-
-    @field_validator("plan_id")
-    @classmethod
-    def validate_plan_id(cls, v: int) -> int:
-        return Security.validate_positive_int(v, "计划ID")
+    """更新计划请求 Schema（复用 CreatePlan 全部字段校验，plan_id 由 URL 路径参数提供）"""

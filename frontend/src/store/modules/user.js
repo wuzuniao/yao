@@ -9,7 +9,7 @@ import { getUnreadCount } from '../../api/modules/message'
  * - 管理用户登录态（JWT access_token）和个人信息
  * - token 独立存储于 localStorage（key: accessToken），所有受保护接口由 request.js 自动附加 Authorization 头
  * - 用户信息包含：id、username、signature、avatar_url、email、has_password、status
- * - status：1-正常，0-待删除（后台任务1分钟后清理）
+ * - status：1-正常，0-待删除（后台任务24小时后清理）
  * - 未登录时 userInfo 为 null，登录成功后写入用户信息
  * - 用户信息持久化到本地存储（uni.setStorageSync）
  */
@@ -83,7 +83,7 @@ export const useUserStore = defineStore('user', () => {
   // 初始化时加载本地存储的用户信息与 token
   loadUserFromStorage()
 
-  // 账号删除倒计时定时器（status=0 后 60 秒自动清理前端状态）
+  // 账号删除倒计时定时器（status=0 后 24 小时自动清理前端状态）
   const deletionTimer = ref(null)
 
   // 启动账号删除倒计时（scheduleDeletion 成功后调用）
@@ -96,7 +96,7 @@ export const useUserStore = defineStore('user', () => {
       setTimeout(() => {
         uni.reLaunch({ url: '/pages/user/login' })
       }, 1500)
-    }, 60000)
+    }, 24 * 60 * 60 * 1000)
   }
 
   // 清除账号删除倒计时（cancelDeletion 成功后调用）

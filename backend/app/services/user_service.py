@@ -345,7 +345,7 @@ class User:
 
     async def schedule_deletion(self, user_id: int) -> UserModel:
         """
-        计划删除账号：将 status 置为 0，后台任务在 updated_at 1分钟后自动清理
+        计划删除账号：将 status 置为 0，后台任务在 updated_at 24小时后自动清理
         :param user_id: 用户ID
         :return: UserModel（更新后的用户对象）
         :raises ValueError: 用户不存在
@@ -375,11 +375,11 @@ class User:
 
     async def purge_expired_deletions(self) -> int:
         """
-        清理已到期的删除计划账号：删除 status=0 且 updated_at 超过1分钟的用户及其关联小程序记录
+        清理已到期的删除计划账号：删除 status=0 且 updated_at 超过24小时的用户及其关联小程序记录
         :return: 已删除的用户数量
         """
         now = now_shanghai()
-        threshold = now - timedelta(minutes=1)
+        threshold = now - timedelta(hours=24)
         result = await self.db.execute(
             select(UserModel).where(
                 UserModel.status == 0,

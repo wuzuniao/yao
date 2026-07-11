@@ -338,7 +338,7 @@ const urlToAvatarKey = (url) => {
   return 'hong'
 }
 
-// 账号是否处于待删除状态（status=0：用户已确认删除，1分钟倒计时中）
+// 账号是否处于待删除状态（status=0：用户已确认删除，24小时倒计时中）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 // 当前用户是否已设置密码（微信登录用户可能无密码）
 const hasPassword = computed(() => !!userStore.userInfo?.has_password)
@@ -736,7 +736,7 @@ function handleDeletion() {
     // 未处于冷静期，执行删除
     uni.showModal({
       title: '删除账号',
-      content: '账号将在1分钟后自动删除，且无法恢复，请保留个人数据',
+      content: '账号将在24小时后自动删除，且无法恢复，请保留个人数据',
       confirmText: '确认删除',
       cancelText: '取消',
       success: async (res) => {
@@ -749,9 +749,9 @@ function handleDeletion() {
             } catch (e) {
               console.warn('保存本地用户信息失败', e)
             }
-            // 启动 60 秒倒计时，到期后自动清除前端状态并跳转登录页
+            // 启动 24 小时倒计时，到期后自动清除前端状态并跳转登录页
             userStore.startDeletionCountdown()
-            uni.showToast({ title: '已计划删除，1分钟后自动删除', icon: 'none' })
+            uni.showToast({ title: '已计划删除，24小时后自动删除', icon: 'none' })
           } catch (e) {
             uni.showToast({ title: e.message, icon: 'none' })
           }

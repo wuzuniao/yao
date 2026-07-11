@@ -149,7 +149,7 @@ export function updateAvatar({ avatar_url }) {
 }
 
 /**
- * 计划删除账号（user_id 由 JWT 提供，将 status 置为 0，后台任务在 1 分钟后自动清理）
+ * 计划删除账号（user_id 由 JWT 提供，将 status 置为 0，后台任务在 24 小时后自动清理）
  */
 export function scheduleDeletion() {
   return request({
