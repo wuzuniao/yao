@@ -41,7 +41,7 @@
           "user.py": "用户相关Schema：RegisterUser（注册请求校验）、SendCode（发送验证码请求）、LoginUser（登录请求校验）、UpdateSignature/ChangePassword/SendChangeEmailOldCode/ChangeEmail/UpdateAvatar/ScheduleDeletion/UpdateUsername/SetPassword/BindEmail（均为 JWT 保护接口的请求体，不再含 user_id 字段）",
           "notification_channel.py": "通知渠道Schema：EmailChannelValue（邮件JSON结构）、CreateEmailChannel、UpdateEmailChannel（password空字符串表示保留原密码）、DeleteChannel（不再含 user_id，由 token 解析）；常量 CHANNEL_TYPE_ZNX/CHANNEL_TYPE_EMAIL",
           "plan.py": "计划Schema：CreatePlan（含 notification_times 时间数组、channel_ids 渠道ID数组、priority 优先级0-7，Pydantic v2 校验，不再含 user_id）、UpdatePlan（继承 CreatePlan 复用全部校验，新增 plan_id 字段）",
-          "checkin_record.py": "打卡记录Schema：CreateCheckin（含 actual_time ISO格式校验，不再含 user_id）、CheckinOut",
+          "checkin_record.py": "打卡记录Schema：CreateCheckin（含 actual_time ISO格式校验，不再含 user_id）",
           "notification_log.py": "通知记录Schema：状态常量 LOG_STATUS_SUCCESS/FAILED/UNREAD、触发类型常量 TRIGGER_ON_TIME(准时)/OFFSET_10MIN(超10分钟)/OFFSET_1HOUR_OR_MIDPOINT(1小时或中点催办)、FOLLOWUP_OFFSET_10MIN 档位1固定偏移、TRIGGER_DESC 中文描述、MarkRead（标记已读请求 log_id，user_id 由 token 解析）"
         },
         "services": {
@@ -168,6 +168,39 @@
       "dev.bat": "Windows一键启动后端脚本",
       "init_db.py": "初始化数据库表结构脚本",
       "test_db_connection.py": "数据库连接测试脚本"
+    },
+    "tests": {
+      "描述": "测试套件目录（pytest + pytest-asyncio + pytest-cov），包含单元测试、集成测试和端到端测试",
+      "conftest.py": "根级测试配置：设置 backend/ 到 Python 路径、配置测试环境变量（DATABASE_URL 指向 wuzuniao_yao_test 测试库、JWT_SECRET_KEY、ENCRYPTION_SECRET_KEY）",
+      "create_test_db.py": "创建测试数据库 wuzuniao_yao_test 的脚本",
+      ".coveragerc": "覆盖率配置：排除 scheduler_service.py 和 logger.py，排除 pragma: no cover 等行",
+      "unit": {
+        "描述": "单元测试（不依赖外部资源，测试纯函数和工具类）",
+        "backend": {
+          "conftest.py": "单元测试 fixtures：mock_db（模拟数据库会话）、mock_email（模拟邮件服务）",
+          "test_security.py": "Security 安全验证类单元测试（35个）：密码哈希/校验、密码复杂度、用户名/验证码/邮箱/SMTP格式验证、输入净化、正整数校验、JWT生成与校验、输出过滤",
+          "test_crypto.py": "AES-256-GCM 加密解密工具单元测试（8个）：加密/解密往返、空字符串、Unicode、错误密钥/篡改密文",
+          "test_timezone.py": "时区工具单元测试（5个）：now_shanghai 返回 UTC+8、today_shanghai 与 UTC 日期一致性",
+          "test_schemas.py": "Pydantic Schema 校验单元测试（49个）：覆盖所有 Schema（RegisterUser/LoginUser/ResetPassword/ChangePassword/UpdateSignature/UpdateAvatar/UpdateUsername/ChangeEmail/BindEmail/WeChatLogin/CreatePlan/CreateCheckin/CreateEmailChannel/UpdateEmailChannel/DeleteChannel/MarkRead）的字段验证器"
+        }
+      },
+      "integration": {
+        "描述": "集成测试（使用测试数据库 wuzuniao_yao_test，验证 API 接口和模块交互）",
+        "backend": {
+          "conftest.py": "集成测试 fixtures：NullPool 测试引擎、db_session（每测试后 TRUNCATE 清理）、client（ASGITransport 不触发 lifespan）、test_user（自动创建用户+站内信渠道）、auth_client（带 JWT 认证头）",
+          "test_auth_api.py": "认证 API 集成测试（18个）：注册流程（发送验证码→注册）、登录（用户名/邮箱）、密码找回（发送重置码→重置密码）、参数校验（422）",
+          "test_user_profile_api.py": "用户资料管理 API 集成测试（42个）：个人信息查询、签名/头像/用户名修改、密码修改与设置、邮箱绑定与修改、账号删除计划与取消、未认证请求（401）、参数校验（422）",
+          "test_plan_api.py": "计划管理 API 集成测试（20个）：计划 CRUD、通知时间点与关联渠道维护、权限校验、参数校验",
+          "test_checkin_api.py": "打卡记录 API 集成测试（16个）：打卡创建、今日/月度/日详情查询、权限校验、重复打卡",
+          "test_notification_api.py": "通知渠道与站内信 API 集成测试（26个）：邮件渠道增删改查、站内信列表/标记已读/全部已读/未读数量、权限校验",
+          "test_service_extended.py": "服务层扩展集成测试（23个）：微信登录（mock 微信 API）、过期账号清理、邮箱绑定与账号合并、邮件服务（mock SMTP）、站内信自动标记已读、通知渠道辅助方法"
+        }
+      },
+      "e2e": {
+        "描述": "端到端测试（模拟完整用户操作流程，验证多接口协同工作）",
+        "conftest.py": "E2E 测试 fixtures：复用集成测试的数据库和客户端配置",
+        "test_user_journeys.py": "完整用户流程端到端测试（8个）：注册到登录、密码重置、计划管理、打卡、通知渠道管理、账号生命周期、邮箱修改、密码修改"
+      }
     },
     ".trae": {
       "描述": "Trae IDE 配置目录（AI 规则与任务规格说明）",

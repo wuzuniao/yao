@@ -37,13 +37,3 @@ class CreateCheckin(BaseModel):
         except ValueError:
             raise ValueError("打卡时间格式不正确，应为 ISO 格式")
         return v
-
-
-class CheckinOut(BaseModel):
-    """打卡记录响应 Schema"""
-
-    id: int
-    user_id: int
-    plan_id: int
-    plan_time_id: int
-    actual_time: str

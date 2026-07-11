@@ -1,8 +1,7 @@
 import json
-from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.notification_channel import NotificationChannel

@@ -153,7 +153,6 @@ import { useShare } from '../../composables/useShare'
 
 useShare({ title: '用药记录' })
 
-const hasNotification = false
 const userStore = useUserStore()
 
 // 当前显示的年份和月份（默认当前）

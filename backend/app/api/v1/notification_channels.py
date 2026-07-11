@@ -5,7 +5,6 @@ from ...core.database import get_db
 from ...core.deps import get_current_user_id
 from ...schemas.notification_channel import (
     CHANNEL_TYPE_EMAIL,
-    CHANNEL_TYPE_ZNX,
     CreateEmailChannel,
     DeleteChannel,
     UpdateEmailChannel,

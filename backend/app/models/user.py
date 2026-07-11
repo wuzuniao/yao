@@ -19,8 +19,8 @@ class User(Base):
     # 签名长度限制：基于 settings.vue 资料卡3行文本区（约191px，16px字体）可视字符约46个 × 1.5 ≈ 70
     signature = Column(String(70), nullable=True)
     avatar_url = Column(String(500), nullable=True)
-    # status：1-正常，0-待删除（用户确认删除后置0，后台任务1分钟后清理）
-    status = Column(SmallInteger, nullable=False, default=1, comment="状态：1-正常，0-待删除（后台任务1分钟后清理）")
+    # status：1-正常，0-待删除（用户确认删除后置0，后台任务24小时后清理）
+    status = Column(SmallInteger, nullable=False, default=1, comment="状态：1-正常，0-待删除（后台任务24小时后清理）")
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

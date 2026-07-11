@@ -1,26 +1,6 @@
-from datetime import datetime
-
 from pydantic import BaseModel, EmailStr, field_validator
 
 from ..core.security import Security
-
-
-class UserBase(BaseModel):
-    username: str
-    email: EmailStr
-
-
-class UserCreate(UserBase):
-    password: str
-
-
-class UserResponse(UserBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 class RegisterUser(BaseModel):

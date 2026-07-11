@@ -1,6 +1,6 @@
 <template>
   <view class="settings-page">
-    <NoticeButton :has-notification="hasNotification" />
+    <NoticeButton />
 
     <view class="settings-page__main">
       <!-- 用户资料卡片 -->
@@ -91,7 +91,6 @@ import { useShare } from '../../composables/useShare'
 
 useShare({ title: '设置' })
 
-const hasNotification = false
 const userStore = useUserStore()
 
 // 账号是否处于删除冷静期（status=0）

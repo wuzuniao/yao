@@ -1,7 +1,7 @@
 <template>
   <view class="index-page">
     <view class="index-page__frame">
-      <NoticeButton :has-notification="hasNotification" />
+      <NoticeButton />
 
       <view class="index-page__main-canvas">
         <!-- 空状态提示（未登录或已登录无进行中计划时，隐藏任务卡片） -->
@@ -112,8 +112,6 @@ import { useShare } from '../../composables/useShare'
 useShare({ title: '首页' })
 
 const userStore = useUserStore()
-// 通知按钮红点（暂固定为 true，后续可对接通知状态）
-const hasNotification = true
 
 // 进行中的计划列表（从数据库加载，按 priority 升序排序）
 const activePlans = ref([])

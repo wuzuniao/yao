@@ -1,7 +1,7 @@
 from datetime import datetime, date, time as dt_time, timedelta
 from typing import Optional
 
-from sqlalchemy import select, and_, func as sa_func
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 

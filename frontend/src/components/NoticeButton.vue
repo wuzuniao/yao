@@ -11,12 +11,6 @@ import noticeInactiveIcon from '../assets/images/tongzhi_0.png'
 import noticeActiveIcon from '../assets/images/tongzhi_1.png'
 
 const props = defineProps({
-  // hasNotification 已废弃：图标现由全局未读站内信数量（userStore.unreadCount）驱动
-  // 保留 prop 定义以兼容各页面历史调用，实际不再使用
-  hasNotification: {
-    type: Boolean,
-    default: false
-  },
   // 距顶部偏移：基于设备状态栏高度动态计算，确保各机型顶部留白一致
   // iPhone 13 mini（statusBarHeight≈50）：top ≈ 45px
   // iPhone 15 Pro（statusBarHeight≈59）：top ≈ 54px（新机型自动增加约10px）
