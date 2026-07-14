@@ -29,7 +29,7 @@
         <view class="help-page__card">
           <view class="help-page__card-body">
             <text class="help-page__card-title">邮件通知怎么第一时间知道？</text>
-            <text class="help-page__card-text">微信搜索“QQ邮箱提醒”，绑定自己的邮件后，有邮件会弹消息。</text>
+            <text class="help-page__card-text">微信搜索“QQ邮箱提醒”，绑定自己的邮箱后，有邮件会弹消息。</text>
           </view>
         </view>
 
@@ -49,7 +49,7 @@
             <text class="help-page__card-text">只允许在打卡日期范围内进行打卡。</text>
             <text class="help-page__card-text">未到打卡时间：打卡按钮为“未到打卡时间”。</text>
             <text class="help-page__card-text">提醒时间前后2小时，打卡按钮会变为“立即打卡”，此时允许打卡；已打卡则将打卡按钮变为“已打卡”。</text>
-            <text class="help-page__card-text">当存在多个提醒时间时：取两个提醒时间的中间点，分别进行是否打卡判断，未打卡则将打卡按钮会变为“立即打卡”，已打卡则将打卡按钮变为“已打卡”。</text>
+            <text class="help-page__card-text">当存在多个提醒时间时：取两个提醒时间的中间点，将间隔时间分为两段，分别进行是否打卡判断，未打卡则将打卡按钮会变为“立即打卡”，已打卡则将打卡按钮变为“已打卡”。</text>
             <text class="help-page__card-text">当需要打卡时，可长按“未到打卡时间”或“已打卡”按钮3秒，重置按钮为"立即打卡"，此时允许打卡。</text>
           </view>
         </view>

@@ -15,7 +15,7 @@
             "notification_channels.py": "通知渠道API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询通知渠道列表、POST /email 创建邮件渠道（密码AES-256-GCM加密存储）、PUT /email 更新邮件渠道（password空字符串保留原密码）、DELETE / 删除渠道（站内信禁删）。响应中邮件渠道password字段始终返回空值",
             "plans.py": "计划API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询用户计划列表（按status+priority+created_at排序）、POST 创建计划（含通知时间点/关联渠道/priority优先级）、PUT /{plan_id} 更新计划、DELETE /{plan_id} 删除计划",
             "checkins.py": "打卡记录API接口（均 JWT 保护，user_id 由 token 解析）：POST /checkins 创建打卡记录（允许重复打卡，解析时间后去除时区确保 naive Shanghai datetime）、GET /checkins/today 查询今日所有打卡、GET /checkins/today/{plan_id} 查询某计划今日打卡（返回checked_time_ids数组）、GET /checkins/month?year=&month= 查询某月有打卡记录的日期列表、GET /checkins/day?date= 查询某天打卡详情（含计划提醒时间及打卡状态）",
-            "notification_logs.py": "站内信API接口（均 JWT 保护，user_id 由 token 解析）：GET /notification-logs/list 分页查询站内信列表（返回所有站内信，先自动标记已读再返回精简字段 id/plan_name/plan_remark/send_time/is_unread+unread_count）、PUT /notification-logs/read 标记单条已读（status 2→0，校验归属）、PUT /notification-logs/read-all 全部标记已读（批量更新 status=0，返回 updated_count）、GET /notification-logs/unread-count 查询未读数量（用于通知图标切换）"
+            "notification_logs.py": "站内信API接口（均 JWT 保护，user_id 由 token 解析）：GET /notification-logs/list 分页查询站内信列表（返回所有站内信，先自动标记已读再返回精简字段 id/plan_name/plan_remark/send_time/is_unread+unread_count）、PUT /notification-logs/read 标记单条已读（status 2→0，校验归属）、PUT /notification-logs/read-all 全部标记已读（批量更新 status=0，返回 updated_count）、GET /notification-logs/unread-count 查询未读数量（用于通知图标切换），返回数量前先执行 _auto_mark_read_if_checked 自动标记已读（扫描未读站内信，匹配区间内已有打卡记录的更新为 status=0）"
           }
         },
         "core": {
@@ -109,7 +109,7 @@
         },
         "components": {
           "描述": "可复用组件目录",
-          "NoticeButton.vue": "通知按钮组件（一级页面专用），图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onMounted 自动拉取未读数量；点击 navigateTo 直达站内信页 /pages/user/messages。仅用于 index/record/settings 三个一级页面",
+          "NoticeButton.vue": "通知按钮组件（一级页面专用），图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onShow 时强制刷新未读数量（绕过节流），触发后端自动标记已读并返回清理后的真实数量；含 NoticeButton 的页面切换时均会触发；点击 navigateTo 直达站内信页 /pages/user/messages。仅用于 index/record/settings 三个一级页面",
           "BackButton.vue": "返回按钮组件（次级页面专用），以 NoticeButton 为蓝本，图标使用 fanhui.png，点击触发 uni.navigateBack 返回上一页（页面栈为空时 reLaunch 回首页）。用于 notification/plan/profile/login/register/contact/help/messages/privacy/forgot-password 等次级页面",
           "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项",
           "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,文本自动换行)，用于 notification/profile/help/contact 等页面"
@@ -145,7 +145,7 @@
             "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单（前后端双重验证，失焦实时校验）。用户名 2-15 字符仅允许中文英文数字；密码 8-20 位含大小写字母/数字/特殊符号至少三种；邮箱标准格式；验证码 6 位数字。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'",
             "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
             "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
-            "messages.vue": "站内信页面，从 notification_logs 表查询当前用户所有站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注，后端自动标记已读后返回精简字段 id/plan_name/plan_remark/send_time/is_unread）。卡片展示计划名称+备注说明+发送时间；未读(is_unread=true)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读，前端实时移除高亮(卡片保留)；全部已读按钮(存在未读时显示，防抖置灰，点击后移除所有高亮卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；onShow拉取数据+启动60秒轮询(未读数量变化时刷新列表保持一致)；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
+            "messages.vue": "站内信页面，从 notification_logs 表查询当前用户所有站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注，后端自动标记已读后返回精简字段 id/plan_name/plan_remark/send_time/is_unread）。卡片展示计划名称+备注说明+发送时间；未读(is_unread=true)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读，前端实时移除高亮(卡片保留)；全部已读按钮(存在未读时显示，防抖置灰，点击后移除所有高亮卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；打开页面时加载列表(后端自动标记已读并返回 unread_count)，不再使用轮询；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
             "privacy.vue": "隐私政策页面，静态展示七章节政策条款含第三方信息共享表格",
             "forgot-password.vue": "找回密码页面，两步流程：步骤1输入邮箱+验证码验证身份，步骤2设置新密码。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'"
           }

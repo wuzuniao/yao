@@ -58,8 +58,12 @@ async def get_unread_count(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询当前登录用户未读站内信数量（user_id 来自 JWT，用于通知图标实时切换）"""
+    """
+    查询当前登录用户未读站内信数量（user_id 来自 JWT，用于通知图标实时切换）
+    - 返回前先执行自动标记已读，确保数量为清理后的真实未读数量
+    """
     service = NotificationLogService(db)
+    await service._auto_mark_read_if_checked(user_id)
     count = await service.count_unread(user_id)
     return {"code": 0, "msg": "success", "data": {"unread_count": count}}
 
