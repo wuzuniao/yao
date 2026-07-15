@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.config import settings
@@ -12,6 +12,9 @@ from ..core.security import Security
 from ..models.user import User as UserModel
 from ..models.user_miniapp_account import UserMiniappAccount
 from ..models.notification_channel import NotificationChannel
+from ..models.plan import CheckinPlan, PlanNotificationTime, PlanNotificationChannel
+from ..models.checkin_record import CheckinRecord
+from ..models.notification_log import NotificationLog
 from ..schemas.notification_channel import CHANNEL_TYPE_ZNX
 from ..utils.timezone import now_shanghai
 from ..utils.logger import logger
@@ -370,7 +373,16 @@ class User:
 
     async def purge_expired_deletions(self) -> int:
         """
-        清理已到期的删除计划账号：删除 status=0 且 updated_at 超过24小时的用户及其关联小程序记录
+        清理已到期的删除计划账号：删除 status=0 且 updated_at 超过24小时的用户及其所有关联数据
+        --------------------------------------------------------------------------
+        关联数据清理顺序（均以 user_id 为过滤条件，避免误删他人数据）：
+          1. plan_notification_times / plan_notification_channels：计划关联的时间点和渠道
+          2. checkin_records：打卡记录
+          3. notification_logs：通知发送记录
+          4. notification_channels：通知渠道配置
+          5. checkin_plans：打卡计划主表
+          6. user_miniapp_accounts：小程序绑定记录（用户库）
+          7. users：用户主记录（用户库）
         :return: 已删除的用户数量
         """
         now = now_shanghai()
@@ -384,15 +396,59 @@ class User:
         expired_users = result.scalars().all()
         count = 0
         for user in expired_users:
-            # 删除关联的小程序账号记录
+            user_id = user.id
+
+            # 1. 查询该用户所有的计划 ID（用于删除计划关联表）
+            plan_ids_result = await self.db.execute(
+                select(CheckinPlan.id).where(CheckinPlan.user_id == user_id)
+            )
+            plan_ids = plan_ids_result.scalars().all()
+
+            # 2. 删除计划关联的时间点和渠道关联（通过 plan_id 过滤）
+            if plan_ids:
+                await self.db.execute(
+                    delete(PlanNotificationTime).where(
+                        PlanNotificationTime.plan_id.in_(plan_ids)
+                    )
+                )
+                await self.db.execute(
+                    delete(PlanNotificationChannel).where(
+                        PlanNotificationChannel.plan_id.in_(plan_ids)
+                    )
+                )
+
+            # 3. 删除打卡记录（user_id 过滤）
+            await self.db.execute(
+                delete(CheckinRecord).where(CheckinRecord.user_id == user_id)
+            )
+
+            # 4. 删除通知发送记录（user_id 过滤）
+            await self.db.execute(
+                delete(NotificationLog).where(NotificationLog.user_id == user_id)
+            )
+
+            # 5. 删除通知渠道配置（user_id 过滤）
+            await self.db.execute(
+                delete(NotificationChannel).where(
+                    NotificationChannel.user_id == user_id
+                )
+            )
+
+            # 6. 删除打卡计划主表（user_id 过滤）
+            await self.db.execute(
+                delete(CheckinPlan).where(CheckinPlan.user_id == user_id)
+            )
+
+            # 7. 删除关联的小程序账号记录（user_id 过滤，位于用户库）
             miniapp_result = await self.db.execute(
                 select(UserMiniappAccount).where(
-                    UserMiniappAccount.user_id == user.id
+                    UserMiniappAccount.user_id == user_id
                 )
             )
             for account in miniapp_result.scalars().all():
                 await self.db.delete(account)
-            # 删除用户主记录
+
+            # 8. 删除用户主记录
             await self.db.delete(user)
             count += 1
         if count > 0:
