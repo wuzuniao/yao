@@ -167,10 +167,11 @@ class Security:
     # ===== JWT 认证 =====
 
     @staticmethod
-    def generate_token(user_id: int) -> str:
+    def generate_token(user_id: int, role: int = 0) -> str:
         """
         生成 JWT 访问令牌
         :param user_id: 用户ID（写入 sub 声明）
+        :param role: 用户角色（写入 role 声明，0-普通用户，7-管理员）
         :return: 签名后的 JWT 字符串
         :raises ValueError: JWT_SECRET_KEY 未配置或 user_id 非正整数
         """
@@ -182,6 +183,7 @@ class Security:
         now = int(time.time())
         payload = {
             "sub": str(user_id),  # subject：用户ID（字符串形式，JWT 标准）
+            "role": role,         # 角色：0-普通用户，7-管理员
             "iat": now,           # issued at：签发时间
             "exp": now + settings.JWT_EXPIRE_DAYS * 86400,  # expiration：过期时间
         }

@@ -30,7 +30,7 @@ router = APIRouter()
 def _user_payload(db_user) -> dict:
     """构造登录/注册等接口的响应数据（含 JWT access_token）"""
     try:
-        token = Security.generate_token(db_user.id)
+        token = Security.generate_token(db_user.id, role=db_user.role)
     except ValueError as e:
         # JWT 配置异常时返回 500，避免静默失败
         raise HTTPException(status_code=500, detail=str(e))
@@ -42,6 +42,7 @@ def _user_payload(db_user) -> dict:
         "email": db_user.email or "",
         "has_password": bool(db_user.password_hash),
         "status": db_user.status,
+        "role": db_user.role,
         "access_token": token,
     }
 
@@ -450,6 +451,7 @@ async def get_user_info(
             "email": user.email or "",
             "has_password": bool(user.password_hash),
             "status": user.status,
+            "role": user.role,
         },
     }
 

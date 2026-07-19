@@ -15,6 +15,18 @@
         </view>
       </view>
 
+      <!-- 分组：管理（仅管理员可见，置于制定计划之前） -->
+      <view class="settings-page__group1" v-if="isAdmin">
+        <view class="settings-page__link-card" @click="goAnnouncement">
+          <view class="settings-page__link-left">
+            <text class="settings-page__link-title">公告管理</text>
+          </view>
+          <view class="settings-page__link-right">
+            <view class="u-arrow-right"></view>
+          </view>
+        </view>
+      </view>
+
       <!-- 分组 1：制定计划 + 通知方式（删除冷静期内置灰禁点击） -->
       <view class="settings-page__group1" :class="{ 'settings-page__group1--disabled': isDeletionScheduled }">
         <view class="settings-page__link-card settings-page__link-card--plan" @click="!isDeletionScheduled && goPlan()">
@@ -95,6 +107,9 @@ const userStore = useUserStore()
 
 // 账号是否处于删除冷静期（status=0）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
+
+// 是否为管理员（role=7）
+const isAdmin = computed(() => userStore.userInfo?.role === 7)
 
 // 用户的通知渠道列表和计划列表（从数据库动态加载）
 const channels = ref([])
@@ -185,6 +200,11 @@ function goNotification() {
 
 function goPlan() {
   uni.navigateTo({ url: '/pages/index/plan' })
+}
+
+// 跳转到公告管理页
+function goAnnouncement() {
+  navigate('/pages/user/announcement')
 }
 
 // 用户资料卡点击跳转：已登录跳转 profile.vue，未登录跳转 login.vue

@@ -95,6 +95,13 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "找回密码"
           }
+        },
+        {
+          "path": "announcement",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "公告管理"
+          }
         }
       ]
     }

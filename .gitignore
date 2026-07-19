@@ -66,6 +66,7 @@ unpackage/
 .idea/
 .vscode/
 .trae/
+.codebuddy/
 *.swp
 *.swo
 *~

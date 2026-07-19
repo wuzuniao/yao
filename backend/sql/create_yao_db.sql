@@ -93,7 +93,7 @@ CREATE TABLE `notification_logs` (
   `send_time` DATETIME NOT NULL COMMENT '发送时间（实际触发时间）',
   `notify_date` DATE NULL COMMENT '通知归属日期（提醒时间所在日，跨天催办去重用）',
   `status` TINYINT NOT NULL COMMENT '发送状态：0-成功，1-失败，2-未读',
-  `trigger_type` TINYINT NOT NULL DEFAULT 0 COMMENT '触发类型：0-准时，1-超5分钟，2-超30分钟，3-超1小时',
+  `trigger_type` TINYINT NOT NULL DEFAULT 0 COMMENT '触发类型：0-准时，1-超10分钟，2-1小时或中点催办',
   `error_msg` VARCHAR(255) NULL COMMENT '失败时的错误信息',
   PRIMARY KEY (`id`),
   INDEX `idx_plan_id` (`plan_id`),
@@ -119,3 +119,17 @@ CREATE TABLE `checkin_records` (
   INDEX `idx_plan_id` (`plan_id`),
   INDEX `idx_plan_time_id` (`plan_time_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户打卡记录（支持多个时间点）';
+
+-- ------------------------------------------------------
+-- 表：announcements（全站公告表）
+-- 说明：每条公告一行，用户侧投递后续实现
+-- ------------------------------------------------------
+CREATE TABLE `announcements` (
+  `id`         BIGINT       NOT NULL AUTO_INCREMENT,
+  `title`      VARCHAR(200) NOT NULL COMMENT '公告标题',
+  `content`    TEXT         NOT NULL COMMENT '公告内容',
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='全站公告表（每条公告一行，用户侧投递后续实现）';

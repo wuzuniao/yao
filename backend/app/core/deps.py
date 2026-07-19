@@ -48,3 +48,31 @@ async def get_current_user_id(authorization: str | None = Header(default=None)) 
     if user_id <= 0:
         raise HTTPException(status_code=401, detail="登录凭证无效")
     return user_id
+
+
+async def get_current_admin(authorization: str | None = Header(default=None)) -> int:
+    """
+    从请求头 Authorization 解析 JWT，校验管理员角色（role=7）
+    :param authorization: 请求头 Authorization 字段，格式 "Bearer <token>"
+    :return: 当前管理员用户ID
+    :raises HTTPException: 401 未携带/无效 token；403 非管理员
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="未登录，请先登录")
+    parts = authorization.split(" ", 1)
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="认证凭证格式不正确")
+    token = parts[1].strip()
+    try:
+        payload = Security.verify_token(token)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="登录凭证格式不正确")
+    if user_id <= 0:
+        raise HTTPException(status_code=401, detail="登录凭证无效")
+    if payload.get("role", 0) != 7:
+        raise HTTPException(status_code=403, detail="无管理员权限")
+    return user_id

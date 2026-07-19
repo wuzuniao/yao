@@ -21,6 +21,8 @@ class User(Base):
     avatar_url = Column(String(500), nullable=True)
     # status：1-正常，0-待删除（用户确认删除后置0，后台任务24小时后清理）
     status = Column(SmallInteger, nullable=False, default=1, comment="状态：1-正常，0-待删除（后台任务24小时后清理）")
+    # role：0-普通用户（默认），7-管理员
+    role = Column(SmallInteger, nullable=False, default=0, comment="角色：0-普通用户，7-管理员")
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

@@ -13,7 +13,7 @@
   - 数据库：MariaDB 12.3。
 - **开发环境**：Windows 11（Python 3.14.2 直装，MariaDB 12.3 直装，监听 127.0.0.1:3306，账密 root/root，数据库名 `wuzuniao_yao`）。
 - **生产环境**：Rocky Linux + Docker 容器化部署（数据库与后端均运行于容器中）。
-- **数据库设计状态**：当前数据库结构为初始版本，**非最终确定**。后续开发过程中，根据业务需求调整表结构、字段、索引等，变更将通过 Alembic 迁移脚本管理。
+- **数据库设计状态**：当前数据库结构为演进式设计，**非最终确定**，允许在开发过程中按需调整表结构、字段、索引等。结构变更通过 `backend/sql/` 下的原始 SQL 文件管理（见第 6.3 节），**未使用 Alembic**。
 
 ---
 
@@ -140,7 +140,10 @@
 - **字符集**：`utf8mb4`，排序规则 `utf8mb4_unicode_ci`。
 - **表设计**：必须包含 `id`（BIGINT AUTO_INCREMENT）、`created_at`（DATETIME DEFAULT CURRENT_TIMESTAMP）、`updated_at`（DATETIME ON UPDATE CURRENT_TIMESTAMP）。
 - **索引**：高频查询字段建普通索引，外键不设物理约束（应用层保证引用完整性），但为外键字段建索引。
-- **迁移**：使用 Alembic，迁移文件放在 `backend/migrations/`。数据库结构为演进式设计，允许在开发过程中通过迁移修改。
+- **迁移（原始 SQL 文件，非 Alembic）**：表结构由 `backend/sql/` 下的 SQL 文件创建与演进，不启用 Alembic。
+  - `create_user_db.sql`：创建共享用户库 `wuzuniao_yonghu`（users、user_miniapp_accounts 等）。
+  - `create_yao_db.sql`：创建业务库 `wuzuniao_yao`（checkin_plans、notification_logs、checkin_records、announcements 等）。
+  - 增量变更（新增字段/表）追加 `add_*.sql` 增量脚本，并同步回填到对应的 `create_*_db.sql`，使新环境一次建库即最新结构；生产环境按 `create_*_db.sql` → `add_*.sql`（按时间顺序）顺序执行。
 
 ---
 

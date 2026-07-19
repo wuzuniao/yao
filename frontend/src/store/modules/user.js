@@ -49,7 +49,8 @@ export const useUserStore = defineStore('user', () => {
       avatar_url: data.avatar_url || '',
       email: data.email || '',
       has_password: !!data.has_password,
-      status: data.status ?? 1
+      status: data.status ?? 1,
+      role: data.role ?? 0
     }
     // 登录类接口响应中携带 access_token，保存以供后续请求附加 Authorization 头
     if (data.access_token) {
