@@ -4,40 +4,35 @@
       "path": "pages/index/index",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "首页",
-        "backgroundColor": "#FFFFFF"
+        "navigationBarTitleText": "首页"
       }
     },
     {
       "path": "pages/index/record",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "记录",
-        "backgroundColor": "#FFFFFF"
+        "navigationBarTitleText": "记录"
       }
     },
     {
       "path": "pages/index/settings",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "设置",
-        "backgroundColor": "#FFFFFF"
+        "navigationBarTitleText": "设置"
       }
     },
     {
       "path": "pages/index/notification",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "通知方式",
-        "backgroundColor": "#FFFFFF"
+        "navigationBarTitleText": "通知方式"
       }
     },
     {
       "path": "pages/index/plan",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "制定计划",
-        "backgroundColor": "#FFFFFF"
+        "navigationBarTitleText": "制定计划"
       }
     }
   ],
@@ -56,56 +51,49 @@
           "path": "login",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "登录",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "登录"
           }
         },
         {
           "path": "register",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "注册",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "注册"
           }
         },
         {
           "path": "contact",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "联系我们",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "联系我们"
           }
         },
         {
           "path": "help",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "帮助中心",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "帮助中心"
           }
         },
         {
           "path": "messages",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "站内信",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "站内信"
           }
         },
         {
           "path": "privacy",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "隐私政策",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "隐私政策"
           }
         },
         {
           "path": "forgot-password",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "找回密码",
-            "backgroundColor": "#FFFFFF"
+            "navigationBarTitleText": "找回密码"
           }
         }
       ]
@@ -115,6 +103,6 @@
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "无足鸟按时吃药打卡",
     "navigationBarBackgroundColor": "#F8F8F8",
-    "backgroundColor": "#F8F8F8"
+    "backgroundColor": "#e8ebe6"
   }
 }
