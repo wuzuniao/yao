@@ -71,10 +71,10 @@
       },
       "sql": {
         "描述": "数据库脚本目录（SQL建表+运维工具）",
-        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本（含 users 表的 role 列：0-普通用户/7-管理员，与 add_role_to_users.sql 增量一致）",
-        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本，含checkin_records表的复合索引idx_user_plan_actual(user_id,plan_id,actual_time)和idx_user_actual(user_id,actual_time)以优化日期范围查询性能；notification_logs表含plan_time_id/notify_date/trigger_type列（0-准时/1-超10分钟/2-1小时或中点催办）及去重索引idx_dedup(plan_time_id,trigger_type,notify_date,channel_id)用于定时通知防重；announcements全站公告表（与 add_announcements.sql 增量一致）",
+        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本：users 表（含 role 列：0-普通用户/7-管理员，以及 status 列用于删除冷静期等状态）与 user_miniapp_accounts 表（用户与微信小程序 openid 绑定）；role 列定义与 add_role_to_users.sql 增量脚本一致",
+        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本，含 7 张表：checkin_plans（打卡计划主表）、plan_notification_times（计划内各通知时间点）、checkin_records（打卡记录，含复合索引 idx_user_plan_actual(user_id,plan_id,actual_time) 与 idx_user_actual(user_id,actual_time) 优化日期范围查询）、notification_channels（通知渠道：站内信/短信/微信等）、plan_notification_channels（计划与通知渠道关联）、notification_logs（通知发送日志，含 plan_time_id/notify_date/trigger_type 列：0-准时/1-超10分钟/2-1小时或中点催办，以及去重索引 idx_dedup(plan_time_id,trigger_type,notify_date,channel_id) 用于定时通知防重）、announcements（全站公告表，与 add_announcements.sql 增量一致）",
         "rotate_encryption_key.py": "邮箱专用密码加密密钥轮换脚本（Linux运维）。通过项目 settings 模块读取 backend/.env 中的 ENCRYPTION_SECRET_KEY（旧密钥）和 DATABASE_URL，生成新密钥，用旧密钥解密 notification_channels 表中所有邮件渠道的 password，用新密钥重新加密后在数据库事务中更新（全部成功提交否则回滚），最后原子替换 .env 中的密钥。用法：python3 backend/sql/rotate_encryption_key.py",
-        "add_role_to_users.sql": "增量迁移：在用户库 wuzuniao_yonghu.users 表新增 role 字段（SMALLINT，默认0-普通用户，7-管理员），仅做身份标记，不建索引",
+        "add_role_to_users.sql": "增量迁移：在用户库 wuzuniao_yonghu.users 表新增 role 字段（TINYINT NOT NULL DEFAULT 0，0-普通用户，7-管理员），仅做身份标记，不建索引",
         "add_announcements.sql": "增量迁移：在业务库 wuzuniao_yao 新建 announcements 公告表（id/title/content/created_at/updated_at），每条公告一行，用户侧投递后续实现"
       },
       "logs": {
