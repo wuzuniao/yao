@@ -3,31 +3,29 @@
     <NoticeButton />
 
     <view class="settings-page__main">
-      <!-- 用户资料卡片 -->
-      <view class="settings-page__profile-card" @click="goProfileOrLogin">
-        <view class="settings-page__profile-card-glow"></view>
-        <view class="settings-page__profile-info">
-          <text class="settings-page__profile-name">{{ displayName }}</text>
-          <text class="settings-page__profile-slogan">{{ displaySlogan }}</text>
-        </view>
-        <view class="settings-page__profile-avatar-wrap">
-          <image v-if="avatarUrl" class="settings-page__profile-avatar" :src="avatarUrl" mode="aspectFit" />
-        </view>
-      </view>
-
-      <!-- 分组：管理（仅管理员可见，置于制定计划之前） -->
-      <view class="settings-page__group1" v-if="isAdmin">
-        <view class="settings-page__link-card" @click="goAnnouncement">
-          <view class="settings-page__link-left">
-            <text class="settings-page__link-title">公告管理</text>
+      <!-- 用户资料卡 + 公告管理（靠近，减少间距） -->
+      <view class="settings-page__near-group">
+        <!-- 用户资料卡片 -->
+        <view class="settings-page__profile-card" @click="goProfileOrLogin">
+          <view class="settings-page__profile-card-glow"></view>
+          <view class="settings-page__profile-info">
+            <text class="settings-page__profile-name">{{ displayName }}</text>
+            <text class="settings-page__profile-slogan">{{ displaySlogan }}</text>
           </view>
-          <view class="settings-page__link-right">
-            <view class="u-arrow-right"></view>
+          <view class="settings-page__profile-avatar-wrap">
+            <image v-if="avatarUrl" class="settings-page__profile-avatar" :src="avatarUrl" mode="aspectFit" />
+          </view>
+        </view>
+
+        <!-- 公共管理（仅管理员可见，紧贴用户资料卡下方；占半行：无图标、无副标题、无箭头，仅标题） -->
+        <view v-if="isAdmin" class="settings-page__admin-row">
+          <view class="settings-page__admin-card" @click="goAnnouncement">
+            <text class="settings-page__admin-title">公告管理</text>
           </view>
         </view>
       </view>
 
-      <!-- 分组 1：制定计划 + 通知方式（删除冷静期内置灰禁点击） -->
+      <!-- 分组 1：制定计划 + 通知方式（删除冷静期内整体置灰禁点击，独占整行） -->
       <view class="settings-page__group1" :class="{ 'settings-page__group1--disabled': isDeletionScheduled }">
         <view class="settings-page__link-card settings-page__link-card--plan" @click="!isDeletionScheduled && goPlan()">
           <view class="settings-page__link-left">
@@ -251,11 +249,14 @@ function goPrivacy() {
  * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
  * ========================================================================== */
 .settings-page {
-  min-height: 100vh;
+  /* 不再设 min-height:100vh：全局 page 已撑满视口并兜底背景，
+     此处高度自适应内容，内容不足一屏时不出现多余滚动条 */
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
-  padding-bottom: 354rpx;
+  /* 底部留白与记录页一致：240rpx（BottomNav 高 + 余量），
+     使最后元素到导航栏顶部距离同记录页 */
+  padding-bottom: 240rpx;
 }
 
 .settings-page__main {
@@ -360,10 +361,44 @@ function goPrivacy() {
   gap: 32rpx;
 }
 
-/* 删除冷静期内（status=0）分组1整体置灰并禁用所有交互 */
+/* 删除冷静期内（status=0）分组整体置灰并禁用交互 */
 .settings-page__group1--disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* 靠近用户资料卡的分组：用户卡 + 公告管理，间距更小（更贴近用户资料卡） */
+.settings-page__near-group {
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+/* 公共管理行：单列网格，列宽随内容收缩（max-content），卡片随之缩小 */
+.settings-page__admin-row {
+  display: grid;
+  grid-template-columns: max-content;
+}
+
+/* 公共管理卡片：简洁文字卡（仅标题，无图标/副标题/箭头），宽度随文字收缩 */
+.settings-page__admin-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 32rpx;
+  box-sizing: border-box;
+  border-radius: 48rpx;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.settings-page__admin-title {
+  color: #0e0f0c;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 600;
+  text-align: center;
 }
 
 .settings-page__link-card {
@@ -495,7 +530,7 @@ function goPrivacy() {
 @media screen and (min-width: 768px) {
   /* 主容器内边距与间距 */
   .settings-page {
-    padding-bottom: 177px;
+    padding-bottom: 120px;
   }
   .settings-page__main {
     padding: 105px 24px 0;
@@ -528,6 +563,23 @@ function goPrivacy() {
   .settings-page__profile-avatar {
     width: 88px;
     height: 88px;
+  }
+  /* 靠近用户资料卡分组 */
+  .settings-page__near-group {
+    gap: 16px;
+  }
+  /* 公共管理行（单列网格） */
+  .settings-page__admin-row {
+    gap: 16px;
+  }
+  /* 公共管理卡片 */
+  .settings-page__admin-card {
+    padding: 12px 16px;
+    border-radius: 24px;
+  }
+  .settings-page__admin-title {
+    font-size: 16px;
+    line-height: 24px;
   }
   /* 分组 1 */
   .settings-page__group1 {

@@ -36,6 +36,12 @@
           </view>
         </view>
 
+        <!-- 公告临时卡片（最近7天未读公告轮播，填充首页空白高度，位于任务卡与打卡按钮之间） -->
+        <AnnouncementCard
+          v-if="recentAnnouncements.length"
+          :announcements="recentAnnouncements"
+        />
+
         <!-- 立即打卡按钮（状态：灰色无任务 / 红色立即打卡 / 已完成 / 未到打卡时间） -->
         <view class="index-page__checkin-shell">
           <view
@@ -102,9 +108,11 @@ import { ref, computed, onUnmounted } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
+import AnnouncementCard from '../../components/AnnouncementCard.vue'
 import { useUserStore } from '../../store/modules/user'
 import { listPlans } from '../../api/modules/plan'
 import { createCheckin, listTodayCheckinsByPlan } from '../../api/modules/checkin'
+import { getRecentAnnouncements } from '../../api/modules/announcement'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
 import { useShare } from '../../composables/useShare'
@@ -124,6 +132,8 @@ const showTaskList = ref(false)
 // 今日打卡记录列表（含打卡时间分钟数，用于"匹配打卡记录"判定 done/active）
 // 结构：[{ timeId, minutes }]，minutes = 实际打卡时间的小时*60+分钟
 const todayCheckinMinutes = ref([])
+// 最近 7 天公告列表（普通用户），用于首页临时卡片轮播
+const recentAnnouncements = ref([])
 // 状态刷新定时器（每分钟检查打卡时段变化）
 let refreshTimer = null
 // 长按3秒重置标志：true 时强制按钮为"立即打卡"可点击状态
@@ -356,6 +366,22 @@ async function loadActivePlans() {
   }
 }
 
+// 加载最近 7 天公告（普通用户），用于首页临时卡片轮播；失败不阻塞首页
+async function loadRecentAnnouncements() {
+  if (!isLoggedIn.value) {
+    recentAnnouncements.value = []
+    return
+  }
+  try {
+    const res = await getRecentAnnouncements()
+    if (res.code === 0 && res.data) {
+      recentAnnouncements.value = res.data
+    }
+  } catch (e) {
+    console.warn('加载公告失败', e)
+  }
+}
+
 // 加载今日打卡记录（针对主要卡片计划）
 // 异步查询数据库，存储打卡记录的分钟数列表，用于"匹配打卡记录"判定 done/active
 async function loadTodayCheckins() {
@@ -480,6 +506,8 @@ onShow(() => {
       loadTodayCheckins()
     }
   })
+  // 并行加载最近 7 天公告（不阻塞任务卡片）
+  loadRecentAnnouncements()
   // 每分钟刷新打卡时段状态（用户在线时才检查）
   if (!refreshTimer) {
     refreshTimer = setInterval(() => {

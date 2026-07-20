@@ -11,6 +11,16 @@ export function getAnnouncements() {
 }
 
 /**
+ * 查询最近 7 天内发布的公告（普通用户），按创建时间倒序
+ */
+export function getRecentAnnouncements() {
+  return request({
+    url: '/api/v1/announcements/recent',
+    method: 'GET'
+  })
+}
+
+/**
  * 发布公告（仅管理员）
  * @param {Object} param0 公告数据
  * @param {string} param0.title 公告标题

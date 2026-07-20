@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func, text
 
 from ..models.announcement import Announcement
 
@@ -28,6 +28,22 @@ class AnnouncementService:
         """查询全部公告，按创建时间倒序（最新在前）"""
         result = await self.db.execute(
             select(Announcement).order_by(Announcement.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def list_recent(self, days: int = 7) -> list[Announcement]:
+        """查询最近 days 天内发布的公告，按创建时间倒序（最新在前）
+
+        - 采用数据库服务器时间 func.now()，避免应用层时区偏差
+        - 仅返回 created_at >= now - days 的记录
+        - MariaDB 日期运算使用 DATE_SUB(NOW(), INTERVAL N DAY)，
+          避免 SQLAlchemy 将 timedelta 误当作绑定参数
+        """
+        since = func.date_sub(func.now(), text(f"INTERVAL {days} DAY"))
+        result = await self.db.execute(
+            select(Announcement)
+            .where(Announcement.created_at >= since)
+            .order_by(Announcement.created_at.desc())
         )
         return list(result.scalars().all())
 

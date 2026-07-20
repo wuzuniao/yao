@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
-from ...core.deps import get_current_admin
+from ...core.deps import get_current_admin, get_current_user_id
 from ...schemas.announcement import AnnouncementCreate, AnnouncementUpdate
 from ...services.announcement_service import AnnouncementService
 
@@ -28,6 +28,21 @@ async def list_announcements(
     """查询全部公告（仅管理员）"""
     service = AnnouncementService(db)
     announcements = await service.list_all()
+    return {
+        "code": 0,
+        "msg": "success",
+        "data": [_announcement_to_dict(a) for a in announcements],
+    }
+
+
+@router.get("/recent")
+async def list_recent_announcements(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询最近 7 天内发布的公告（普通用户），按创建时间倒序"""
+    service = AnnouncementService(db)
+    announcements = await service.list_recent(days=7)
     return {
         "code": 0,
         "msg": "success",
