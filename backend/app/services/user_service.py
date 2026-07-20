@@ -196,7 +196,11 @@ class User:
         # 4. 校验密码
         if not Security.verify_password(password, user.password_hash):
             raise ValueError("密码错误")
-        # 5. 返回用户对象（包含 username、signature、avatar_url）
+        # 5. 更新最后登录时间
+        user.last_login_at = now_shanghai()
+        await self.db.commit()
+        await self.db.refresh(user)
+        # 6. 返回用户对象（包含 username、signature、avatar_url）
         return user
 
     async def send_reset_code(self, email: str) -> str:
