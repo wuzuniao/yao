@@ -475,6 +475,8 @@ async function handleCheckin() {
       todayCheckinMinutes.value.push({ timeId, minutes: nowMinutes })
       // 打卡成功后重置长按标志
       forceActive.value = false
+      // 触发后端自动标记已读并同步刷新 NoticeButton 图标状态
+      userStore.loadUnreadCount(true)
     }
   } catch (e) {
     uni.showToast({ title: e.message || '打卡失败', icon: 'none' })
