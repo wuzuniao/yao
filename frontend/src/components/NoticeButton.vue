@@ -6,7 +6,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '../store/modules/user'
 import noticeInactiveIcon from '../assets/images/tongzhi_0.png'
 import noticeActiveIcon from '../assets/images/tongzhi_1.png'
@@ -24,14 +23,9 @@ const props = defineProps({
 const userStore = useUserStore()
 
 // 图标由全局未读数量驱动：有未读显示 tongzhi_1.png，无消息/全部已读显示 tongzhi_0.png
+// 未读数量仅在打开站内信页（messages.vue）或首页打卡成功时查询更新，不在含 NoticeButton 的页面切换时触发
 const iconSrc = computed(() => {
   return userStore.unreadCount > 0 ? noticeActiveIcon : noticeInactiveIcon
-})
-
-// 页面 onShow 时强制刷新未读数量（绕过节流），触发后端自动标记已读并返回清理后的真实数量
-// uni-app 支持组件内 onShow 绑定宿主页面生命周期，含 NoticeButton 的页面切换时均会触发
-onShow(() => {
-  userStore.loadUnreadCount(true)
 })
 
 // 动态计算 top：若未传入 top，则基于 statusBarHeight 计算
