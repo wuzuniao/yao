@@ -17,6 +17,15 @@
           </view>
         </view>
 
+        <view class="help-page__card">
+          <view class="help-page__card-body">
+            <text class="help-page__card-title">如何允许微信通知？</text>
+            <text class="help-page__card-text">通知方式页面中，授权订阅消息「打卡提醒」，打卡计划中添加「微信」通知方式。</text>
+            <text class="help-page__card-text">授权订阅消息通知后，勾选「总是保持以上选择，不再询问」后，后续每次打卡时会静默+1次授权通知，且不再弹窗；也就是每次打卡自动+1次授权通知次数。不勾选则会弹窗提示。</text>
+            <text class="help-page__card-text">可在通知方式页多次授权增加通知次数。</text>
+          </view>
+        </view>
+
         <!-- Card 2 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
@@ -61,6 +70,7 @@
             <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡时，发送通知。</text>
             <text class="help-page__card-text">当存在多个提醒时间时：到达打卡计划的通知时间，且当前提醒时间的匹配范围内打卡记录数量小于1时，发送通知。</text>
             <text class="help-page__card-text">当超过提醒时间10分钟、1小时（或与下一次提醒时间的中间点，取先到的时间），依旧没有打卡记录时，发送通知。</text>
+            <text class="help-page__card-text">微信通知次数足够时，会按照上面方式通知。进行打卡后才会增加一次通知次数，否则不再进行微信通知。</text>
           </view>
         </view>
       </view>
