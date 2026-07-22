@@ -36,19 +36,27 @@
           <!-- 密码 -->
           <view class="register-page__field">
             <text class="register-page__label">密码</text>
-            <input
-              class="register-page__input"
-              :class="{ 'register-page__input--error': errors.password }"
-              v-model="form.password"
-              :password="true"
-              placeholder="请设置强密码"
-              placeholder-class="register-page__placeholder"
-              :placeholder-style="phStyle('password')"
-              :maxlength="passwordLimit.max"
-              @input="e => form.password = passwordLimit.handleInput(e)"
-              @focus="handleFocus('password')"
-              @blur="handleBlur('password')"
-            />
+            <view
+              class="register-page__password-row"
+              :class="{ 'register-page__password-row--error': errors.password }"
+            >
+              <input
+                class="register-page__input register-page__input--password"
+                v-model="form.password"
+                :password="!showPassword"
+                :key="'reg-pwd-' + showPassword"
+                placeholder="请设置强密码"
+                placeholder-class="register-page__placeholder"
+                :placeholder-style="phStyle('password')"
+                :maxlength="passwordLimit.max"
+                @input="e => form.password = passwordLimit.handleInput(e)"
+                @focus="handleFocus('password')"
+                @blur="handleBlur('password')"
+              />
+              <view class="register-page__eye" @click="togglePassword">
+                <PasswordEye :visible="showPassword" />
+              </view>
+            </view>
             <text v-if="errors.password" class="register-page__error-text">{{ errors.password }}</text>
             <text v-if="passwordLimit.limitReached" class="register-page__limit-text">{{ passwordLimit.limitHint }}</text>
           </view>
@@ -56,19 +64,27 @@
           <!-- 确认密码 -->
           <view class="register-page__field">
             <text class="register-page__label">确认密码</text>
-            <input
-              class="register-page__input"
-              :class="{ 'register-page__input--error': errors.confirmPassword }"
-              v-model="form.confirmPassword"
-              :password="true"
-              placeholder="请再次输入密码"
-              placeholder-class="register-page__placeholder"
-              :placeholder-style="phStyle('confirmPassword')"
-              :maxlength="confirmPwdLimit.max"
-              @input="e => form.confirmPassword = confirmPwdLimit.handleInput(e)"
-              @focus="handleFocus('confirmPassword')"
-              @blur="handleBlur('confirmPassword')"
-            />
+            <view
+              class="register-page__password-row"
+              :class="{ 'register-page__password-row--error': errors.confirmPassword }"
+            >
+              <input
+                class="register-page__input register-page__input--password"
+                v-model="form.confirmPassword"
+                :password="!showConfirmPassword"
+                :key="'reg-cpwd-' + showConfirmPassword"
+                placeholder="请再次输入密码"
+                placeholder-class="register-page__placeholder"
+                :placeholder-style="phStyle('confirmPassword')"
+                :maxlength="confirmPwdLimit.max"
+                @input="e => form.confirmPassword = confirmPwdLimit.handleInput(e)"
+                @focus="handleFocus('confirmPassword')"
+                @blur="handleBlur('confirmPassword')"
+              />
+              <view class="register-page__eye" @click="toggleConfirmPassword">
+                <PasswordEye :visible="showConfirmPassword" />
+              </view>
+            </view>
             <text v-if="errors.confirmPassword" class="register-page__error-text">{{ errors.confirmPassword }}</text>
             <text v-if="confirmPwdLimit.limitReached" class="register-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
@@ -165,6 +181,7 @@
  */
 import { reactive, ref } from 'vue'
 import BackButton from '../../components/BackButton.vue'
+import PasswordEye from '../../components/PasswordEye.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { sendRegisterCode, registerUser } from '../../api/modules/user'
@@ -204,6 +221,16 @@ const passwordLimit = useInputLimit(20)
 const confirmPwdLimit = useInputLimit(20)
 const emailLimit = useInputLimit(254)
 const codeLimit = useInputLimit(6, /^\d$/)
+
+// 密码显隐切换（默认隐藏，点击眼睛睁眼显示明文）
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
+function togglePassword() {
+  showPassword.value = !showPassword.value
+}
+function toggleConfirmPassword() {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
 
 // ===== 前端输入校验（与后端规则保持一致）=====
 function validateUsername(v) {
@@ -507,6 +534,43 @@ function goPrivacy() {
   font-size: 32rpx;
 }
 
+/* 密码行：统一边框容器，内含输入框与眼睛图标（用 border 而非 box-shadow，避免原生 input 白色背景覆盖 inset shadow） */
+.register-page__password-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #c1cab5;
+  border-radius: 24rpx;
+  background: #fff;
+}
+
+.register-page__password-row:focus-within {
+  border-color: #454745;
+}
+
+.register-page__password-row--error {
+  border-color: #e5484d;
+}
+
+.register-page__input--password {
+  flex: 1;
+  border: none;
+  box-shadow: none;
+  border-radius: 24rpx 0 0 24rpx;
+  padding-right: 24rpx;
+}
+
+.register-page__eye {
+  flex: none;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24rpx;
+  border-radius: 0 24rpx 24rpx 0;
+}
+
 /* 输入框错误态：红色边框（覆盖默认 #c1cab5） */
 .register-page__input--error {
   box-shadow: inset 0 0 0 1px #e5484d;
@@ -718,6 +782,15 @@ function goPrivacy() {
 
   .register-page__placeholder {
     font-size: 16px;
+  }
+
+  /* 密码行 */
+  .register-page__input--password {
+    padding-right: 12px;
+  }
+
+  .register-page__eye {
+    padding: 0 12px;
   }
 
   .register-page__error-text {

@@ -107,49 +107,73 @@
           <!-- 旧密码（仅已设置密码的用户需要验证） -->
           <view v-if="hasPassword" class="profile-page__form-field">
             <text class="profile-page__form-label">旧密码</text>
-            <input
-              class="profile-page__input"
-              :class="{ 'profile-page__input--error': passwordErrors.oldPassword }"
-              v-model="passwordForm.oldPassword"
-              :password="true"
-              placeholder="请输入旧密码"
-              placeholder-class="profile-page__placeholder"
-              :maxlength="oldPwdLimit.max"
-              @input="e => passwordForm.oldPassword = oldPwdLimit.handleInput(e)"
-              @blur="passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'"
-            />
+            <view
+              class="profile-page__password-row"
+              :class="{ 'profile-page__password-row--error': passwordErrors.oldPassword }"
+            >
+              <input
+                class="profile-page__input profile-page__input--password"
+                v-model="passwordForm.oldPassword"
+                :password="!showOldPassword"
+                :key="'pro-old-' + showOldPassword"
+                placeholder="请输入旧密码"
+                placeholder-class="profile-page__placeholder"
+                :maxlength="oldPwdLimit.max"
+                @input="e => passwordForm.oldPassword = oldPwdLimit.handleInput(e)"
+                @blur="passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'"
+              />
+              <view class="profile-page__eye" @click="toggleOldPassword">
+                <PasswordEye :visible="showOldPassword" />
+              </view>
+            </view>
             <text v-if="passwordErrors.oldPassword" class="profile-page__error-text">{{ passwordErrors.oldPassword }}</text>
             <text v-if="oldPwdLimit.limitReached" class="profile-page__limit-text">{{ oldPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
             <text class="profile-page__form-label">新密码</text>
-            <input
-              class="profile-page__input"
-              :class="{ 'profile-page__input--error': passwordErrors.newPassword }"
-              v-model="passwordForm.newPassword"
-              :password="true"
-              placeholder="请设置强密码"
-              placeholder-class="profile-page__placeholder"
-              :maxlength="newPwdLimit.max"
-              @input="e => passwordForm.newPassword = newPwdLimit.handleInput(e)"
-              @blur="passwordErrors.newPassword = validatePassword(passwordForm.newPassword)"
-            />
+            <view
+              class="profile-page__password-row"
+              :class="{ 'profile-page__password-row--error': passwordErrors.newPassword }"
+            >
+              <input
+                class="profile-page__input profile-page__input--password"
+                v-model="passwordForm.newPassword"
+                :password="!showNewPassword"
+                :key="'pro-new-' + showNewPassword"
+                placeholder="请设置强密码"
+                placeholder-class="profile-page__placeholder"
+                :maxlength="newPwdLimit.max"
+                @input="e => passwordForm.newPassword = newPwdLimit.handleInput(e)"
+                @blur="passwordErrors.newPassword = validatePassword(passwordForm.newPassword)"
+              />
+              <view class="profile-page__eye" @click="toggleNewPassword">
+                <PasswordEye :visible="showNewPassword" />
+              </view>
+            </view>
             <text v-if="passwordErrors.newPassword" class="profile-page__error-text">{{ passwordErrors.newPassword }}</text>
             <text v-if="newPwdLimit.limitReached" class="profile-page__limit-text">{{ newPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
             <text class="profile-page__form-label">确认密码</text>
-            <input
-              class="profile-page__input"
-              :class="{ 'profile-page__input--error': passwordErrors.confirmPassword }"
-              v-model="passwordForm.confirmPassword"
-              :password="true"
-              placeholder="请再次输入密码"
-              placeholder-class="profile-page__placeholder"
-              :maxlength="confirmPwdLimit.max"
-              @input="e => passwordForm.confirmPassword = confirmPwdLimit.handleInput(e)"
-              @blur="passwordErrors.confirmPassword = passwordForm.confirmPassword ? (passwordForm.confirmPassword !== passwordForm.newPassword ? '两次密码不一致' : '') : '请再次输入密码'"
-            />
+            <view
+              class="profile-page__password-row"
+              :class="{ 'profile-page__password-row--error': passwordErrors.confirmPassword }"
+            >
+              <input
+                class="profile-page__input profile-page__input--password"
+                v-model="passwordForm.confirmPassword"
+                :password="!showConfirmPassword"
+                :key="'pro-cpwd-' + showConfirmPassword"
+                placeholder="请再次输入密码"
+                placeholder-class="profile-page__placeholder"
+                :maxlength="confirmPwdLimit.max"
+                @input="e => passwordForm.confirmPassword = confirmPwdLimit.handleInput(e)"
+                @blur="passwordErrors.confirmPassword = passwordForm.confirmPassword ? (passwordForm.confirmPassword !== passwordForm.newPassword ? '两次密码不一致' : '') : '请再次输入密码'"
+              />
+              <view class="profile-page__eye" @click="toggleConfirmPassword">
+                <PasswordEye :visible="showConfirmPassword" />
+              </view>
+            </view>
             <text v-if="passwordErrors.confirmPassword" class="profile-page__error-text">{{ passwordErrors.confirmPassword }}</text>
             <text v-if="confirmPwdLimit.limitReached" class="profile-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
@@ -289,6 +313,7 @@ import { reactive, ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
+import PasswordEye from '../../components/PasswordEye.vue'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
 import {
@@ -319,6 +344,20 @@ const signatureLimit = useInputLimit(70)
 const oldPwdLimit = useInputLimit(20)
 const newPwdLimit = useInputLimit(20)
 const confirmPwdLimit = useInputLimit(20)
+
+// 密码显隐切换（默认隐藏，点击眼睛睁眼显示明文）
+const showOldPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+function toggleOldPassword() {
+  showOldPassword.value = !showOldPassword.value
+}
+function toggleNewPassword() {
+  showNewPassword.value = !showNewPassword.value
+}
+function toggleConfirmPassword() {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
 const oldCodeLimit = useInputLimit(6, /^\d$/)
 const newEmailLimit = useInputLimit(254)
 const newCodeLimit = useInputLimit(6, /^\d$/)
@@ -901,6 +940,42 @@ function handleLogout() {
   border-color: #e5484d;
 }
 
+/* 密码行：统一边框容器，内含输入框与眼睛图标 */
+.profile-page__password-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #c1cab5;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.profile-page__password-row:focus-within {
+  border-color: #454745;
+}
+
+.profile-page__password-row--error {
+  border-color: #e5484d;
+}
+
+.profile-page__input--password {
+  flex: 1;
+  border: none;
+  border-radius: 16rpx 0 0 16rpx;
+  padding-right: 24rpx;
+}
+
+.profile-page__eye {
+  flex: none;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24rpx;
+  border-radius: 0 16rpx 16rpx 0;
+}
+
 .profile-page__input--code {
   flex: 1;
 }
@@ -1073,6 +1148,15 @@ function handleLogout() {
 
   .profile-page__placeholder {
     font-size: 14px;
+  }
+
+  /* 密码行 */
+  .profile-page__input--password {
+    padding-right: 12px;
+  }
+
+  .profile-page__eye {
+    padding: 0 12px;
   }
 
   .profile-page__error-text {

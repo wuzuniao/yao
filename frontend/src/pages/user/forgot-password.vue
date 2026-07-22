@@ -69,19 +69,27 @@
         <!-- 新密码 -->
         <view class="forgot-password-page__field">
           <text class="forgot-password-page__label">新密码</text>
-          <input
-            class="forgot-password-page__input"
-            :class="{ 'forgot-password-page__input--error': errors.newPassword }"
-            v-model="form.newPassword"
-            :password="true"
-            placeholder="请设置强密码"
-            placeholder-class="forgot-password-page__placeholder"
-            :placeholder-style="phStyle('newPassword')"
-            :maxlength="newPwdLimit.max"
-            @input="e => form.newPassword = newPwdLimit.handleInput(e)"
-            @focus="handleFocus('newPassword')"
-            @blur="handleBlur('newPassword')"
-          />
+          <view
+            class="forgot-password-page__password-row"
+            :class="{ 'forgot-password-page__password-row--error': errors.newPassword }"
+          >
+            <input
+              class="forgot-password-page__input forgot-password-page__input--password"
+              v-model="form.newPassword"
+              :password="!showNewPassword"
+              :key="'fp-new-' + showNewPassword"
+              placeholder="请设置强密码"
+              placeholder-class="forgot-password-page__placeholder"
+              :placeholder-style="phStyle('newPassword')"
+              :maxlength="newPwdLimit.max"
+              @input="e => form.newPassword = newPwdLimit.handleInput(e)"
+              @focus="handleFocus('newPassword')"
+              @blur="handleBlur('newPassword')"
+            />
+            <view class="forgot-password-page__eye" @click="toggleNewPassword">
+              <PasswordEye :visible="showNewPassword" />
+            </view>
+          </view>
           <text v-if="errors.newPassword" class="forgot-password-page__error-text">{{ errors.newPassword }}</text>
           <text v-if="newPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ newPwdLimit.limitHint }}</text>
         </view>
@@ -89,19 +97,27 @@
         <!-- 确认密码 -->
         <view class="forgot-password-page__field">
           <text class="forgot-password-page__label">确认密码</text>
-          <input
-            class="forgot-password-page__input"
-            :class="{ 'forgot-password-page__input--error': errors.confirmPassword }"
-            v-model="form.confirmPassword"
-            :password="true"
-            placeholder="请再次输入密码"
-            placeholder-class="forgot-password-page__placeholder"
-            :placeholder-style="phStyle('confirmPassword')"
-            :maxlength="confirmPwdLimit.max"
-            @input="e => form.confirmPassword = confirmPwdLimit.handleInput(e)"
-            @focus="handleFocus('confirmPassword')"
-            @blur="handleBlur('confirmPassword')"
-          />
+          <view
+            class="forgot-password-page__password-row"
+            :class="{ 'forgot-password-page__password-row--error': errors.confirmPassword }"
+          >
+            <input
+              class="forgot-password-page__input forgot-password-page__input--password"
+              v-model="form.confirmPassword"
+              :password="!showConfirmPassword"
+              :key="'fp-cpwd-' + showConfirmPassword"
+              placeholder="请再次输入密码"
+              placeholder-class="forgot-password-page__placeholder"
+              :placeholder-style="phStyle('confirmPassword')"
+              :maxlength="confirmPwdLimit.max"
+              @input="e => form.confirmPassword = confirmPwdLimit.handleInput(e)"
+              @focus="handleFocus('confirmPassword')"
+              @blur="handleBlur('confirmPassword')"
+            />
+            <view class="forgot-password-page__eye" @click="toggleConfirmPassword">
+              <PasswordEye :visible="showConfirmPassword" />
+            </view>
+          </view>
           <text v-if="errors.confirmPassword" class="forgot-password-page__error-text">{{ errors.confirmPassword }}</text>
           <text v-if="confirmPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
         </view>
@@ -133,6 +149,7 @@
  */
 import { reactive, ref } from 'vue'
 import BackButton from '../../components/BackButton.vue'
+import PasswordEye from '../../components/PasswordEye.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { sendResetCode, resetPassword } from '../../api/modules/user'
@@ -165,6 +182,16 @@ const emailLimit = useInputLimit(254)
 const codeLimit = useInputLimit(6, /^\d$/)
 const newPwdLimit = useInputLimit(20)
 const confirmPwdLimit = useInputLimit(20)
+
+// 密码显隐切换（默认隐藏，点击眼睛睁眼显示明文）
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+function toggleNewPassword() {
+  showNewPassword.value = !showNewPassword.value
+}
+function toggleConfirmPassword() {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
 
 // ===== 前端输入校验（参照 register.vue）=====
 function validateEmail(v) {
@@ -401,6 +428,43 @@ function goLogin() {
   box-shadow: inset 0 0 0 1px #e5484d;
 }
 
+/* 密码行：统一边框容器，内含输入框与眼睛图标（用 border 而非 box-shadow，避免原生 input 白色背景覆盖 inset shadow） */
+.forgot-password-page__password-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #c1cab5;
+  border-radius: 24rpx;
+  background: #fff;
+}
+
+.forgot-password-page__password-row:focus-within {
+  border-color: #454745;
+}
+
+.forgot-password-page__password-row--error {
+  border-color: #e5484d;
+}
+
+.forgot-password-page__input--password {
+  flex: 1;
+  border: none;
+  box-shadow: none;
+  border-radius: 24rpx 0 0 24rpx;
+  padding-right: 24rpx;
+}
+
+.forgot-password-page__eye {
+  flex: none;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24rpx;
+  border-radius: 0 24rpx 24rpx 0;
+}
+
 .forgot-password-page__error-text {
   color: #e5484d;
   font-size: 24rpx;
@@ -561,6 +625,15 @@ function goLogin() {
     font-size: 12px;
     line-height: 16px;
     margin-top: 4px;
+  }
+
+  /* 密码行 */
+  .forgot-password-page__input--password {
+    padding-right: 12px;
+  }
+
+  .forgot-password-page__eye {
+    padding: 0 12px;
   }
 
   .forgot-password-page__placeholder {

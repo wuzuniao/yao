@@ -122,7 +122,8 @@
           "BackButton.vue": "返回按钮组件（次级页面专用），以 NoticeButton 为蓝本，图标使用 fanhui.png，点击触发 uni.navigateBack 返回上一页（页面栈为空时 reLaunch 回首页）。用于 notification/plan/profile/login/register/contact/help/messages/privacy/forgot-password 等次级页面",
           "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项",
           "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,文本自动换行)，用于 notification/profile/help/contact 等页面",
-          "AnnouncementCard.vue": "首页公告临时卡片组件：接收最近7天公告，用 announcementRead 过滤未读后逐条轮播（每条10秒，最新优先），flex:1 填充首页空白高度保持一屏；倒计时常驻右上角；点击卡片暂停倒计时并满屏展示（全屏卡片固定高度70vh，标题+内容置于 scroll-view，标题多行完整显示，内容超出时卡片内右侧滚动），再次点击缩回继续"
+          "AnnouncementCard.vue": "首页公告临时卡片组件：接收最近7天公告，用 announcementRead 过滤未读后逐条轮播（每条10秒，最新优先），flex:1 填充首页空白高度保持一屏；倒计时常驻右上角；点击卡片暂停倒计时并满屏展示（全屏卡片固定高度70vh，标题+内容置于 scroll-view，标题多行完整显示，内容超出时卡片内右侧滚动），再次点击缩回继续",
+          "PasswordEye.vue": "密码显隐切换眼睛图标（纯 CSS 绘制，替代原 mima_1.png 图片资源）：纯展示组件，Props visible(Boolean) 表示密码是否明文可见，默认 false（闭眼，向下弯曲的闭合弧线，密码隐藏），true 为睁眼（完整眼形轮廓+瞳孔，密码明文可见）；不含点击逻辑。睁眼/闭眼两种状态视觉差异明显。用于 login/register/forgot-password/profile 的密码框统一边框容器内右侧，点击切换由父页面包裹容器（.{page}__eye）的 @click 处理"
         },
         "composables": {
           "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",

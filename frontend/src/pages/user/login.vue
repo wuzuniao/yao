@@ -33,12 +33,15 @@
         <!-- 密码 -->
         <view class="login-page__field login-page__field--password">
           <text class="login-page__label">密码</text>
-          <view class="login-page__password-row">
+          <view
+            class="login-page__password-row"
+            :class="{ 'login-page__password-row--error': errors.password }"
+          >
             <input
               class="login-page__input login-page__input--password"
-              :class="{ 'login-page__input--error': errors.password }"
               v-model="form.password"
               :password="!showPassword"
+              :key="'login-pwd-' + showPassword"
               placeholder="请输入密码"
               placeholder-class="login-page__placeholder"
               :placeholder-style="phStyle('password')"
@@ -48,7 +51,7 @@
               @blur="handleBlur('password')"
             />
             <view class="login-page__eye" @click="togglePassword">
-              <image class="login-page__eye-icon" :src="mimaIcon" mode="aspectFit" />
+              <PasswordEye :visible="showPassword" />
             </view>
           </view>
           <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
@@ -117,8 +120,8 @@ import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { loginUser, wechatLogin } from '../../api/modules/user'
 import { useUserStore } from '../../store/modules/user'
-import mimaIcon from '../../assets/images/mima_1.png'
 import wxIcon from '../../assets/images/dl_wx.png'
+import PasswordEye from '../../components/PasswordEye.vue'
 import { useShare } from '../../composables/useShare'
 
 useShare({ title: '登录' })
@@ -472,33 +475,43 @@ function goPrivacy() {
   font-size: 32rpx;
 }
 
-/* 密码行：输入框 + 眼睛图标 */
+/* 密码行：统一边框容器，内含输入框与眼睛图标（用 border 而非 box-shadow，避免原生 input 白色背景覆盖 inset shadow） */
 .login-page__password-row {
   position: relative;
+  display: flex;
+  align-items: stretch;
   margin-top: 8rpx;
+  border: 1px solid #c1cab5;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.login-page__password-row:focus-within {
+  border-color: #454745;
+}
+
+.login-page__password-row--error {
+  border-color: #e5484d;
 }
 
 .login-page__input--password {
-  padding-right: 48rpx;
+  flex: 1;
+  border: none;
+  box-shadow: none;
+  border-radius: 16rpx 0 0 16rpx;
+  padding-right: 24rpx;
   margin-top: 0;
 }
 
 .login-page__eye {
-  position: absolute;
-  top: 50%;
-  right: 24rpx;
-  transform: translateY(-50%);
-  width: 36.66rpx;
-  height: 25rpx;
+  flex: none;
+  position: relative;
+  z-index: 2;
   display: flex;
-  justify-content: center;
   align-items: center;
-}
-
-.login-page__eye-icon {
-  width: 36.66rpx;
-  height: 25rpx;
-  display: block;
+  justify-content: center;
+  padding: 0 24rpx;
+  border-radius: 0 16rpx 16rpx 0;
 }
 
 /* 忘记密码链接行 */
@@ -725,18 +738,11 @@ function goPrivacy() {
   }
 
   .login-page__input--password {
-    padding-right: 24px;
+    padding-right: 12px;
   }
 
   .login-page__eye {
-    right: 12px;
-    width: 18.33px;
-    height: 12.5px;
-  }
-
-  .login-page__eye-icon {
-    width: 18.33px;
-    height: 12.5px;
+    padding: 0 12px;
   }
 
   /* 忘记密码行 */
