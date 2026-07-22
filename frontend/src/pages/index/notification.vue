@@ -120,6 +120,27 @@
             </view>
           </view>
         </view>
+
+        <!-- 微信订阅消息卡片（含剩余额度与重新授权入口；点击删除图标移除渠道） -->
+        <view v-if="hasWechat" class="notification-page__card">
+          <view class="notification-page__card-info">
+            <view class="notification-page__card-badge notification-page__card-badge--wechat">微</view>
+            <view class="notification-page__card-text">
+              <text class="notification-page__card-title">微信</text>
+              <text class="notification-page__card-subtitle">
+                {{ wechatRemaining > 0 ? `订阅消息提醒 · 剩余可发 ${wechatRemaining} 次` : '授权额度已用完，请重新授权' }}
+              </text>
+            </view>
+          </view>
+          <view class="notification-page__card-actions">
+            <view v-if="wechatRemaining <= 0" class="notification-page__card-reauth" @click="handleWechatReauth">
+              <text class="notification-page__card-reauth-text">重新授权</text>
+            </view>
+            <view class="notification-page__card-delete" @click.stop="handleDeleteWechat">
+              <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
+            </view>
+          </view>
+        </view>
       </view>
 
       <!-- 添加新方式入口卡（点击后切换为"新建通知方式"表单卡） -->
@@ -136,7 +157,7 @@
         <view class="notification-page__form notification-page__form--fade-in">
           <text class="notification-page__form-heading">新建通知方式</text>
 
-          <!-- 通知类型（单选框：邮件/站内信，邮件在前） -->
+          <!-- 通知类型（单选框：邮件/微信） -->
           <view class="notification-page__field">
             <text class="notification-page__label">通知类型</text>
             <view class="notification-page__radio-row">
@@ -146,14 +167,20 @@
                 </view>
                 <text class="notification-page__radio-text">邮件</text>
               </view>
-              <view class="notification-page__radio-item" @click="selectType('站内信')">
-                <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === '站内信' }">
-                  <view v-if="formType === '站内信'" class="notification-page__radio-dot"></view>
+              <view class="notification-page__radio-item" @click="selectType('微信')">
+                <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === '微信' }">
+                  <view v-if="formType === '微信'" class="notification-page__radio-dot"></view>
                 </view>
-                <text class="notification-page__radio-text">站内信</text>
+                <text class="notification-page__radio-text">微信</text>
               </view>
             </view>
           </view>
+
+          <!-- 微信订阅授权说明（仅"微信"类型时显示，使用默认文字样式） -->
+          <template v-if="formType === '微信'">
+            <text>点击下方「授权订阅提醒」并选择允许，打卡时间到达时将通过微信订阅消息提醒您（一次性订阅，每次授权可下发 1 条）。您每日完成打卡时也会自动补充授权额度。</text>
+            <text>提示：首次授权的微信弹窗不会出现「总是保持以上选择，不再询问」选项；再次点击「授权订阅提醒」并勾选该项后，之后每日打卡将自动补充额度、不再弹窗打扰。</text>
+          </template>
 
           <!-- 邮件配置表单（仅"邮件"类型时显示） -->
           <template v-if="formType === '邮件'">
@@ -245,13 +272,13 @@
             </view>
           </template>
 
-          <!-- 保存按钮：站内信类型置灰不可点击；邮件类型且填写完整时可点击 -->
+          <!-- 保存按钮：邮件类型填写完整可点击；微信类型点击即发起授权 -->
           <view
             class="notification-page__save"
             :class="{ 'notification-page__save--disabled': !canSave }"
             @click="handleSave"
           >
-            <text class="notification-page__save-text">保存通知</text>
+            <text class="notification-page__save-text">{{ formType === '微信' ? '授权订阅提醒' : '保存通知' }}</text>
           </view>
         </view>
       </view>
@@ -275,7 +302,7 @@
  *  - 通知方式列表：从数据库动态加载用户已配置的通知渠道（站内信、邮件）
  *  - 站内信卡片：无删除图标、无点击事件，由系统注册时自动创建，不允许用户修改
  *  - 邮件卡片：含删除图标；点击卡片展开配置表单，可修改 SMTP 配置后提交更新
- *  - 添加新方式：通知类型单选（站内信/邮件），选站内信时保存按钮置灰；选邮件时展开 SMTP 配置表单
+ *  - 添加新方式：通知类型单选（微信/邮件），默认选中微信；选邮件时展开 SMTP 配置表单
  *  - 数据存储：邮件 channel_value 以 JSON 字符串存储（含 smtp_host/smtp_port/email/password）
  */
 import { reactive, ref, computed, onMounted } from 'vue'
@@ -284,12 +311,14 @@ import PageHeader from '../../components/PageHeader.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
+import { bindWechat } from '../../api/modules/user'
 import {
   listNotificationChannels,
   createEmailChannel,
   updateEmailChannel,
   deleteNotificationChannel
 } from '../../api/modules/notification'
+import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 import znxIcon from '../../assets/images/tz_znx.png'
 import yxIcon from '../../assets/images/tz_yx.png'
 import deleteIcon from '../../assets/images/shanchu.png'
@@ -299,14 +328,17 @@ useShare({ title: '通知方式' })
 
 const userStore = useUserStore()
 
+// 微信订阅消息授权（仅在微信小程序端生效）
+const { requestSubscribe } = useWechatSubscribe()
+
 // 用户的通知渠道列表（从数据库加载）
 const channels = ref([])
 // 当前展开配置表单的邮件渠道ID（null 表示未展开）
 const expandedEmailId = ref(null)
 // 卡片切换：默认显示"添加新的通知方式"入口卡，点击后切换为"新建通知方式"表单卡
 const showForm = ref(false)
-// 表单通知类型（'站内信' / '邮件'）
-const formType = ref('站内信')
+// 表单通知类型（'邮件' / '微信'）
+const formType = ref('微信')
 // 邮箱未绑定倒计时弹窗（3秒后自动跳转绑定邮箱页面）
 const showCountdown = ref(false)
 const countdown = ref(3)
@@ -362,11 +394,23 @@ const pwdLimit = useInputLimit(64)
 const hasZnx = computed(() => channels.value.some(ch => ch.channel_type === '站内信'))
 // 计算属性：所有邮件渠道
 const emailChannels = computed(() => channels.value.filter(ch => ch.channel_type === '邮件'))
+// 计算属性：是否已配置微信渠道
+const hasWechat = computed(() => channels.value.some(ch => ch.channel_type === '微信'))
+// 计算属性：微信渠道对象
+const wechatChannel = computed(() => channels.value.find(ch => ch.channel_type === '微信') || null)
+// 计算属性：微信剩余可下发次数（来自后端返回的 remaining）
+const wechatRemaining = computed(() => {
+  const ch = wechatChannel.value
+  return ch && typeof ch.remaining === 'number' ? ch.remaining : 0
+})
 
-// 计算属性：保存按钮是否可点击（站内信类型置灰；邮件类型需填写完整）
+// 计算属性：保存按钮是否可点击（邮件类型需填写完整；微信类型可点击）
 const canSave = computed(() => {
   if (formType.value === '邮件') {
     return form.smtp_host && form.smtp_port && form.email && form.password
+  }
+  if (formType.value === '微信') {
+    return true
   }
   return false
 })
@@ -417,14 +461,9 @@ onMounted(() => {
 // 选择通知类型（选"邮件"时校验用户是否已绑定邮箱）
 function selectType(type) {
   if (type === '邮件') {
-    // 邮件通知前置校验：未绑定邮箱不允许选择邮件类型
+    // 邮件通知前置校验：未绑定邮箱不允许选择邮件类型，引导跳转绑定邮箱
     if (!userStore.userInfo || !userStore.userInfo.email) {
-      uni.showModal({
-        title: '提示',
-        content: '未绑定邮箱不支持邮件通知，请先绑定邮箱',
-        showCancel: false,
-        confirmText: '我知道了'
-      })
+      startEmailCountdown()
       return
     }
   }
@@ -450,8 +489,8 @@ function startEmailCountdown() {
 function handleAdd() {
   // 点击"添加新的通知方式"入口卡：切换显示"新建通知方式"表单卡
   showForm.value = true
-  // 默认选中"邮件"选项
-  formType.value = '邮件'
+  // 默认选中"微信"选项（订阅消息为推荐提醒方式）
+  formType.value = '微信'
   form.smtp_host = ''
   form.smtp_port = ''
   form.email = ''
@@ -460,14 +499,14 @@ function handleAdd() {
   portError.value = ''
   emailError.value = ''
   hostError.value = ''
-  // 未绑定邮箱时启动3秒倒计时弹窗，结束后跳转绑定邮箱页面
-  if (!userStore.userInfo || !userStore.userInfo.email) {
-    startEmailCountdown()
-  }
 }
 
-// 保存通知（仅邮件类型可保存）
+// 保存通知：邮件类型走 SMTP 保存；微信类型走授权流程
 async function handleSave() {
+  if (formType.value === '微信') {
+    await handleWechatAuthorize()
+    return
+  }
   if (!canSave.value) return
   if (!userStore.userInfo) {
     uni.showToast({ title: '请先登录', icon: 'none' })
@@ -599,6 +638,148 @@ async function handleDeleteEmail(channelId) {
     }
   })
 }
+
+// 微信订阅授权主流程（发起授权 + 首次引导勾选「总是保持」）
+// 抽取为独立函数，供「已绑定微信直接授权」与「先绑定微信再授权」两种入口复用
+async function doWechatAuthorize() {
+  const wasNew = !hasWechat.value
+  uni.showLoading({ title: '授权中...' })
+  const ok = await requestSubscribe()
+  uni.hideLoading()
+  if (!ok) return
+  if (wasNew) {
+    // 首次授权成功后，弹窗引导用户再次授权以勾选「总是保持」选项
+    uni.showModal({
+      title: '授权成功',
+      content: '已获得 1 条提醒额度。点击「继续授权」可再次调起微信弹窗，在其中勾选「总是保持以上选择，不再询问」，之后每日打卡将自动补充额度、不再打扰。',
+      confirmText: '继续授权',
+      cancelText: '稍后再说',
+      success: async (res) => {
+        if (res.confirm) {
+          uni.showLoading({ title: '授权中...' })
+          await requestSubscribe()
+          uni.hideLoading()
+        }
+        showForm.value = false
+        await loadChannels()
+      }
+    })
+  } else {
+    uni.showToast({ title: '授权成功', icon: 'success' })
+    showForm.value = false
+    await loadChannels()
+  }
+}
+
+// 绑定微信到当前用户：复用微信一键登录获取 code 的流程，将 openid 关联到当前账号
+// （后端写入 user_miniapp_accounts，使微信通知可正常下发）
+async function bindWechatAccount() {
+  if (!userStore.userInfo) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  uni.showLoading({ title: '绑定中...' })
+  let finished = false
+  const timeout = setTimeout(() => {
+    if (!finished) {
+      uni.hideLoading()
+      uni.showToast({ title: '微信绑定超时，请重试', icon: 'none' })
+    }
+  }, 10000)
+  try {
+    let code = null
+    // #ifdef MP-WEIXIN
+    const loginRes = await new Promise((resolve, reject) => {
+      uni.login({ provider: 'weixin', success: resolve, fail: reject })
+    })
+    code = loginRes.code
+    // #endif
+    if (!code) {
+      clearTimeout(timeout)
+      uni.hideLoading()
+      uni.showToast({ title: '仅微信小程序内可绑定微信', icon: 'none' })
+      return
+    }
+    const res = await bindWechat(code)
+    clearTimeout(timeout)
+    finished = true
+    uni.hideLoading()
+    if (res.code === 0) {
+      // 更新本地登录态与微信绑定状态，随后继续订阅授权
+      userStore.setUser(res.data)
+      uni.showToast({ title: '微信绑定成功', icon: 'success' })
+      await doWechatAuthorize()
+    } else {
+      uni.showToast({ title: res.msg || '微信绑定失败', icon: 'none' })
+    }
+  } catch (e) {
+    clearTimeout(timeout)
+    finished = true
+    uni.hideLoading()
+    uni.showToast({ title: e.message || '微信绑定失败', icon: 'none' })
+  }
+}
+
+// 微信订阅授权（新建表单中的「授权订阅提醒」按钮）
+// 前置校验：若当前账号未绑定微信（未做过微信一键登录），无法直接接收微信提醒，
+// 先弹窗引导用户进行微信一键登录以绑定微信，绑定成功后再发起订阅授权
+async function handleWechatAuthorize() {
+  if (!userStore.userInfo) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  if (!userStore.userInfo.is_wechat_bound) {
+    uni.showModal({
+      title: '需先绑定微信',
+      content: '您当前账号未绑定微信，无法接收微信提醒。是否现在进行微信一键登录以绑定微信？',
+      confirmText: '去绑定',
+      cancelText: '暂不',
+      success: async (res) => {
+        if (!res.confirm) return
+        await bindWechatAccount()
+      }
+    })
+    return
+  }
+  await doWechatAuthorize()
+}
+
+// 微信订阅重新授权（列表卡片中额度用尽时显示）：补充一次授权额度
+async function handleWechatReauth() {
+  if (!userStore.userInfo) return
+  uni.showLoading({ title: '授权中...' })
+  const ok = await requestSubscribe()
+  uni.hideLoading()
+  if (ok) {
+    uni.showToast({ title: '授权成功', icon: 'success' })
+    await loadChannels()
+  }
+}
+
+// 删除微信通知方式
+async function handleDeleteWechat() {
+  if (!userStore.userInfo) return
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除微信通知方式吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const ch = wechatChannel.value
+        if (!ch) return
+        const r = await deleteNotificationChannel({ channel_id: ch.id })
+        if (r.code === 0) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          await loadChannels()
+        }
+      } catch (e) {
+        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+      }
+    }
+  })
+}
 </script>
 
 <style lang="scss">
@@ -703,6 +884,52 @@ async function handleDeleteEmail(channelId) {
   width: 32rpx;
   height: 36rpx;
   display: block;
+}
+
+/* 微信渠道圆形角标（以「微」字替代二进制图标，避免引入图片资源） */
+.notification-page__card-badge {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 24rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  color: #ffffff;
+  font-size: 40rpx;
+  font-weight: 600;
+}
+
+.notification-page__card-badge--wechat {
+  background: #07c160; // 微信绿，便于用户识别
+}
+
+/* 渠道操作区（重新授权 + 删除） */
+.notification-page__card-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  flex-shrink: 0;
+}
+
+.notification-page__card-reauth {
+  height: 64rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background: #07c160;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.notification-page__card-reauth-text {
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 500;
 }
 
 /* ===== 邮件配置表单（点击邮件卡片展开） ===== */
@@ -918,7 +1145,7 @@ async function handleDeleteEmail(channelId) {
   align-items: center;
 }
 
-/* 保存按钮置灰态（站内信类型或邮件类型未填写完整时） */
+/* 保存按钮置灰态（邮件类型未填写完整时） */
 .notification-page__save--disabled {
   background: #c1cab5;
   box-shadow: none;

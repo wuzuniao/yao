@@ -536,6 +536,53 @@ class User:
         await self.db.refresh(user)
         return user
 
+    async def bind_wechat(self, user_id: int, code: str) -> UserModel:
+        """
+        绑定微信到当前用户：code → openid → 关联到当前 user_id（写入 user_miniapp_accounts）
+        - 供已注册但未微信登录的用户，在通知页主动绑定微信以接收订阅消息
+        - 若该 openid 已被其他账号绑定，则拒绝
+        :param user_id: 当前登录用户 ID（来自 JWT）
+        :param code: 前端 wx.login() 获取的临时登录凭证
+        :return: UserModel（绑定后的当前用户对象）
+        :raises ValueError: 微信接口失败或微信已被其他账号绑定
+        """
+        if not settings.WX_APPID or not settings.WX_APP_SECRET:
+            raise ValueError("微信配置缺失，无法绑定微信")
+        # 1. 调用微信接口获取 openid 和 session_key
+        wx_data = await self._code2session(code)
+        openid = wx_data["openid"]
+        session_key = wx_data["session_key"]
+        app_id = settings.WX_APPID
+        # 2. 查询该 openid 是否已被任意账号绑定
+        result = await self.db.execute(
+            select(UserMiniappAccount).where(
+                UserMiniappAccount.app_id == app_id,
+                UserMiniappAccount.openid == openid,
+            )
+        )
+        miniapp_account = result.scalar_one_or_none()
+        if miniapp_account:
+            if miniapp_account.user_id != user_id:
+                raise ValueError("该微信账号已绑定其他用户，请先解绑或使用该微信账号登录")
+            # 已绑定到本人：更新 session_key（幂等）
+            miniapp_account.session_key = session_key
+        else:
+            # 未绑定：为当前用户创建微信账号记录
+            miniapp_account = UserMiniappAccount(
+                user_id=user_id,
+                app_id=app_id,
+                openid=openid,
+                session_key=session_key,
+            )
+            self.db.add(miniapp_account)
+        # 3. 提交并返回当前用户
+        await self.db.commit()
+        await self.db.refresh(miniapp_account)
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise ValueError("用户数据异常，请联系管理员")
+        return user
+
     async def _generate_default_username(self) -> str:
         """
         生成默认用户名：无足鸟 + 自增数字（如 无足鸟1、无足鸟2）

@@ -116,10 +116,14 @@ import { getRecentAnnouncements } from '../../api/modules/announcement'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
 import { useShare } from '../../composables/useShare'
+import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 
 useShare({ title: '首页' })
 
 const userStore = useUserStore()
+
+// 微信订阅消息（静默补授权，仅在微信小程序端生效）
+const { requestSubscribe } = useWechatSubscribe()
 
 // 进行中的计划列表（从数据库加载，按 priority 升序排序）
 const activePlans = ref([])
@@ -477,6 +481,9 @@ async function handleCheckin() {
       forceActive.value = false
       // 触发后端自动标记已读并同步刷新 NoticeButton 图标状态
       userStore.loadUnreadCount(true)
+      // 打卡成功后为微信订阅消息静默补充一次授权额度（用户已勾选"保持选择"时不弹窗）
+      // 失败静默忽略（如用户已取消授权），不影响打卡主流程
+      await requestSubscribe({ silent: true })
     }
   } catch (e) {
     uni.showToast({ title: e.message || '打卡失败', icon: 'none' })

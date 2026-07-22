@@ -19,6 +19,7 @@
 - 邮件：读取用户 notification_channels.channel_value 作为 SMTP 发送，收件人取 users.email
 """
 import asyncio
+import json
 from datetime import datetime, time as dt_time, timedelta
 
 from sqlalchemy import select, func as sa_func
@@ -34,6 +35,7 @@ from ..models.user import User as UserModel
 from ..schemas.notification_channel import (
     CHANNEL_TYPE_ZNX,
     CHANNEL_TYPE_EMAIL,
+    CHANNEL_TYPE_WECHAT,
 )
 from ..schemas.notification_log import (
     LOG_STATUS_SUCCESS,
@@ -45,6 +47,9 @@ from ..schemas.notification_log import (
     FOLLOWUP_OFFSET_10MIN,
     TRIGGER_DESC,
 )
+from ..core.config import settings
+from ..models.user_miniapp_account import UserMiniappAccount
+from ..services.wechat_service import WeChatService, ERRCODE_NO_PERMISSION
 from ..utils.timezone import now_shanghai
 from ..utils.crypto import decrypt
 from ..utils.logger import logger
@@ -401,6 +406,10 @@ class NotificationDispatcher:
             await self._send_email(plan, plan_time, channel, trigger_type, notify_date, now)
             return
 
+        if channel.channel_type == CHANNEL_TYPE_WECHAT:
+            await self._send_wechat(plan, plan_time, channel, trigger_type, notify_date, now)
+            return
+
         logger.warning(f"未知渠道类型 channel={channel.id} type={channel.channel_type}，跳过")
 
     async def _send_email(self, plan: CheckinPlan, plan_time: PlanNotificationTime,
@@ -464,6 +473,74 @@ class NotificationDispatcher:
 
         # 6. 记录发送结果
         await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now, status, error_msg)
+
+    async def _send_wechat(self, plan: CheckinPlan, plan_time: PlanNotificationTime,
+                           channel: NotificationChannel, trigger_type: int, notify_date, now: datetime) -> None:
+        """微信订阅消息渠道发送（一次性订阅：授权额度制）"""
+        # 1. 检查授权额度（granted - sent）
+        quota = NotificationChannelService.parse_wechat_channel_value(channel.channel_value)
+        if quota["granted"] - quota["sent"] <= 0:
+            logger.debug(f"微信渠道 {channel.id} 授权额度已用完，跳过本次发送")
+            return
+
+        # 2. 获取用户 openid
+        openid = await self._get_openid(plan.user_id)
+        if not openid:
+            await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                                  LOG_STATUS_FAILED, "未找到用户微信 openid")
+            return
+
+        # 3. 组装模板字段（一次性订阅模板字段固定，须严格匹配）
+        reminder_str = plan_time.notification_time.strftime("%H:%M")
+        data = {
+            "thing4": {"value": (plan.name or "打卡提醒")[:20]},          # 打卡名称
+            "thing3": {"value": (plan.remark or "请按时完成打卡")[:20]},  # 备注
+            "time13": {"value": reminder_str},                            # 提醒时间
+            "thing12": {"value": settings.WX_SUBSCRIBE_ORG_NAME[:20]},    # 机构名称
+        }
+
+        # 4. 调用微信接口下发
+        try:
+            result = await WeChatService.send_subscribe_message(
+                openid,
+                settings.WX_SUBSCRIBE_TEMPLATE_ID,
+                data,
+                settings.WX_SUBSCRIBE_PAGE,
+            )
+        except Exception as e:
+            await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                                  LOG_STATUS_FAILED, f"微信接口调用异常: {e}"[:255])
+            return
+
+        errcode = result.get("errcode", 0)
+        if errcode == 0:
+            # 发送成功：消费一次额度
+            quota["sent"] += 1
+            channel.channel_value = json.dumps(quota, ensure_ascii=False)
+            channel.updated_at = now_shanghai()
+            await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                                  LOG_STATUS_SUCCESS, None)
+        elif errcode == ERRCODE_NO_PERMISSION:
+            # 用户拒绝/未授权（额度已失效）：将 granted 对齐 sent，停止后续发送
+            quota["granted"] = quota["sent"]
+            channel.channel_value = json.dumps(quota, ensure_ascii=False)
+            channel.updated_at = now_shanghai()
+            await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                                  LOG_STATUS_FAILED, "微信订阅授权已失效（额度用尽或已取消）")
+        else:
+            await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                                  LOG_STATUS_FAILED, f"微信发送失败 errcode={errcode} {result.get('errmsg')}"[:255])
+
+    async def _get_openid(self, user_id: int) -> str | None:
+        """按 user_id + appid 在用户库 user_miniapp_accounts 中查询 openid"""
+        result = await self.db.execute(
+            select(UserMiniappAccount.openid).where(
+                UserMiniappAccount.app_id == settings.WX_APPID,
+                UserMiniappAccount.user_id == user_id,
+            )
+        )
+        row = result.first()
+        return row[0] if row else None
 
     async def _write_log(self, plan: CheckinPlan, plan_time: PlanNotificationTime,
                          channel: NotificationChannel, trigger_type: int, notify_date,

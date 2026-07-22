@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
 from ...core.security import Security
+from ...models.user_miniapp_account import UserMiniappAccount
 from ...schemas.user import (
     BindEmail,
+    BindWeChat,
     ChangeEmail,
     ChangePassword,
     LoginUser,
@@ -27,13 +30,22 @@ from ...services.user_service import User
 router = APIRouter()
 
 
-def _user_payload(db_user) -> dict:
-    """构造登录/注册等接口的响应数据（含 JWT access_token）"""
+async def _user_payload(db: AsyncSession, db_user) -> dict:
+    """构造登录/注册等接口的响应数据（含 JWT access_token 与微信绑定状态）"""
     try:
         token = Security.generate_token(db_user.id, role=db_user.role)
     except ValueError as e:
         # JWT 配置异常时返回 500，避免静默失败
         raise HTTPException(status_code=500, detail=str(e))
+    # 查询是否绑定微信小程序账号（前端据此判断能否接收微信通知）
+    is_wechat_bound = False
+    if db is not None:
+        result = await db.execute(
+            select(UserMiniappAccount.id).where(
+                UserMiniappAccount.user_id == db_user.id
+            ).limit(1)
+        )
+        is_wechat_bound = result.scalar_one_or_none() is not None
     return {
         "id": db_user.id,
         "username": db_user.username or "",
@@ -43,6 +55,7 @@ def _user_payload(db_user) -> dict:
         "has_password": bool(db_user.password_hash),
         "status": db_user.status,
         "role": db_user.role,
+        "is_wechat_bound": is_wechat_bound,
         "access_token": token,
     }
 
@@ -72,7 +85,7 @@ async def register(payload: RegisterUser, db: AsyncSession = Depends(get_db)):
     return {
         "code": 0,
         "msg": "注册成功",
-        "data": _user_payload(db_user),
+        "data": await _user_payload(db, db_user),
     }
 
 
@@ -111,7 +124,7 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     return {
         "code": 0,
         "msg": "登录成功",
-        "data": _user_payload(db_user),
+        "data": await _user_payload(db, db_user),
     }
 
 
@@ -152,7 +165,7 @@ async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_
     return {
         "code": 0,
         "msg": "密码重置成功",
-        "data": _user_payload(db_user),
+        "data": await _user_payload(db, db_user),
     }
 
 
@@ -440,6 +453,13 @@ async def get_user_info(
     user = await user_service.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 查询是否绑定微信小程序账号（前端据此判断能否接收微信通知）
+    bound_result = await db.execute(
+        select(UserMiniappAccount.id).where(
+            UserMiniappAccount.user_id == user_id
+        ).limit(1)
+    )
+    is_wechat_bound = bound_result.scalar_one_or_none() is not None
     return {
         "code": 0,
         "msg": "success",
@@ -452,6 +472,7 @@ async def get_user_info(
             "has_password": bool(user.password_hash),
             "status": user.status,
             "role": user.role,
+            "is_wechat_bound": is_wechat_bound,
         },
     }
 
@@ -475,5 +496,32 @@ async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db))
     return {
         "code": 0,
         "msg": "登录成功",
-        "data": _user_payload(db_user),
+        "data": await _user_payload(db, db_user),
+    }
+
+
+@router.post("/bind-wechat")
+async def bind_wechat(
+    payload: BindWeChat,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    绑定微信到当前用户接口
+    - 供已注册但未微信登录的用户，在通知页主动绑定微信以接收订阅消息
+    - 接收前端 wx.login() 获取的 code，换取 openid 后关联到当前登录用户
+    - 若该 openid 已被其他账号绑定，则返回错误
+    - 成功后写入 user_miniapp_accounts，使微信通知可正常下发
+    """
+    user_service = User(db)
+    try:
+        db_user = await user_service.bind_wechat(user_id, payload.code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"微信绑定失败：{e}")
+    return {
+        "code": 0,
+        "msg": "微信绑定成功",
+        "data": await _user_payload(db, db_user),
     }

@@ -8,7 +8,7 @@ import { getUnreadCount } from '../../api/modules/message'
  * --------------------------------------------------------------------------
  * - 管理用户登录态（JWT access_token）和个人信息
  * - token 独立存储于 localStorage（key: accessToken），所有受保护接口由 request.js 自动附加 Authorization 头
- * - 用户信息包含：id、username、signature、avatar_url、email、has_password、status
+ * - 用户信息包含：id、username、signature、avatar_url、email、has_password、status、is_wechat_bound
  * - status：1-正常，0-待删除（后台任务24小时后清理）
  * - 未登录时 userInfo 为 null，登录成功后写入用户信息
  * - 用户信息持久化到本地存储（uni.setStorageSync）
@@ -50,7 +50,8 @@ export const useUserStore = defineStore('user', () => {
       email: data.email || '',
       has_password: !!data.has_password,
       status: data.status ?? 1,
-      role: data.role ?? 0
+      role: data.role ?? 0,
+      is_wechat_bound: !!data.is_wechat_bound
     }
     // 登录类接口响应中携带 access_token，保存以供后续请求附加 Authorization 头
     if (data.access_token) {

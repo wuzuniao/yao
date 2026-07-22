@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.notification_channel import NotificationChannel
 from ..schemas.notification_channel import (
     CHANNEL_TYPE_EMAIL,
+    CHANNEL_TYPE_WECHAT,
     CHANNEL_TYPE_ZNX,
     EmailChannelValue,
 )
@@ -178,3 +179,63 @@ class NotificationChannelService:
             return json.loads(channel_value)
         except Exception:
             return None
+
+    # ------------------------------------------------------------------
+    # 微信订阅消息渠道（一次性订阅：授权额度制）
+    # channel_value 结构：{"granted": int, "sent": int}
+    #   granted：用户累计授权次数（每次 accept +1）
+    #   sent：已成功下发次数（每次成功下发 +1）
+    #   remaining = granted - sent 即剩余可下发次数
+    # ------------------------------------------------------------------
+    @staticmethod
+    def parse_wechat_channel_value(channel_value: str) -> dict[str, int]:
+        """解析微信渠道的 channel_value，返回 {granted, sent}（缺省为 0）"""
+        try:
+            data = json.loads(channel_value) if channel_value else {}
+        except (json.JSONDecodeError, TypeError):
+            data = {}
+        return {
+            "granted": int(data.get("granted", 0) or 0),
+            "sent": int(data.get("sent", 0) or 0),
+        }
+
+    async def get_or_create_wechat_channel(self, user_id: int) -> NotificationChannel:
+        """获取或创建微信通知渠道（创建时默认启用）"""
+        result = await self.db.execute(
+            select(NotificationChannel).where(
+                NotificationChannel.user_id == user_id,
+                NotificationChannel.channel_type == CHANNEL_TYPE_WECHAT,
+            )
+        )
+        channel = result.scalar_one_or_none()
+        if not channel:
+            channel = NotificationChannel(
+                user_id=user_id,
+                channel_type=CHANNEL_TYPE_WECHAT,
+                channel_value=json.dumps({"granted": 0, "sent": 0}, ensure_ascii=False),
+                enabled=True,
+            )
+            self.db.add(channel)
+            await self.db.commit()
+            await self.db.refresh(channel)
+        return channel
+
+    async def grant_wechat(self, user_id: int) -> dict[str, Any]:
+        """
+        微信订阅授权回调：用户每同意一次授权即 +1 额度并启用该渠道。
+        返回 {enabled, granted, sent, remaining} 供前端展示。
+        """
+        channel = await self.get_or_create_wechat_channel(user_id)
+        channel.enabled = True
+        quota = self.parse_wechat_channel_value(channel.channel_value)
+        quota["granted"] += 1
+        channel.channel_value = json.dumps(quota, ensure_ascii=False)
+        channel.updated_at = now_shanghai()
+        await self.db.commit()
+        await self.db.refresh(channel)
+        return {
+            "enabled": True,
+            "granted": quota["granted"],
+            "sent": quota["sent"],
+            "remaining": quota["granted"] - quota["sent"],
+        }

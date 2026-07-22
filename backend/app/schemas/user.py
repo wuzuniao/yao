@@ -167,6 +167,19 @@ class WeChatLogin(BaseModel):
         return v.strip()
 
 
+class BindWeChat(BaseModel):
+    """绑定微信请求 Schema（绑定到当前登录用户，user_id 由 JWT 提供）"""
+
+    code: str
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("微信登录凭证 code 不能为空")
+        return v.strip()
+
+
 class UpdateUsername(BaseModel):
     """更新用户名请求 Schema（user_id 由 JWT 提供，不入请求体）"""
 

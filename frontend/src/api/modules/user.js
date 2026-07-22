@@ -184,6 +184,20 @@ export function wechatLogin(code) {
 }
 
 /**
+ * 绑定微信到当前登录用户
+ * @param {string} code wx.login() 获取的临时登录凭证
+ * @description 供已注册但未微信登录的用户，在通知页主动绑定微信以接收订阅消息
+ */
+export function bindWechat(code) {
+  return request({
+    url: '/api/v1/users/bind-wechat',
+    method: 'POST',
+    data: { code },
+    timeout: 10000
+  })
+}
+
+/**
  * 更新用户名（user_id 由 JWT 提供，含唯一性校验）
  * @param {Object} param0 更新用户名数据
  * @param {string} param0.new_username 新用户名

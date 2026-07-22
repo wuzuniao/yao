@@ -5,6 +5,7 @@ from ...core.database import get_db
 from ...core.deps import get_current_user_id
 from ...schemas.notification_channel import (
     CHANNEL_TYPE_EMAIL,
+    CHANNEL_TYPE_WECHAT,
     CreateEmailChannel,
     DeleteChannel,
     UpdateEmailChannel,
@@ -32,6 +33,11 @@ def _channel_to_dict(channel) -> dict:
         if cfg:
             cfg["password"] = ""
             item["email_config"] = cfg
+    elif channel.channel_type == CHANNEL_TYPE_WECHAT:
+        # 返回授权额度信息，前端据此展示「剩余可下发次数」与授权状态
+        quota = NotificationChannelService.parse_wechat_channel_value(channel.channel_value)
+        item["wechat_quota"] = quota
+        item["remaining"] = quota["granted"] - quota["sent"]
     return item
 
 
@@ -116,3 +122,17 @@ async def delete_channel(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"code": 0, "msg": "通知方式删除成功", "data": None}
+
+
+@router.post("/wechat/grant")
+async def grant_wechat_channel(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    微信订阅消息授权回调：用户在小程序内每同意一次授权（wx.requestSubscribeMessage 返回 accept）
+    即 +1 下发额度，并启用微信渠道。返回 {enabled, granted, sent, remaining} 供前端展示。
+    """
+    service = NotificationChannelService(db)
+    info = await service.grant_wechat(user_id)
+    return {"code": 0, "msg": "微信订阅授权成功", "data": info}

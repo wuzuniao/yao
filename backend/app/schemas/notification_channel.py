@@ -3,9 +3,10 @@ from pydantic import BaseModel, field_validator
 from ..core.security import Security
 
 
-# 允许的通知类型（站内信不允许用户主动创建/修改，仅邮件可由用户配置）
+# 允许的通知类型（站内信不允许用户主动创建/修改，邮件/微信可由用户配置）
 CHANNEL_TYPE_ZNX = "站内信"
 CHANNEL_TYPE_EMAIL = "邮件"
+CHANNEL_TYPE_WECHAT = "微信"
 
 
 class EmailChannelValue(BaseModel):

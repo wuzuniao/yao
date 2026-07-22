@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     WX_APPID: str = ""
     WX_APP_SECRET: str = ""
 
+    # 微信订阅消息配置（一次性订阅模板，用于打卡提醒下发）
+    # 模板 ID 非机密信息，可在微信公众平台「订阅消息」中查看
+    WX_SUBSCRIBE_TEMPLATE_ID: str = ""
+    # 点击订阅消息后跳转的小程序页面路径
+    WX_SUBSCRIBE_PAGE: str = "/pages/index/index"
+    # 订阅消息「机构名称」字段（thing12）展示值
+    WX_SUBSCRIBE_ORG_NAME: str = "无足鸟"
+
     # 数据加密密钥（AES-256-GCM，base64 编码的 32 字节密钥）
     # 用于加密邮件客户端专用密码等敏感信息
     ENCRYPTION_SECRET_KEY: str = ""
