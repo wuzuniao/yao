@@ -5,6 +5,8 @@
  *  - requestSubscribe({ silent }): 发起一次性订阅授权
  *      - silent=false（默认，显式授权场景）：授权失败有 toast 提示
  *      - silent=true（打卡后静默补授权场景）：失败静默忽略，不影响主流程
+ *  - isSubscribeSilentRejected(): 检测用户是否已勾选「总是保持以上选择」并拒绝
+ *      （即静默拒绝状态，此时后续 requestSubscribeMessage 不再弹窗，直接返回 reject）
  *  - 用户点击「允许」(accept) 后调用后端 grantWechatChannel 累加下发额度
  */
 import { grantWechatChannel } from '../api/modules/notification'
@@ -60,5 +62,27 @@ export function useWechatSubscribe() {
     // #endif
   }
 
-  return { requestSubscribe }
+  /**
+   * 检测用户是否已勾选「总是保持以上选择」并拒绝订阅消息（静默拒绝状态）
+   * 通过 uni.getSetting({ withSubscriptions: true }) 查询订阅消息设置：
+   *   withSubscriptions 仅返回用户勾选过「总是保持以上选择，不再询问」的记录，
+   *   itemSettings[模板ID] === 'reject' 表示用户勾选了「总是保持」并选择拒绝，
+   *   此时后续 requestSubscribeMessage 不再弹窗，直接静默返回 reject。
+   * @returns {Promise<boolean>} 是否处于静默拒绝状态
+   */
+  async function isSubscribeSilentRejected() {
+    return new Promise((resolve) => {
+      uni.getSetting({
+        withSubscriptions: true,
+        success: (res) => {
+          const itemSettings =
+            res && res.subscriptionsSetting && res.subscriptionsSetting.itemSettings
+          resolve(!!(itemSettings && itemSettings[TEMPLATE_ID] === 'reject'))
+        },
+        fail: () => resolve(false)
+      })
+    })
+  }
+
+  return { requestSubscribe, isSubscribeSilentRejected }
 }

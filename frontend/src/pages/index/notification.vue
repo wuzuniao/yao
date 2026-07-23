@@ -179,7 +179,6 @@
           <!-- 微信订阅授权说明（仅"微信"类型时显示，使用默认文字样式） -->
           <template v-if="formType === '微信'">
             <text>点击下方「授权订阅提醒」并选择允许，打卡时间到达时将通过微信订阅消息提醒您（一次性订阅，每次授权可下发 1 条）。您每日完成打卡时也会自动补充授权额度。</text>
-            <text>提示：首次授权的微信弹窗不会出现「总是保持以上选择，不再询问」选项；再次点击「授权订阅提醒」并勾选该项后，之后每日打卡将自动补充额度、不再弹窗打扰。</text>
           </template>
 
           <!-- 邮件配置表单（仅"邮件"类型时显示） -->
@@ -329,7 +328,7 @@ useShare({ title: '通知方式' })
 const userStore = useUserStore()
 
 // 微信订阅消息授权（仅在微信小程序端生效）
-const { requestSubscribe } = useWechatSubscribe()
+const { requestSubscribe, isSubscribeSilentRejected } = useWechatSubscribe()
 
 // 用户的通知渠道列表（从数据库加载）
 const channels = ref([])
@@ -639,36 +638,47 @@ async function handleDeleteEmail(channelId) {
   })
 }
 
-// 微信订阅授权主流程（发起授权 + 首次引导勾选「总是保持」）
+// 微信订阅授权主流程（发起授权）
 // 抽取为独立函数，供「已绑定微信直接授权」与「先绑定微信再授权」两种入口复用
+// 真机首次授权弹窗即包含「总是保持以上选择，不再询问」选项，无需二次授权引导
+// 当用户勾选「总是保持」并取消后，后续 requestSubscribeMessage 会静默返回 reject，
+// 此时通过 getSetting 检测静默拒绝状态，引导用户前往设置重新开启后再次发起授权
 async function doWechatAuthorize() {
-  const wasNew = !hasWechat.value
   uni.showLoading({ title: '授权中...' })
   const ok = await requestSubscribe()
   uni.hideLoading()
-  if (!ok) return
-  if (wasNew) {
-    // 首次授权成功后，弹窗引导用户再次授权以勾选「总是保持」选项
-    uni.showModal({
-      title: '授权成功',
-      content: '已获得 1 条提醒额度。点击「继续授权」可再次调起微信弹窗，在其中勾选「总是保持以上选择，不再询问」，之后每日打卡将自动补充额度、不再打扰。',
-      confirmText: '继续授权',
-      cancelText: '稍后再说',
-      success: async (res) => {
-        if (res.confirm) {
-          uni.showLoading({ title: '授权中...' })
-          await requestSubscribe()
-          uni.hideLoading()
-        }
-        showForm.value = false
-        await loadChannels()
-      }
-    })
-  } else {
+  if (ok) {
     uni.showToast({ title: '授权成功', icon: 'success' })
     showForm.value = false
     await loadChannels()
+    return
   }
+  // 授权未成功：检测是否为静默拒绝（用户此前勾选了「总是保持以上选择」并取消）
+  const silentRejected = await isSubscribeSilentRejected()
+  if (!silentRejected) return
+  // 静默拒绝：引导用户前往小程序设置重新开启订阅消息授权
+  uni.showModal({
+    title: '需要重新允许授权',
+    content: '您此前勾选了「总是保持以上选择」并取消了授权，微信不再弹窗询问。是否前往设置重新开启订阅消息授权？',
+    confirmText: '去设置',
+    cancelText: '取消',
+    success: async (res) => {
+      if (!res.confirm) return
+      uni.openSetting({
+        success: async () => {
+          // 设置页返回后再次发起授权（用户若已解除限制，会重新弹官方授权弹窗）
+          uni.showLoading({ title: '授权中...' })
+          const retryOk = await requestSubscribe()
+          uni.hideLoading()
+          if (retryOk) {
+            uni.showToast({ title: '授权成功', icon: 'success' })
+            showForm.value = false
+            await loadChannels()
+          }
+        }
+      })
+    }
+  })
 }
 
 // 绑定微信到当前用户：复用微信一键登录获取 code 的流程，将 openid 关联到当前账号

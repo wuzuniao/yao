@@ -3,11 +3,28 @@
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
 
-    <!-- 氛围背景装饰圆（设计稿 Background+Blur） -->
-    <view class="login-page__ambient"></view>
+    <!-- 微信一键登录区（默认展示，未登录用户优先引导微信登录） -->
+    <view v-if="loginMode === 'wechat'" class="login-page__wechat">
+      <text class="login-page__title">一键登录</text>
+      <view class="login-page__wechat-btn" @click="handleWechatLogin">
+        <image class="login-page__wechat-icon" :src="wxIcon" mode="aspectFit" />
+      </view>
+      <!-- 微信登录隐私勾选（独立于账号密码登录的隐私勾选） -->
+      <view class="login-page__remember login-page__remember--wechat" @click="toggleWechatAgree">
+        <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': wechatAgree }">
+          <view v-if="wechatAgree" class="login-page__checkmark"></view>
+        </view>
+        <text class="login-page__remember-text">查看并同意</text>
+        <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+      </view>
+      <!-- 切换到账号密码登录引导（放大突出） -->
+      <view class="login-page__switch" @click="switchMode('normal')">
+        <text class="login-page__switch-text">账号密码登录</text>
+      </view>
+    </view>
 
-    <!-- 主登录卡片 -->
-    <view class="login-page__card">
+    <!-- 主登录卡片（账号密码登录，切换或注册页跳转时展示） -->
+    <view v-else class="login-page__card">
       <text class="login-page__title">欢迎回来</text>
 
       <view class="login-page__form">
@@ -61,7 +78,7 @@
           </view>
         </view>
 
-        <!-- 操作区 -->
+        <!-- 操作区（含登录按钮与注册链接，作为一个整体） -->
         <view class="login-page__actions">
           <view class="login-page__remember" @click="toggleRemember">
             <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': remember }">
@@ -73,28 +90,16 @@
           <view class="login-page__submit" @click="handleLogin">
             <text class="login-page__submit-text">登录</text>
           </view>
+          <!-- 底部注册链接（紧贴登录按钮，作为一个整体） -->
+          <view class="login-page__footer" @click="goRegister">
+            <text class="login-page__footer-text">还没有账号？ 立即注册</text>
+          </view>
         </view>
       </view>
 
-      <!-- 底部注册链接 -->
-      <view class="login-page__footer" @click="goRegister">
-        <text class="login-page__footer-text">还没有账号？ 立即注册</text>
-      </view>
-    </view>
-
-    <!-- 微信一键登录区 -->
-    <view class="login-page__wechat">
-      <text class="login-page__wechat-title">微信一键登录</text>
-      <view class="login-page__wechat-btn" @click="handleWechatLogin">
-        <image class="login-page__wechat-icon" :src="wxIcon" mode="aspectFit" />
-      </view>
-      <!-- 微信登录隐私勾选（独立于账号密码登录的隐私勾选） -->
-      <view class="login-page__remember login-page__remember--wechat" @click="toggleWechatAgree">
-        <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': wechatAgree }">
-          <view v-if="wechatAgree" class="login-page__checkmark"></view>
-        </view>
-        <text class="login-page__remember-text">查看并同意</text>
-        <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+      <!-- 切换到微信一键登录引导（放大突出） -->
+      <view class="login-page__switch" @click="switchMode('wechat')">
+        <text class="login-page__switch-text">一键登录</text>
       </view>
     </view>
   </view>
@@ -105,16 +110,21 @@
  * 登录页（login.vue）
  * --------------------------------------------------------------------------
  * 功能：用户账号密码登录 + 微信一键登录入口
+ *  - 登录方式切换：loginMode 'wechat'(默认) | 'normal'
+ *    · 未登录默认进入：展示微信一键登录卡片，下方引导切换到账号密码登录
+ *    · 注册页"去登录"或注册成功跳转（URL 带 ?mode=normal）：展示账号密码卡片，下方引导切换到微信登录
+ *    · 两卡片互斥显示，点击引导文字调用 switchMode 切换
  *  - 账号密码登录：用户名/邮箱 + 密码，支持密码显隐切换、忘记密码、勾选隐私协议
  *  - 前端验证：用户名/密码非空校验（参照 register.vue）
  *  - 后端验证：调用 /login 接口验证用户名/邮箱 + 密码
  *  - 登录成功：写入 Pinia 用户状态 → 跳转 settings.vue
- *  - 微信一键登录：点击微信图标触发（当前为占位 toast，待接入 wx.login）
+ *  - 微信一键登录：点击微信图标触发 wx.login → 后端换 openid → 写入状态 → 跳转
  *  - 底部提供注册入口，跳转 register.vue
  *  - 《隐私政策》文本可点击跳转 privacy.vue
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
@@ -125,6 +135,21 @@ import PasswordEye from '../../components/PasswordEye.vue'
 import { useShare } from '../../composables/useShare'
 
 useShare({ title: '登录' })
+
+// 登录方式：'wechat'(默认微信一键登录) | 'normal'(账号密码登录)
+// 注册页跳转时 URL 带 ?mode=normal，则初始展示账号密码卡片
+const loginMode = ref('wechat')
+
+onLoad((options = {}) => {
+  if (options.mode === 'normal') {
+    loginMode.value = 'normal'
+  }
+})
+
+// 切换登录方式（互斥显示对应卡片）
+function switchMode(mode) {
+  loginMode.value = mode
+}
 
 const form = reactive({ username: '', password: '' })
 const showPassword = ref(false)
@@ -374,22 +399,7 @@ function goPrivacy() {
   align-items: center;
 }
 
-/* 氛围背景装饰圆（312x312 #e2f6d5，居中模糊） */
-.login-page__ambient {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 624rpx;
-  height: 624rpx;
-  margin-top: -312rpx;
-  margin-left: -312rpx;
-  background: #e2f6d5;
-  border-radius: 9999px;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* ===== 主登录卡片 ===== */
+/* ===== 主登录卡片（与微信登录卡片互斥显示，作首卡片需顶部留白避开 BackButton） ===== */
 .login-page__card {
   position: relative;
   z-index: 1;
@@ -602,10 +612,11 @@ function goPrivacy() {
   font-weight: 500;
 }
 
-/* ===== 底部注册链接 ===== */
+/* ===== 底部注册链接（紧贴登录按钮，作为一个整体） ===== */
 .login-page__footer {
   display: flex;
   justify-content: center;
+  margin-top: 16rpx;
 }
 
 .login-page__footer-text {
@@ -615,12 +626,25 @@ function goPrivacy() {
   font-weight: 400;
 }
 
-/* ===== 微信一键登录区 ===== */
+/* ===== 登录方式切换引导（放大突出，引导用户切换登录方式） ===== */
+.login-page__switch {
+  display: flex;
+  justify-content: center;
+}
+
+.login-page__switch-text {
+  color: #2f6c00;
+  font-size: 36rpx;
+  line-height: 52rpx;
+  font-weight: 600;
+}
+
+/* ===== 微信一键登录区（置于上方，首卡片顶部留白避开 BackButton） ===== */
 .login-page__wechat {
   position: relative;
   z-index: 1;
   width: 684rpx;
-  margin-top: 32rpx;
+  margin-top: 64rpx;
   padding: 48rpx;
   box-sizing: border-box;
   background: #ffffff;
@@ -631,18 +655,10 @@ function goPrivacy() {
   gap: 24rpx;
 }
 
-.login-page__wechat-title {
-  color: #41493a;
-  font-size: 28rpx;
-  line-height: 40rpx;
-  font-weight: 400;
-  text-align: center;
-}
-
 .login-page__wechat-btn {
   width: 96rpx;
   height: 96rpx;
-  margin: 0 auto;
+  margin: 24rpx auto 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -660,6 +676,11 @@ function goPrivacy() {
   margin-top: 8rpx;
 }
 
+/* 微信卡片切换引导与上方隐私勾选拉开距离（叠加 gap 24rpx 共 48rpx，参考普通卡片间距） */
+.login-page__wechat .login-page__switch {
+  margin-top: 24rpx;
+}
+
 /* ===== 平板/折叠屏断点（≥768px）=====
  * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
  * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
@@ -668,14 +689,6 @@ function goPrivacy() {
   /* 页面主容器 padding */
   .login-page {
     padding: 105px 24px 33.5px;
-  }
-
-  /* 氛围装饰圆尺寸 */
-  .login-page__ambient {
-    width: 312px;
-    height: 312px;
-    margin-top: -156px;
-    margin-left: -156px;
   }
 
   /* 主登录卡片 */
@@ -803,28 +816,34 @@ function goPrivacy() {
   }
 
   /* 底部注册链接 */
+  .login-page__footer {
+    margin-top: 8px;
+  }
+
   .login-page__footer-text {
     font-size: 16px;
     line-height: 24px;
   }
 
+  /* 登录方式切换引导 */
+  .login-page__switch-text {
+    font-size: 18px;
+    line-height: 26px;
+  }
+
   /* 微信登录区 */
   .login-page__wechat {
     width: 342px;
-    margin-top: 16px;
+    margin-top: 32px;
     padding: 24px;
     border-radius: 24px;
     gap: 12px;
   }
 
-  .login-page__wechat-title {
-    font-size: 14px;
-    line-height: 20px;
-  }
-
   .login-page__wechat-btn {
     width: 48px;
     height: 48px;
+    margin-top: 12px;
   }
 
   .login-page__wechat-icon {
@@ -834,6 +853,10 @@ function goPrivacy() {
 
   .login-page__remember--wechat {
     margin-top: 4px;
+  }
+
+  .login-page__wechat .login-page__switch {
+    margin-top: 12px;
   }
 }
 </style>

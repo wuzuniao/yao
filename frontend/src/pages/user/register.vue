@@ -406,9 +406,9 @@ async function submitForm() {
       code: form.code
     })
     uni.showToast({ title: '注册成功', icon: 'success' })
-    // 注册成功后跳转登录页
+    // 注册成功后跳转登录页（带 mode=normal 直接展示账号密码登录卡片）
     setTimeout(() => {
-      uni.redirectTo({ url: '/pages/user/login' })
+      uni.redirectTo({ url: '/pages/user/login?mode=normal' })
     }, 1500)
   } catch (e) {
     // 验证码错误时统一提示"请输入正确验证码"
@@ -420,7 +420,8 @@ async function submitForm() {
 }
 
 function goLogin() {
-  uni.navigateTo({ url: '/pages/user/login' })
+  // 带 mode=normal 直接展示账号密码登录卡片
+  uni.navigateTo({ url: '/pages/user/login?mode=normal' })
 }
 
 function goPrivacy() {

@@ -72,11 +72,9 @@
       },
       "sql": {
         "描述": "数据库脚本目录（SQL建表+运维工具）",
-        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本：users 表（含 role 列：0-普通用户/7-管理员，以及 status 列用于删除冷静期等状态）与 user_miniapp_accounts 表（用户与微信小程序 openid 绑定）；role 列定义与 add_role_to_users.sql 增量脚本一致",
-        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本，含 7 张表：checkin_plans（打卡计划主表）、plan_notification_times（计划内各通知时间点）、checkin_records（打卡记录，含复合索引 idx_user_plan_actual(user_id,plan_id,actual_time) 与 idx_user_actual(user_id,actual_time) 优化日期范围查询）、notification_channels（通知渠道：站内信/短信/微信等）、plan_notification_channels（计划与通知渠道关联）、notification_logs（通知发送日志，含 plan_time_id/notify_date/trigger_type 列：0-准时/1-超10分钟/2-1小时或中点催办，以及去重索引 idx_dedup(plan_time_id,trigger_type,notify_date,channel_id) 用于定时通知防重）、announcements（全站公告表，与 add_announcements.sql 增量一致）",
-        "rotate_encryption_key.py": "邮箱专用密码加密密钥轮换脚本（Linux运维）。通过项目 settings 模块读取 backend/.env 中的 ENCRYPTION_SECRET_KEY（旧密钥）和 DATABASE_URL，生成新密钥，用旧密钥解密 notification_channels 表中所有邮件渠道的 password，用新密钥重新加密后在数据库事务中更新（全部成功提交否则回滚），最后原子替换 .env 中的密钥。用法：python3 backend/sql/rotate_encryption_key.py",
-        "add_role_to_users.sql": "增量迁移：在用户库 wuzuniao_yonghu.users 表新增 role 字段（TINYINT NOT NULL DEFAULT 0，0-普通用户，7-管理员），仅做身份标记，不建索引",
-        "add_announcements.sql": "增量迁移：在业务库 wuzuniao_yao 新建 announcements 公告表（id/title/content/created_at/updated_at），每条公告一行，用户侧投递后续实现"
+        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本：users 表（含 role 列：0-普通用户/7-管理员，以及 status 列用于删除冷静期等状态）与 user_miniapp_accounts 表（用户与微信小程序 openid 绑定）",
+        "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本，含 7 张表：checkin_plans（打卡计划主表）、plan_notification_times（计划内各通知时间点）、checkin_records（打卡记录，含复合索引 idx_user_plan_actual(user_id,plan_id,actual_time) 与 idx_user_actual(user_id,actual_time) 优化日期范围查询）、notification_channels（通知渠道：站内信/短信/微信等）、plan_notification_channels（计划与通知渠道关联）、notification_logs（通知发送日志，含 plan_time_id/notify_date/trigger_type 列：0-准时/1-超10分钟/2-1小时或中点催办，以及去重索引 idx_dedup(plan_time_id,trigger_type,notify_date,channel_id) 用于定时通知防重）、announcements（全站公告表）",
+        "rotate_encryption_key.py": "邮箱专用密码加密密钥轮换脚本（Linux运维）。通过项目 settings 模块读取 backend/.env 中的 ENCRYPTION_SECRET_KEY（旧密钥）和 DATABASE_URL，生成新密钥，用旧密钥解密 notification_channels 表中所有邮件渠道的 password，用新密钥重新加密后在数据库事务中更新（全部成功提交否则回滚），最后原子替换 .env 中的密钥。用法：python3 backend/sql/rotate_encryption_key.py"
       },
       "logs": {
         "描述": "本地运行日志目录，.gitignore忽略"
@@ -153,8 +151,8 @@
           "user": {
             "描述": "分包：用户模块",
             "profile.vue": "个人信息页面，含修改用户名（含后端唯一性校验+前端格式校验匹配注册页规则）、修改头像/修改签名/修改密码或设置密码（根据 has_password 动态显示，含前端密码格式校验匹配注册页规则）、修改邮箱或绑定邮箱（根据 email 动态显示，含前端邮箱格式校验匹配注册页规则，绑定邮箱时若邮箱已存在触发账号合并）分组与退出登录、删除账号（冷静期1分钟，后台30秒轮询自动清理，红色危险操作，弹窗二次确认）。支持onLoad接收URL参数focus=email自动展开绑定邮箱区域（供notification页跳转使用）。所有表单输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'",
-            "login.vue": "登录页面，含账号密码登录（前后端双重验证，登录成功写入 Pinia 状态并跳转 settings.vue）与微信一键登录（占位）。用户名/邮箱与密码输入框均接入字符限制提示",
-            "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单（前后端双重验证，失焦实时校验）。用户名 2-15 字符仅允许中文英文数字；密码 8-20 位含大小写字母/数字/特殊符号至少三种；邮箱标准格式；验证码 6 位数字。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'",
+            "login.vue": "登录页面，含账号密码登录（前后端双重验证，登录成功写入 Pinia 状态并跳转 settings.vue）与微信一键登录（wx.login → 后端换 openid → 写入状态 → 跳转）。登录方式切换：loginMode 'wechat'(默认) | 'normal'，两卡片 v-if/v-else 互斥显示；未登录默认进入展示微信登录卡片，下方引导切换账号密码登录；注册页跳转（URL 带 ?mode=normal）时 onLoad 读取参数初始展示账号密码卡片，下方引导切换微信登录；switchMode 函数处理切换。用户名/邮箱与密码输入框均接入字符限制提示",
+            "register.vue": "注册页面，含用户名/密码/邮箱/验证码表单（前后端双重验证，失焦实时校验）。用户名 2-15 字符仅允许中文英文数字；密码 8-20 位含大小写字母/数字/特殊符号至少三种；邮箱标准格式；验证码 6 位数字。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'。注册成功跳转与'去登录'链接均带 ?mode=normal 参数，使登录页直接展示账号密码登录卡片",
             "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
             "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
             "messages.vue": "站内信页面，从 notification_logs 表查询当前用户所有站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注，后端自动标记已读后返回精简字段 id/plan_name/plan_remark/send_time/is_unread）。卡片展示计划名称+备注说明+发送时间；未读(is_unread=true)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读，前端实时移除高亮(卡片保留)；全部已读按钮(存在未读时显示，防抖置灰，点击后移除所有高亮卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；打开页面时加载列表(后端自动标记已读并返回 unread_count)，不再使用轮询；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
