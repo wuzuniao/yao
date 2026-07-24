@@ -1,10 +1,11 @@
 import asyncio
+import json
 import secrets
 import time
 from datetime import datetime, timedelta
 
 import httpx
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.config import settings
@@ -15,7 +16,7 @@ from ..models.notification_channel import NotificationChannel
 from ..models.plan import CheckinPlan, PlanNotificationTime, PlanNotificationChannel
 from ..models.checkin_record import CheckinRecord
 from ..models.notification_log import NotificationLog
-from ..schemas.notification_channel import CHANNEL_TYPE_ZNX
+from ..schemas.notification_channel import CHANNEL_TYPE_ZNX, CHANNEL_TYPE_WECHAT
 from ..utils.timezone import now_shanghai
 from ..utils.logger import logger
 from .email_service import Email
@@ -639,6 +640,133 @@ class User:
         await self.db.refresh(user)
         return user
 
+    async def _merge_channel_references(
+        self, from_channel_id: int, to_channel_id: int
+    ) -> None:
+        """
+        将引用旧渠道的记录迁移到新渠道，并处理 plan_notification_channels 唯一冲突
+        :param from_channel_id: 待删除的旧渠道ID
+        :param to_channel_id: 保留的目标渠道ID
+        """
+        # 1. 找出同时存在新旧渠道关联的计划ID（会产生唯一冲突）
+        conflict_result = await self.db.execute(
+            select(PlanNotificationChannel.plan_id).where(
+                PlanNotificationChannel.channel_id == from_channel_id,
+                PlanNotificationChannel.plan_id.in_(
+                    select(PlanNotificationChannel.plan_id).where(
+                        PlanNotificationChannel.channel_id == to_channel_id
+                    )
+                ),
+            )
+        )
+        conflict_plan_ids = [row[0] for row in conflict_result.all()]
+
+        # 2. 删除旧渠道侧会产生冲突的关联记录
+        if conflict_plan_ids:
+            await self.db.execute(
+                delete(PlanNotificationChannel).where(
+                    PlanNotificationChannel.channel_id == from_channel_id,
+                    PlanNotificationChannel.plan_id.in_(conflict_plan_ids),
+                )
+            )
+
+        # 3. 将其余关联记录的 channel_id 指向新渠道
+        await self.db.execute(
+            update(PlanNotificationChannel)
+            .where(PlanNotificationChannel.channel_id == from_channel_id)
+            .values(channel_id=to_channel_id)
+        )
+
+        # 4. 同步更新通知日志中的渠道引用（历史记录跟随合并后的渠道）
+        await self.db.execute(
+            update(NotificationLog)
+            .where(NotificationLog.channel_id == from_channel_id)
+            .values(channel_id=to_channel_id)
+        )
+
+    async def _merge_business_data(
+        self, main_user: UserModel, sub_user: UserModel
+    ) -> None:
+        """
+        合并从账号的业务库数据到主账号
+        - checkin_plans / checkin_records / notification_logs：直接更新 user_id
+        - notification_channels：站内信/微信需去重合并；其他类型直接转移归属
+        """
+        main_user_id = main_user.id
+        sub_user_id = sub_user.id
+
+        # 1. 业务表 user_id 整体迁移
+        await self.db.execute(
+            update(CheckinPlan)
+            .where(CheckinPlan.user_id == sub_user_id)
+            .values(user_id=main_user_id)
+        )
+        await self.db.execute(
+            update(CheckinRecord)
+            .where(CheckinRecord.user_id == sub_user_id)
+            .values(user_id=main_user_id)
+        )
+        await self.db.execute(
+            update(NotificationLog)
+            .where(NotificationLog.user_id == sub_user_id)
+            .values(user_id=main_user_id)
+        )
+
+        # 2. 通知渠道：按类型分别处理
+        sub_channels_result = await self.db.execute(
+            select(NotificationChannel).where(NotificationChannel.user_id == sub_user_id)
+        )
+        sub_channels = sub_channels_result.scalars().all()
+
+        main_channels_result = await self.db.execute(
+            select(NotificationChannel).where(NotificationChannel.user_id == main_user_id)
+        )
+        main_channels_by_type = {
+            ch.channel_type: ch for ch in main_channels_result.scalars().all()
+        }
+
+        for ch in sub_channels:
+            if ch.channel_type == CHANNEL_TYPE_ZNX:
+                # 站内信：系统默认渠道，一个用户仅保留一条
+                main_znx = main_channels_by_type.get(CHANNEL_TYPE_ZNX)
+                if main_znx:
+                    await self._merge_channel_references(ch.id, main_znx.id)
+                    await self.db.delete(ch)
+                else:
+                    ch.user_id = main_user_id
+                    ch.channel_value = str(main_user_id)
+            elif ch.channel_type == CHANNEL_TYPE_WECHAT:
+                # 微信：额度制渠道，合并 granted/sent 额度
+                main_wx = main_channels_by_type.get(CHANNEL_TYPE_WECHAT)
+                if main_wx:
+                    sub_quota = self._parse_wechat_channel_value(ch.channel_value)
+                    main_quota = self._parse_wechat_channel_value(main_wx.channel_value)
+                    merged_quota = {
+                        "granted": sub_quota["granted"] + main_quota["granted"],
+                        "sent": sub_quota["sent"] + main_quota["sent"],
+                    }
+                    main_wx.channel_value = json.dumps(merged_quota, ensure_ascii=False)
+                    main_wx.enabled = True
+                    await self._merge_channel_references(ch.id, main_wx.id)
+                    await self.db.delete(ch)
+                else:
+                    ch.user_id = main_user_id
+            else:
+                # 邮件等其他自定义渠道：直接转移归属
+                ch.user_id = main_user_id
+
+    @staticmethod
+    def _parse_wechat_channel_value(channel_value: str) -> dict[str, int]:
+        """解析微信渠道额度（与 NotificationChannelService.parse_wechat_channel_value 对齐）"""
+        try:
+            data = json.loads(channel_value) if channel_value else {}
+        except (json.JSONDecodeError, TypeError):
+            data = {}
+        return {
+            "granted": int(data.get("granted", 0) or 0),
+            "sent": int(data.get("sent", 0) or 0),
+        }
+
     async def bind_email(self, user_id: int, new_email: str, new_code: str) -> UserModel:
         """
         绑定邮箱（用于无邮箱用户，如微信登录用户首次绑定邮箱）
@@ -674,20 +802,23 @@ class User:
         main_user = existing_user
         sub_user = user
 
-        # 先转移从账号的小程序绑定记录到主账号（此时 sub_user 尚未删除，可正常查询）
+        # 1. 转移从账号的小程序绑定记录到主账号（用户库逻辑保持原有效果）
         miniapp_result = await self.db.execute(
             select(UserMiniappAccount).where(UserMiniappAccount.user_id == sub_user.id)
         )
         for account in miniapp_result.scalars().all():
             account.user_id = main_user.id
 
-        # 先删除从账号并 flush，避免合并字段时唯一约束冲突
+        # 2. 合并从账号的业务库数据到主账号（避免数据残留在数据库中）
+        await self._merge_business_data(main_user, sub_user)
+
+        # 3. 先删除从账号并 flush，避免合并字段时唯一约束冲突
         # （SQLAlchemy flush 顺序为 INSERT→UPDATE→DELETE，若不先 flush 删除，
         #   合并字段的 UPDATE 会先于 DELETE 执行，此时从账号仍存在导致唯一约束冲突）
         await self.db.delete(sub_user)
         await self.db.flush()
 
-        # 合并字段：主账号字段为空时用从账号填充，字段冲突时保留主账号
+        # 4. 合并字段：主账号字段为空时用从账号填充，字段冲突时保留主账号
         if not main_user.username and sub_user.username:
             main_user.username = sub_user.username
         if not main_user.password_hash and sub_user.password_hash:
