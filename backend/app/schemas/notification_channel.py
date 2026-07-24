@@ -103,6 +103,18 @@ class UpdateEmailChannel(BaseModel):
         return Security.validate_email(v)
 
 
+class UpdateWechatChannel(BaseModel):
+    """更新微信通知渠道启用状态请求 Schema（user_id 由 JWT 提供，不入请求体）"""
+
+    channel_id: int
+    enabled: bool
+
+    @field_validator("channel_id")
+    @classmethod
+    def validate_channel_id(cls, v: int) -> int:
+        return Security.validate_positive_int(v, "渠道ID")
+
+
 class DeleteChannel(BaseModel):
     """删除通知渠道请求 Schema（user_id 由 JWT 提供，不入请求体；仅允许删除邮件渠道）"""
 

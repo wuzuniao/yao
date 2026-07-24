@@ -157,6 +157,23 @@ class NotificationChannelService:
         await self.db.refresh(channel)
         return channel
 
+    async def update_wechat_enabled(
+        self, channel_id: int, user_id: int, enabled: bool
+    ) -> NotificationChannel:
+        """更新微信通知渠道的启用状态（仅微信渠道支持，授权额度不变）"""
+        channel = await self.get_by_id(channel_id)
+        if not channel:
+            raise ValueError("通知渠道不存在")
+        if channel.user_id != user_id:
+            raise ValueError("无权操作该通知渠道")
+        if channel.channel_type != CHANNEL_TYPE_WECHAT:
+            raise ValueError("仅微信通知渠道支持该操作")
+        channel.enabled = enabled
+        channel.updated_at = now_shanghai()
+        await self.db.commit()
+        await self.db.refresh(channel)
+        return channel
+
     async def delete_channel(self, channel_id: int, user_id: int) -> None:
         """
         删除通知渠道

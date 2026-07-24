@@ -59,6 +59,20 @@ export function deleteNotificationChannel({ channel_id }) {
 }
 
 /**
+ * 更新微信通知渠道启用状态（user_id 由 JWT 提供，授权额度不变）
+ * @param {Object} param0
+ * @param {number} param0.channel_id 渠道ID
+ * @param {boolean} param0.enabled 是否启用
+ */
+export function updateWechatChannel({ channel_id, enabled }) {
+  return request({
+    url: '/api/v1/notification-channels/wechat',
+    method: 'PUT',
+    data: { channel_id, enabled }
+  })
+}
+
+/**
  * 微信订阅消息授权回调：用户每同意一次授权（wx.requestSubscribeMessage 返回 accept）
  * 即 +1 下发额度并启用微信渠道（user_id 由 JWT 提供）
  */

@@ -9,6 +9,7 @@ from ...schemas.notification_channel import (
     CreateEmailChannel,
     DeleteChannel,
     UpdateEmailChannel,
+    UpdateWechatChannel,
 )
 from ...services.notification_channel_service import NotificationChannelService
 
@@ -105,6 +106,29 @@ async def update_email_channel(
     return {
         "code": 0,
         "msg": "邮件通知方式更新成功",
+        "data": _channel_to_dict(channel),
+    }
+
+
+@router.put("/wechat")
+async def update_wechat_channel(
+    payload: UpdateWechatChannel,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新微信通知渠道启用状态（user_id 来自 JWT，授权额度不变）"""
+    service = NotificationChannelService(db)
+    try:
+        channel = await service.update_wechat_enabled(
+            channel_id=payload.channel_id,
+            user_id=user_id,
+            enabled=payload.enabled,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "微信通知方式更新成功",
         "data": _channel_to_dict(channel),
     }
 

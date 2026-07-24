@@ -115,29 +115,65 @@
                 </view>
               </view>
             </view>
-            <view class="notification-page__save" @click="handleUpdateEmail(ch.id)">
-              <text class="notification-page__save-text">提交</text>
+            <view class="notification-page__btn-row">
+              <view class="notification-page__save notification-page__btn-row-item" @click="handleUpdateEmail(ch.id)">
+                <text class="notification-page__save-text">提交</text>
+              </view>
+              <view class="notification-page__cancel notification-page__btn-row-item" @click="cancelEmailEdit">
+                <text class="notification-page__cancel-text">取消</text>
+              </view>
             </view>
           </view>
         </view>
 
-        <!-- 微信订阅消息卡片（含剩余额度与重新授权入口；点击删除图标移除渠道） -->
-        <view v-if="hasWechat" class="notification-page__card">
-          <view class="notification-page__card-info">
-            <view class="notification-page__card-badge notification-page__card-badge--wechat">微</view>
-            <view class="notification-page__card-text">
-              <text class="notification-page__card-title">微信</text>
-              <text class="notification-page__card-subtitle">
-                {{ wechatRemaining > 0 ? `订阅消息提醒 · 剩余可发 ${wechatRemaining} 次` : '授权额度已用完，请重新授权' }}
-              </text>
+        <!-- 微信订阅消息卡片（含剩余额度与重新授权入口；点击卡片展开启用状态修改表单） -->
+        <view v-if="hasWechat">
+          <view class="notification-page__card" @click="toggleWechatEdit">
+            <view class="notification-page__card-info">
+              <view class="notification-page__card-badge notification-page__card-badge--wechat">微</view>
+              <view class="notification-page__card-text">
+                <text class="notification-page__card-title">微信</text>
+                <text class="notification-page__card-subtitle">
+                  {{ wechatRemaining > 0 ? `订阅消息提醒 · 剩余可发 ${wechatRemaining} 次` : '授权额度已用完，请重新授权' }}
+                </text>
+              </view>
+            </view>
+            <view class="notification-page__card-actions">
+              <view v-if="wechatRemaining <= 0" class="notification-page__card-reauth" @click.stop="handleWechatReauth">
+                <text class="notification-page__card-reauth-text">重新授权</text>
+              </view>
+              <view class="notification-page__card-delete" @click.stop="handleDeleteWechat">
+                <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
+              </view>
             </view>
           </view>
-          <view class="notification-page__card-actions">
-            <view v-if="wechatRemaining <= 0" class="notification-page__card-reauth" @click="handleWechatReauth">
-              <text class="notification-page__card-reauth-text">重新授权</text>
+
+          <!-- 微信启用状态修改表单（点击卡片展开，仅"是否启用"单选 + 提交/取消按钮） -->
+          <view v-if="wechatEditExpanded" class="notification-page__email-form">
+            <view class="notification-page__field">
+              <text class="notification-page__label">是否启用</text>
+              <view class="notification-page__radio-row">
+                <view class="notification-page__radio-item" @click="wechatEditForm.enabled = true">
+                  <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': wechatEditForm.enabled }">
+                    <view v-if="wechatEditForm.enabled" class="notification-page__radio-dot"></view>
+                  </view>
+                  <text class="notification-page__radio-text">是</text>
+                </view>
+                <view class="notification-page__radio-item" @click="wechatEditForm.enabled = false">
+                  <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': !wechatEditForm.enabled }">
+                    <view v-if="!wechatEditForm.enabled" class="notification-page__radio-dot"></view>
+                  </view>
+                  <text class="notification-page__radio-text">否</text>
+                </view>
+              </view>
             </view>
-            <view class="notification-page__card-delete" @click.stop="handleDeleteWechat">
-              <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
+            <view class="notification-page__btn-row">
+              <view class="notification-page__save notification-page__btn-row-item" @click="handleUpdateWechat">
+                <text class="notification-page__save-text">提交</text>
+              </view>
+              <view class="notification-page__cancel notification-page__btn-row-item" @click="wechatEditExpanded = false">
+                <text class="notification-page__cancel-text">取消</text>
+              </view>
             </view>
           </view>
         </view>
@@ -315,6 +351,7 @@ import {
   listNotificationChannels,
   createEmailChannel,
   updateEmailChannel,
+  updateWechatChannel,
   deleteNotificationChannel
 } from '../../api/modules/notification'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
@@ -356,6 +393,12 @@ const editForm = reactive({
   smtp_port: '',
   email: '',
   password: '',
+  enabled: true
+})
+// 微信启用状态修改表单是否展开（点击微信卡片切换）
+const wechatEditExpanded = ref(false)
+// 微信启用状态修改表单（仅 enabled 字段）
+const wechatEditForm = reactive({
   enabled: true
 })
 
@@ -566,6 +609,14 @@ function toggleEmailEdit(channelId) {
   editHostError.value = ''
   editEmailError.value = ''
   expandedEmailId.value = channelId
+}
+
+// 取消邮件配置修改：收起表单并清空校验错误提示
+function cancelEmailEdit() {
+  expandedEmailId.value = null
+  editPortError.value = ''
+  editHostError.value = ''
+  editEmailError.value = ''
 }
 
 // 提交邮件配置更新
@@ -782,6 +833,7 @@ async function handleDeleteWechat() {
         const r = await deleteNotificationChannel({ channel_id: ch.id })
         if (r.code === 0) {
           uni.showToast({ title: '删除成功', icon: 'success' })
+          wechatEditExpanded.value = false
           await loadChannels()
         }
       } catch (e) {
@@ -789,6 +841,36 @@ async function handleDeleteWechat() {
       }
     }
   })
+}
+
+// 点击微信卡片：展开/收起启用状态修改表单
+function toggleWechatEdit() {
+  if (wechatEditExpanded.value) {
+    wechatEditExpanded.value = false
+    return
+  }
+  const ch = wechatChannel.value
+  wechatEditForm.enabled = ch ? !!ch.enabled : true
+  wechatEditExpanded.value = true
+}
+
+// 提交微信启用状态修改
+async function handleUpdateWechat() {
+  const ch = wechatChannel.value
+  if (!ch || !userStore.userInfo) return
+  try {
+    const res = await updateWechatChannel({
+      channel_id: ch.id,
+      enabled: wechatEditForm.enabled
+    })
+    if (res.code === 0) {
+      uni.showToast({ title: '更新成功', icon: 'success' })
+      wechatEditExpanded.value = false
+      await loadChannels()
+    }
+  } catch (e) {
+    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+  }
 }
 </script>
 
@@ -1168,6 +1250,38 @@ async function handleDeleteWechat() {
   font-weight: 500;
 }
 
+/* 提交/取消按钮并排行（邮件配置修改表单 & 微信启用状态修改表单复用） */
+.notification-page__btn-row {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.notification-page__btn-row-item {
+  flex: 1;
+}
+
+/* 取消按钮（白底描边，与提交按钮并排） */
+.notification-page__cancel {
+  margin-top: 32rpx;
+  height: 96rpx;
+  padding: 24rpx 0;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #c1cab5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.notification-page__cancel-text {
+  color: #2f6c00;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 500;
+}
+
 /* ===== 邮箱未绑定倒计时弹窗 ===== */
 .notification-page__countdown-mask {
   position: fixed;
@@ -1346,6 +1460,18 @@ async function handleDeleteWechat() {
     padding: 12px 0;
   }
   .notification-page__save-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .notification-page__btn-row {
+    gap: 12px;
+  }
+  .notification-page__cancel {
+    margin-top: 16px;
+    height: 48px;
+    padding: 12px 0;
+  }
+  .notification-page__cancel-text {
     font-size: 16px;
     line-height: 24px;
   }

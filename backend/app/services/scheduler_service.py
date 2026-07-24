@@ -202,11 +202,9 @@ class NotificationDispatcher:
             )
             if checkin_count >= 1:
                 continue
-            # 遍历该计划绑定的通知渠道
+            # 遍历该计划绑定的通知渠道（_get_channels_for_plan 已在 SQL 层过滤未启用渠道）
             channels = await self._get_channels_for_plan(plan.id)
             for channel in channels:
-                if not channel.enabled:
-                    continue
                 # 防重：同一天同一时间点同一触发类型同一渠道只发一次
                 if await self._already_sent(pt.id, trigger_type, notify_date, channel.id):
                     continue
@@ -290,11 +288,10 @@ class NotificationDispatcher:
                 if checkin_count >= 1:
                     continue
 
-                # 遍历渠道发送（档位2对同一提醒时间点同一渠道当天只发一次，靠防重键去重）
+                # 遍历渠道发送（档位2对同一提醒时间点同一渠道当天只发一次，靠防重键去重；
+                # _get_channels_for_plan 已在 SQL 层过滤未启用渠道）
                 channels = await self._get_channels_for_plan(plan.id)
                 for channel in channels:
-                    if not channel.enabled:
-                        continue
                     if await self._already_sent(
                         pt.id, TRIGGER_OFFSET_1HOUR_OR_MIDPOINT, notify_date, channel.id
                     ):
@@ -308,11 +305,18 @@ class NotificationDispatcher:
     # ==================== 查询辅助 ====================
 
     async def _get_channels_for_plan(self, plan_id: int) -> list[NotificationChannel]:
-        """查询计划绑定的所有通知渠道（含配置）"""
+        """
+        查询计划绑定的且已启用的通知渠道（含配置）
+        - enabled 过滤下沉到 SQL：未启用（enabled=False）的渠道不取回，
+          调用方无需再判断 enabled，未启用渠道不发送通知、不写 notification_logs
+        """
         result = await self.db.execute(
             select(NotificationChannel)
             .join(PlanNotificationChannel, PlanNotificationChannel.channel_id == NotificationChannel.id)
-            .where(PlanNotificationChannel.plan_id == plan_id)
+            .where(
+                PlanNotificationChannel.plan_id == plan_id,
+                NotificationChannel.enabled == True,  # noqa: E712（SQLAlchemy 表达式需用 ==）
+            )
         )
         return list(result.scalars().all())
 
