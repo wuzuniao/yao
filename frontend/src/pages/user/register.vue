@@ -152,9 +152,10 @@
         </view>
       </view>
 
-      <!-- 底部登录链接 -->
-      <view class="register-page__footer" @click="goLogin">
-        <text class="register-page__footer-text">已有账号？去登录</text>
+      <!-- 底部登录链接（仅“去登录”可点击） -->
+      <view class="register-page__footer">
+        <text class="register-page__footer-text">已有账号？</text>
+        <text class="register-page__footer-link" @click="goLogin">去登录</text>
       </view>
     </view>
   </view>
@@ -725,6 +726,13 @@ function goPrivacy() {
   font-weight: 400;
 }
 
+.register-page__footer-link {
+  color: #2f6c00;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 500;
+}
+
 /* ===== 平板/折叠屏断点（≥768px）=====
  * 在宽屏设备上 rpx 会过度放大，需将关键尺寸锁定为 px
  * 规则：将本页面主要容器的宽度、卡片宽度、按钮尺寸锁定为设计稿原 px 值
@@ -876,6 +884,11 @@ function goPrivacy() {
   }
 
   .register-page__footer-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .register-page__footer-link {
     font-size: 16px;
     line-height: 24px;
   }

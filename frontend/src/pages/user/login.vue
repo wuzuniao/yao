@@ -78,7 +78,7 @@
           </view>
         </view>
 
-        <!-- 操作区（含登录按钮与注册链接，作为一个整体） -->
+        <!-- 操作区 -->
         <view class="login-page__actions">
           <view class="login-page__remember" @click="toggleRemember">
             <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': remember }">
@@ -90,10 +90,6 @@
           <view class="login-page__submit" @click="handleLogin">
             <text class="login-page__submit-text">登录</text>
           </view>
-          <!-- 底部注册链接（紧贴登录按钮，作为一个整体） -->
-          <view class="login-page__footer" @click="goRegister">
-            <text class="login-page__footer-text">还没有账号？ 立即注册</text>
-          </view>
         </view>
       </view>
 
@@ -101,6 +97,12 @@
       <view class="login-page__switch" @click="switchMode('wechat')">
         <text class="login-page__switch-text">一键登录</text>
       </view>
+    </view>
+
+    <!-- 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现；仅“立即注册”可点击） -->
+    <view v-if="loginMode === 'normal'" class="login-page__footer">
+      <text class="login-page__footer-text">还没有账号？</text>
+      <text class="login-page__footer-link" @click="goRegister">立即注册</text>
     </view>
   </view>
 </template>
@@ -612,11 +614,11 @@ function goPrivacy() {
   font-weight: 500;
 }
 
-/* ===== 底部注册链接（紧贴登录按钮，作为一个整体） ===== */
+/* ===== 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现） ===== */
 .login-page__footer {
   display: flex;
   justify-content: center;
-  margin-top: 16rpx;
+  margin-top: 48rpx;
 }
 
 .login-page__footer-text {
@@ -624,6 +626,13 @@ function goPrivacy() {
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
+}
+
+.login-page__footer-link {
+  color: #2f6c00;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 500;
 }
 
 /* ===== 登录方式切换引导（放大突出，引导用户切换登录方式） ===== */
@@ -817,10 +826,15 @@ function goPrivacy() {
 
   /* 底部注册链接 */
   .login-page__footer {
-    margin-top: 8px;
+    margin-top: 24px;
   }
 
   .login-page__footer-text {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .login-page__footer-link {
     font-size: 16px;
     line-height: 24px;
   }
