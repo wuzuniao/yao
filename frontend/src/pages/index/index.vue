@@ -517,6 +517,10 @@ onShow(() => {
   })
   // 并行加载最近 7 天公告（不阻塞任务卡片）
   loadRecentAnnouncements()
+  // 已登录情况下，首页加载完成后触发一次未读站内信刷新，基于打卡记录自动标记已读并同步通知图标
+  if (userStore.userInfo) {
+    userStore.loadUnreadCount(true)
+  }
   // 每分钟刷新打卡时段状态（用户在线时才检查）
   if (!refreshTimer) {
     refreshTimer = setInterval(() => {
