@@ -38,7 +38,7 @@
 
         <!-- 公告临时卡片（最近7天未读公告轮播，填充首页空白高度，位于任务卡与打卡按钮之间） -->
         <AnnouncementCard
-          v-if="recentAnnouncements.length"
+          v-if="isLoggedIn && recentAnnouncements.length"
           :announcements="recentAnnouncements"
         />
 
@@ -53,9 +53,16 @@
             }"
             @click="handleCheckin"
             @longpress="handleLongPress"
+            @touchend="handleLongPressEnd"
+            @touchcancel="handleLongPressEnd"
           >
-            <image v-if="showCheckinIcon" class="index-page__checkin-icon" :src="checkinIcon" mode="aspectFit" />
-            <text class="index-page__checkin-text">{{ checkinText }}</text>
+            <template v-if="longPressCountdown > 0">
+              <text class="index-page__checkin-countdown">{{ longPressCountdown }}</text>
+            </template>
+            <template v-else>
+              <image v-if="showCheckinIcon" class="index-page__checkin-icon" :src="checkinIcon" mode="aspectFit" />
+              <text class="index-page__checkin-text">{{ checkinText }}</text>
+            </template>
           </view>
         </view>
       </view>
@@ -113,6 +120,7 @@ import { useUserStore } from '../../store/modules/user'
 import { listPlans } from '../../api/modules/plan'
 import { createCheckin, listTodayCheckinsByPlan } from '../../api/modules/checkin'
 import { getRecentAnnouncements } from '../../api/modules/announcement'
+import { listNotificationChannels } from '../../api/modules/notification'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
 import { useShare } from '../../composables/useShare'
@@ -138,12 +146,18 @@ const showTaskList = ref(false)
 const todayCheckinMinutes = ref([])
 // 最近 7 天公告列表（普通用户），用于首页临时卡片轮播
 const recentAnnouncements = ref([])
+// 当前用户的通知渠道列表（用于判断计划是否关联微信通知方式）
+const userChannels = ref([])
 // 状态刷新定时器（每分钟检查打卡时段变化）
 let refreshTimer = null
 // 长按3秒重置标志：true 时强制按钮为"立即打卡"可点击状态
 const forceActive = ref(false)
 // 长按计时器
 let longPressTimer = null
+// 长按倒计时秒数（0 表示未在倒计时）
+const longPressCountdown = ref(0)
+// 长按倒计时 interval
+let longPressInterval = null
 // 打卡防抖时间戳：同一任务3秒内只允许点击一次
 let lastCheckinTime = 0
 
@@ -316,6 +330,15 @@ const checkinIcon = computed(() => {
   return isCheckinDone.value ? checkinDoneIcon : checkinInactiveIcon
 })
 
+// 当前主要计划是否包含微信通知方式（用于打卡成功后决定是否自动补授权微信订阅消息）
+const hasWechatNotification = computed(() => {
+  if (!primaryPlan.value || !primaryPlan.value.channel_ids || !userChannels.value.length) return false
+  return primaryPlan.value.channel_ids.some(channelId => {
+    const channel = userChannels.value.find(c => c.id === channelId)
+    return channel && channel.channel_type === '微信'
+  })
+})
+
 // ===== 数据加载 =====
 
 // 计算默认主要卡片索引（当前时间在提醒时间前后2小时范围内的优先；都在范围内时优先级高的为主；优先级相同时先创建的为主）
@@ -367,6 +390,22 @@ async function loadActivePlans() {
     }
   } catch (e) {
     console.warn('加载计划失败', e)
+  }
+}
+
+// 加载当前用户的通知渠道列表，用于判断计划是否包含微信通知方式
+async function loadUserChannels() {
+  if (!isLoggedIn.value) {
+    userChannels.value = []
+    return
+  }
+  try {
+    const res = await listNotificationChannels()
+    if (res.code === 0 && res.data) {
+      userChannels.value = res.data
+    }
+  } catch (e) {
+    console.warn('加载通知渠道失败', e)
   }
 }
 
@@ -481,29 +520,58 @@ async function handleCheckin() {
       forceActive.value = false
       // 触发后端自动标记已读并同步刷新 NoticeButton 图标状态
       userStore.loadUnreadCount(true)
-      // 打卡成功后为微信订阅消息静默补充一次授权额度（用户已勾选"保持选择"时不弹窗）
-      // 失败静默忽略（如用户已取消授权），不影响打卡主流程
-      await requestSubscribe({ silent: true })
+      // 打卡成功后，若当前计划包含微信通知方式，则为微信订阅消息静默补充一次授权额度
+      // 用户已勾选"保持选择"时不弹窗；失败静默忽略（如用户已取消授权），不影响打卡主流程
+      if (hasWechatNotification.value) {
+        await requestSubscribe({ silent: true })
+      }
     }
   } catch (e) {
     uni.showToast({ title: e.message || '打卡失败', icon: 'none' })
   }
 }
 
-// 长按3秒重置：任何非"立即打卡"状态长按3秒后重置为"立即打卡"
+// 长按3秒重置开始：非 active 状态长按触发，显示 3-2-1 倒计时
 function handleLongPress() {
   // 仅在非 disabled 状态下生效（必须有计划且在日期范围内）
   if (!primaryPlan.value || !isWithinDateRange.value) return
   // active 状态无需重置
   if (checkinState.value.status === 'active') return
-  // 启动3秒计时器
+  // 清除上一次的计时器
   if (longPressTimer) clearTimeout(longPressTimer)
-  uni.showLoading({ title: '请长按3秒...', mask: true })
+  if (longPressInterval) clearInterval(longPressInterval)
+  // 启动 3 秒倒计时显示
+  longPressCountdown.value = 3
+  longPressInterval = setInterval(() => {
+    longPressCountdown.value -= 1
+    if (longPressCountdown.value <= 0) {
+      clearInterval(longPressInterval)
+      longPressInterval = null
+    }
+  }, 1000)
+  // 3 秒后强制重置为立即打卡
   longPressTimer = setTimeout(() => {
     forceActive.value = true
-    uni.hideLoading()
-    uni.showToast({ title: '已重置为立即打卡', icon: 'success' })
+    longPressCountdown.value = 0
+    if (longPressInterval) {
+      clearInterval(longPressInterval)
+      longPressInterval = null
+    }
+    uni.showToast({ title: '已重置', icon: 'success' })
   }, 3000)
+}
+
+// 长按3秒重置结束：手指离开或触摸被取消时清除计时，未满足 3 秒则取消重置
+function handleLongPressEnd() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+  if (longPressInterval) {
+    clearInterval(longPressInterval)
+    longPressInterval = null
+  }
+  longPressCountdown.value = 0
 }
 
 // ===== 生命周期 =====
@@ -517,6 +585,8 @@ onShow(() => {
   })
   // 并行加载最近 7 天公告（不阻塞任务卡片）
   loadRecentAnnouncements()
+  // 并行加载用户通知渠道，用于判断打卡后是否需要补授权微信订阅消息
+  loadUserChannels()
   // 已登录情况下，首页加载完成后触发一次未读站内信刷新，基于打卡记录自动标记已读并同步通知图标
   if (userStore.userInfo) {
     userStore.loadUnreadCount(true)
@@ -542,6 +612,7 @@ onHide(() => {
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
   if (longPressTimer) clearTimeout(longPressTimer)
+  if (longPressInterval) clearInterval(longPressInterval)
 })
 </script>
 
@@ -889,6 +960,14 @@ onUnmounted(() => {
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 500;
+}
+
+/* 长按重置倒计时数字，占满按钮并垂直居中 */
+.index-page__checkin-countdown {
+  color: #ffffff;
+  font-size: 144rpx;
+  line-height: 384rpx;
+  font-weight: 600;
 }
 
 /* 无图标态文字垂直居中（disabled/waiting 无图标时 margin-top 调整为 (384-48)/2 = 168rpx） */
