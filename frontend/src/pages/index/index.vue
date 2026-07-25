@@ -3,14 +3,40 @@
     <view class="index-page__frame">
       <NoticeButton />
 
-      <view class="index-page__main-canvas">
-        <!-- 空状态提示（未登录或已登录无进行中计划时，隐藏任务卡片） -->
-        <view v-if="!hasActivePlans" class="index-page__empty">
-          <text class="index-page__empty-text">{{ emptyText }}</text>
+      <view class="index-page__main-canvas" :class="{ 'index-page__main-canvas--guest': !isLoggedIn }">
+        <!-- 未登录：介绍卡片（标题“按时吃药”，介绍小程序、功能与登录引导） -->
+        <view v-if="!isLoggedIn" class="index-page__intro-card">
+          <text class="index-page__intro-title">按时吃药</text>
+          <view class="index-page__intro-scroll">
+            <view class="index-page__intro-section">
+              <text class="index-page__intro-p">制定通用打卡计划并按时提醒、记录的跨端APP。</text>
+              <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可自行部署此小程序。</text>
+              <text class="index-page__intro-p">开源地址：<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
+            </view>
+            <view class="index-page__intro-section">
+              <text class="index-page__intro-section-title">主要功能</text>
+              <text class="index-page__intro-p">制定打卡计划：设置计划内容、持续周期、每日提醒时间、通知方式等。到达提醒时间后，系统会自动发送通知进行提醒。</text>
+              <text class="index-page__intro-p">多途径通知：支持站内信、微信、邮件等多种通知渠道。</text>
+            </view>
+            <view class="index-page__intro-section">
+              <text class="index-page__intro-section-title">新手引导</text>
+              <text class="index-page__intro-p">打卡功能必须登录后才能使用。</text>
+              <text class="index-page__intro-p">若只在微信中使用，建议使用微信一键登录并使用微信订阅消息通知，此方式最方便。</text>
+              <text class="index-page__intro-p">若账号想在无足鸟系列软件产品中通用，可绑定邮箱并设置密码。或者使用普通注册方式创建账号，一次注册，多端畅享。使用普通注册方式时，请务必牢记账号与密码，避免账号丢失或密码泄露。</text>
+              <text class="index-page__intro-p">点我开启新手引导提示</text>
+            </view>
+          </view>
         </view>
 
-        <!-- 任务卡片区域（已登录且有进行中计划时显示） -->
-        <view v-else class="index-page__hero">
+        <!-- 已登录：原有任务卡片 / 空状态 + 公告卡 + 打卡按钮 -->
+        <template v-else>
+          <!-- 空状态提示（已登录无进行中计划时，隐藏任务卡片） -->
+          <view v-if="!hasActivePlans" class="index-page__empty">
+            <text class="index-page__empty-text">{{ emptyText }}</text>
+          </view>
+
+          <!-- 任务卡片区域（已登录且有进行中计划时显示） -->
+          <view v-else class="index-page__hero">
           <!-- 主要卡片（不设置点击事件，仅展示当前选中任务） -->
           <view class="index-page__primary-card">
             <view class="index-page__primary-copy">
@@ -36,35 +62,36 @@
           </view>
         </view>
 
-        <!-- 公告临时卡片（最近7天未读公告轮播，填充首页空白高度，位于任务卡与打卡按钮之间） -->
-        <AnnouncementCard
-          v-if="isLoggedIn && recentAnnouncements.length"
-          :announcements="recentAnnouncements"
-        />
+          <!-- 公告临时卡片（最近7天未读公告轮播，填充首页空白高度，位于任务卡与打卡按钮之间） -->
+          <AnnouncementCard
+            v-if="recentAnnouncements.length"
+            :announcements="recentAnnouncements"
+          />
 
-        <!-- 立即打卡按钮（状态：灰色无任务 / 红色立即打卡 / 已完成 / 未到打卡时间） -->
-        <view class="index-page__checkin-shell">
-          <view
-            class="index-page__checkin-button"
-            :class="{
-              'index-page__checkin-button--disabled': isButtonDisabled,
-              'index-page__checkin-button--done': isCheckinDone,
-              'index-page__checkin-button--waiting': isWaiting
-            }"
-            @click="handleCheckin"
-            @longpress="handleLongPress"
-            @touchend="handleLongPressEnd"
-            @touchcancel="handleLongPressEnd"
-          >
-            <template v-if="longPressCountdown > 0">
-              <text class="index-page__checkin-countdown">{{ longPressCountdown }}</text>
-            </template>
-            <template v-else>
-              <image v-if="showCheckinIcon" class="index-page__checkin-icon" :src="checkinIcon" mode="aspectFit" />
-              <text class="index-page__checkin-text">{{ checkinText }}</text>
-            </template>
+          <!-- 立即打卡按钮（状态：灰色无任务 / 红色立即打卡 / 已完成 / 未到打卡时间） -->
+          <view class="index-page__checkin-shell">
+            <view
+              class="index-page__checkin-button"
+              :class="{
+                'index-page__checkin-button--disabled': isButtonDisabled,
+                'index-page__checkin-button--done': isCheckinDone,
+                'index-page__checkin-button--waiting': isWaiting
+              }"
+              @click="handleCheckin"
+              @longpress="handleLongPress"
+              @touchend="handleLongPressEnd"
+              @touchcancel="handleLongPressEnd"
+            >
+              <template v-if="longPressCountdown > 0">
+                <text class="index-page__checkin-countdown">{{ longPressCountdown }}</text>
+              </template>
+              <template v-else>
+                <image v-if="showCheckinIcon" class="index-page__checkin-icon" :src="checkinIcon" mode="aspectFit" />
+                <text class="index-page__checkin-text">{{ checkinText }}</text>
+              </template>
+            </view>
           </view>
-        </view>
+        </template>
       </view>
 
       <!-- 任务列表弹层（点击"..."展开，列出所有进行中任务，点击某任务替换到主要卡片） -->
@@ -128,6 +155,16 @@ import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 
 useShare({ title: '首页' })
 
+// 未登录介绍卡片：点击开源地址复制到剪贴板
+function copyRepoUrl() {
+  uni.setClipboardData({
+    data: 'https://github.com/wuzuniao/yao',
+    success: () => {
+      uni.showToast({ title: '链接已复制', icon: 'none' })
+    }
+  })
+}
+
 const userStore = useUserStore()
 
 // 微信订阅消息（静默补授权，仅在微信小程序端生效）
@@ -168,7 +205,6 @@ const hasActivePlans = computed(() => activePlans.value.length > 0)
 
 // 空状态提示文本
 const emptyText = computed(() => {
-  if (!isLoggedIn.value) return '欢迎使用无足鸟按时吃药打卡！'
   return '请先到设置界面创建您的打卡计划，常见问题可参考同界面里的帮助中心。'
 })
 
@@ -633,9 +669,10 @@ onUnmounted(() => {
  * ========================================================================== */
 
 .index-page {
-  /* height 100vh + overflow hidden 严格锁定视口高度，禁止出现上下滚动条 */
-  height: 100vh;
-  overflow: hidden;
+  /* 至少撑满一屏；内容超出时允许整页纵向滚动（overflow-x:hidden 会令 overflow-y 计算为 auto）
+     一屏可展示完时不会出现滚动条 */
+  min-height: 100vh;
+  overflow-x: hidden;
   background-color: var(--page-bg-color);
   display: flex;
   flex-direction: column;
@@ -652,15 +689,21 @@ onUnmounted(() => {
 }
 
 .index-page__main-canvas {
-  /* padding-top 200rpx：通知按钮 top约100rpx + 高80rpx = 底部约180rpx，留 20rpx 间隙避免与内容重叠 */
+  /* padding-top 210rpx：与记录页(.record-page__main)白色卡片距导航栏顶部距离保持一致 */
   /* gap 64rpx：hero 与打卡按钮之间的间隔，小屏断点(max-height:700px)会进一步压缩 */
-  padding: 200rpx 48rpx 0;
+  padding: 210rpx 48rpx 0;
   box-sizing: border-box;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 64rpx;
+}
+
+/* 未登录：内容区底部预留与记录页(.record-page padding-bottom:240rpx)一致的距离，
+   保证介绍卡片底部到导航栏顶部保持一定间距，不贴底 */
+.index-page__main-canvas--guest {
+  padding-bottom: 240rpx;
 }
 
 /* ===== 空状态提示 ===== */
@@ -679,6 +722,69 @@ onUnmounted(() => {
   line-height: 60rpx;
   font-weight: 400;
   text-align: center;
+}
+
+/* ===== 未登录介绍卡片 ===== */
+.index-page__intro-card {
+  width: 684rpx;
+  /* 尺寸跟随内容：不再 flex 撑满整屏，仅包裹标题+正文+登录按钮，消除下方多余白底 */
+  padding: 48rpx 32rpx 32rpx;
+  box-sizing: border-box;
+  border-radius: 64rpx;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.index-page__intro-title {
+  color: #0e0f0c;
+  font-size: 56rpx;
+  line-height: 80rpx;
+  font-weight: 600;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.index-page__intro-scroll {
+  margin-top: 24rpx;
+}
+
+.index-page__intro-section {
+  margin-bottom: 32rpx;
+}
+
+.index-page__intro-section:last-child {
+  margin-bottom: 0;
+}
+
+.index-page__intro-section-title {
+  display: block;
+  color: #0e0f0c;
+  font-size: 36rpx;
+  line-height: 52rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.index-page__intro-p {
+  display: block;
+  color: #454745;
+  font-size: 30rpx;
+  line-height: 48rpx;
+  font-weight: 400;
+  margin-bottom: 12rpx;
+}
+
+.index-page__intro-p:last-child {
+  margin-bottom: 0;
+}
+
+.index-page__intro-link {
+  color: #2f6c00;
+  font-size: 30rpx;
+  line-height: 48rpx;
+  word-break: break-all;
 }
 
 /* ===== 任务卡片区域 ===== */
@@ -987,8 +1093,8 @@ onUnmounted(() => {
  * ========================================================================== */
 @media screen and (max-height: 700px) {
   .index-page__main-canvas {
-    /* padding-top 170rpx：通知按钮 100rpx + 高 80rpx = 180rpx，留 10rpx 减少顶部留白 */
-    padding-top: 170rpx;
+    /* padding-top 210rpx：与记录页一致，不再为小屏单独压缩顶部留白 */
+    padding-top: 210rpx;
     /* gap 32rpx：hero 与打卡按钮之间的最小间隔，保证视觉分隔 */
     gap: 32rpx;
   }
@@ -1025,8 +1131,13 @@ onUnmounted(() => {
 
   /* 主画布 padding/gap 锁定为 px，避免 rpx 在平板上过度放大导致溢出 */
   .index-page__main-canvas {
-    padding-top: 80px;
+    /* padding-top 105px：与记录页平板 210rpx(=105px)保持一致 */
+    padding-top: 105px;
     gap: 24px;
+  }
+  /* 未登录：底部间距与记录页平板 240rpx(=120px)保持一致 */
+  .index-page__main-canvas--guest {
+    padding-bottom: 120px;
   }
 
   /* 空状态 */
@@ -1036,6 +1147,46 @@ onUnmounted(() => {
   .index-page__empty-text {
     font-size: 20px;
     line-height: 30px;
+  }
+
+  /* 未登录介绍卡片 */
+  .index-page__intro-card {
+    width: 342px;
+    padding: 24px 16px 16px;
+    border-radius: 32px;
+  }
+  .index-page__intro-title {
+    font-size: 28px;
+    line-height: 40px;
+  }
+  .index-page__intro-scroll {
+    margin-top: 12px;
+  }
+  .index-page__intro-section {
+    margin-bottom: 16px;
+  }
+  .index-page__intro-section-title {
+    font-size: 18px;
+    line-height: 26px;
+    margin-bottom: 6px;
+  }
+  .index-page__intro-p,
+  .index-page__intro-link {
+    font-size: 15px;
+    line-height: 24px;
+  }
+  .index-page__intro-p {
+    margin-bottom: 6px;
+  }
+  .index-page__intro-login {
+    margin-top: 12px;
+    height: 48px;
+    padding: 12px 0;
+    border-radius: 24px;
+  }
+  .index-page__intro-login-text {
+    font-size: 16px;
+    line-height: 24px;
   }
 
   /* 任务卡片 */
