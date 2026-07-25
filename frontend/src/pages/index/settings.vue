@@ -119,10 +119,15 @@ const activePlanName = computed(() => {
   return activePlan ? activePlan.name : ''
 })
 
-// 计算属性：除"站内信"外第一个通知类型名称（无则返回空字符串）
+// 计算属性：右侧展示的主通知方式名称
+// 规则：在所有启用（enabled=true）的渠道中优先展示第一个非站内信方式；
+// 未启用的渠道一律不展示；站内信优先级最低，仅当未设置任何其他通知方式时才展示。
 const notificationTypeName = computed(() => {
-  const ch = channels.value.find(c => c.channel_type !== '站内信')
-  return ch ? ch.channel_type : ''
+  const enabledChannels = channels.value.filter(c => c.enabled)
+  const primary = enabledChannels.find(c => c.channel_type !== '站内信')
+  if (primary) return primary.channel_type
+  const znx = enabledChannels.find(c => c.channel_type === '站内信')
+  return znx ? znx.channel_type : ''
 })
 
 // 加载用户通知渠道列表
@@ -334,6 +339,7 @@ function goPrivacy() {
   /* 个性签名最多显示3行，超出部分省略号截断 */
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;

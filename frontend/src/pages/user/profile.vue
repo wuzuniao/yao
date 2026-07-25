@@ -750,13 +750,15 @@ async function handleChangeEmail() {
       uni.showToast({ title: '邮箱修改成功', icon: 'success' })
     } else {
       // 绑定邮箱：无邮箱用户首次绑定，仅需新邮箱验证码
-      // 若邮箱已存在会触发账号合并，返回的主账号 id 可能与当前不同
+      // 若邮箱已存在会触发账号合并，返回的主账号 id 和 access_token 可能与当前不同
       const result = await bindEmail({
           new_email: emailForm.newEmail,
         new_code: emailForm.newCode
       })
-      // 账号合并后用后端返回的完整用户信息更新本地状态（id/username/email/avatar_url/signature 等均可能变化）
+      // 账号合并后用后端返回的完整用户信息更新本地状态（id/username/email/avatar_url/signature/access_token 等均可能变化）
       userStore.setUser(result.data)
+      // 刷新未读站内信等用户相关缓存，确保合并后全局状态与主账号一致
+      userStore.loadUnreadCount(true)
       uni.showToast({ title: '邮箱绑定成功', icon: 'success' })
     }
     toggleSection('email')

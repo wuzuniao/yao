@@ -413,7 +413,10 @@ async def bind_email(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """绑定邮箱接口（user_id 来自 JWT，用于无邮箱用户首次绑定邮箱）"""
+    """
+    绑定邮箱接口（user_id 来自 JWT，用于无邮箱用户首次绑定邮箱）
+    - 若邮箱已存在会触发账号合并，合并后主账号 user_id 可能变化，因此返回新的 JWT access_token
+    """
     user_service = User(db)
     try:
         db_user = await user_service.bind_email(
@@ -426,15 +429,7 @@ async def bind_email(
     return {
         "code": 0,
         "msg": "邮箱绑定成功",
-        "data": {
-            "id": db_user.id,
-            "username": db_user.username or "",
-            "signature": db_user.signature or "",
-            "avatar_url": db_user.avatar_url or "",
-            "email": db_user.email or "",
-            "has_password": bool(db_user.password_hash),
-            "status": db_user.status,
-        },
+        "data": await _user_payload(db, db_user),
     }
 
 

@@ -22,7 +22,7 @@
 
         <!-- 邮件卡片（含删除图标；点击卡片展开配置表单） -->
         <view v-for="ch in emailChannels" :key="ch.id">
-          <view class="notification-page__card" @click="toggleEmailEdit(ch.id)">
+          <view class="notification-page__card" :class="{ 'notification-page__card--disabled': !ch.enabled }" @click="toggleEmailEdit(ch.id)">
             <view class="notification-page__card-info">
               <image class="notification-page__card-icon" :src="yxIcon" mode="aspectFit" />
               <view class="notification-page__card-text">
@@ -128,7 +128,7 @@
 
         <!-- 微信订阅消息卡片（含剩余额度与重新授权入口；点击卡片展开启用状态修改表单） -->
         <view v-if="hasWechat">
-          <view class="notification-page__card" @click="toggleWechatEdit">
+          <view class="notification-page__card" :class="{ 'notification-page__card--disabled': wechatChannel && !wechatChannel.enabled }" @click="toggleWechatEdit">
             <view class="notification-page__card-info">
               <view class="notification-page__card-badge notification-page__card-badge--wechat">微</view>
               <view class="notification-page__card-text">
@@ -915,6 +915,25 @@ async function handleUpdateWechat() {
   box-sizing: border-box;
   border-radius: 24rpx;
   background: #ffffff;
+}
+
+/* 通知方式未启用：卡片整体置灰（仅改变颜色，不影响点击修改等功能） */
+.notification-page__card--disabled {
+  background: #f2f3f1;
+
+  .notification-page__card-title {
+    color: #9a9c99;
+  }
+
+  .notification-page__card-subtitle {
+    color: #b3b5b2;
+  }
+
+  .notification-page__card-icon,
+  .notification-page__card-badge {
+    filter: grayscale(1);
+    opacity: 0.6;
+  }
 }
 
 .notification-page__card-info {
