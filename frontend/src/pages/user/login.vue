@@ -6,7 +6,7 @@
     <!-- 微信一键登录区（默认展示，未登录用户优先引导微信登录） -->
     <view v-if="loginMode === 'wechat'" class="login-page__wechat">
       <text class="login-page__title">一键登录</text>
-      <view class="login-page__wechat-btn" @click="handleWechatLogin">
+      <view class="login-page__wechat-btn guide-target-wechat-login" :style="wechatBtnActiveStyle" @click="handleWechatLogin">
         <image class="login-page__wechat-icon" :src="wxIcon" mode="aspectFit" />
       </view>
       <!-- 微信登录隐私勾选（独立于账号密码登录的隐私勾选） -->
@@ -99,11 +99,14 @@
       </view>
     </view>
 
-    <!-- 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现；仅“立即注册”可点击） -->
+    <!-- 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现；仅"立即注册"可点击） -->
     <view v-if="loginMode === 'normal'" class="login-page__footer">
       <text class="login-page__footer-text">还没有账号？</text>
       <text class="login-page__footer-link" @click="goRegister">立即注册</text>
     </view>
+
+    <!-- 新手引导遮罩（仅在引导激活时渲染） -->
+    <BeginnerGuide />
   </view>
 </template>
 
@@ -126,17 +129,25 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
+import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { loginUser, wechatLogin } from '../../api/modules/user'
 import { useUserStore } from '../../store/modules/user'
+import { useGuideStore } from '../../store/modules/guide'
 import wxIcon from '../../assets/images/dl_wx.png'
 import PasswordEye from '../../components/PasswordEye.vue'
 import { useShare } from '../../composables/useShare'
+import { useGuideTarget } from '../../composables/useGuideTarget'
 
 useShare({ title: '登录' })
+
+const guideStore = useGuideStore()
+
+// 新手引导：上报微信一键登录按钮位置（引导第 3 步目标）
+const { activeStyle: wechatBtnActiveStyle } = useGuideTarget('wechat-login', '.guide-target-wechat-login')
 
 // 登录方式：'wechat'(默认微信一键登录) | 'normal'(账号密码登录)
 // 注册页跳转时 URL 带 ?mode=normal，则初始展示账号密码卡片
@@ -146,6 +157,11 @@ onLoad((options = {}) => {
   if (options.mode === 'normal') {
     loginMode.value = 'normal'
   }
+})
+
+// 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
+onShow(() => {
+  guideStore.onPageEnter('login')
 })
 
 // 切换登录方式（互斥显示对应卡片）
@@ -668,6 +684,8 @@ function goPrivacy() {
   width: 96rpx;
   height: 96rpx;
   margin: 24rpx auto 0;
+  border-radius: 9999px;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -858,6 +876,8 @@ function goPrivacy() {
     width: 48px;
     height: 48px;
     margin-top: 12px;
+    border-radius: 9999px;
+    overflow: hidden;
   }
 
   .login-page__wechat-icon {

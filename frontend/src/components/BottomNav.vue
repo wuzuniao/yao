@@ -26,15 +26,16 @@
       <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'record' }">记录</text>
     </view>
 
-    <view 
-      class="bottom-nav__item" 
+    <view
+      class="bottom-nav__item guide-target-settings-tab"
       :class="{ 'bottom-nav__item--active': active === 'settings' }"
+      :style="settingsTabActiveStyle"
       @click="handleClick('settings')"
     >
-      <image 
-        class="bottom-nav__icon bottom-nav__icon--settings" 
-        :src="active === 'settings' ? settingsActiveIcon : settingsInactiveIcon" 
-        mode="aspectFit" 
+      <image
+        class="bottom-nav__icon bottom-nav__icon--settings"
+        :src="active === 'settings' ? settingsActiveIcon : settingsInactiveIcon"
+        mode="aspectFit"
       />
       <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'settings' }">设置</text>
     </view>
@@ -48,6 +49,9 @@ import recordActiveIcon from '../assets/images/dh_jilu_1.png'
 import recordInactiveIcon from '../assets/images/dh_jilu_0.png'
 import settingsActiveIcon from '../assets/images/dh_shezhi_1.png'
 import settingsInactiveIcon from '../assets/images/dh_shezhi_0.png'
+import { useGuideTarget } from '../composables/useGuideTarget'
+
+const { activeStyle: settingsTabActiveStyle } = useGuideTarget('settings-tab', '.guide-target-settings-tab')
 
 const props = defineProps({
   active: {

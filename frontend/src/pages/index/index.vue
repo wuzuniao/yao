@@ -10,21 +10,23 @@
           <view class="index-page__intro-scroll">
             <view class="index-page__intro-section">
               <text class="index-page__intro-p">制定通用打卡计划并按时提醒、记录的跨端APP。</text>
-              <text class="index-page__intro-p">免费、易用、安全、开源。</text>
-              <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可自行部署此小程序。</text>
+              <text class="index-page__intro-highlights">免费 易用 安全 开源</text>
+              <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可<text class="index-page__intro-em">自行部署</text>此小程序。</text>
               <text class="index-page__intro-p">开源地址：<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
             </view>
             <view class="index-page__intro-section">
               <text class="index-page__intro-section-title">主要功能</text>
-              <text class="index-page__intro-p">制定打卡计划：设置计划内容、持续周期、每日提醒时间、通知方式等。到达提醒时间后，系统会自动发送通知进行提醒。</text>
-              <text class="index-page__intro-p">多途径通知：支持站内信、微信、邮件等多种通知渠道。</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-label">制定打卡计划：</text>设置计划内容、持续周期、每日提醒时间、通知方式等。到达提醒时间后，系统会自动发送通知进行提醒。</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-label">多途径通知：</text>支持<text class="index-page__intro-em">站内信、微信、邮件</text>等多种通知渠道。</text>
             </view>
             <view class="index-page__intro-section">
               <text class="index-page__intro-section-title">新手引导</text>
-              <text class="index-page__intro-p">打卡功能必须登录后才能使用。</text>
-              <text class="index-page__intro-p">若只在微信中使用，建议使用微信一键登录并使用微信订阅消息通知，此方式最方便。</text>
-              <text class="index-page__intro-p">若账号想在无足鸟系列软件产品中通用，可绑定邮箱并设置密码。或者使用普通注册方式创建账号，一次注册，多端畅享。使用普通注册方式时，请务必牢记账号与密码，避免账号丢失或密码泄露。</text>
-              <text class="index-page__intro-p">点我开启新手引导提示</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-strong">打卡功能必须登录后才能使用。</text></text>
+              <text class="index-page__intro-p">若只在微信中使用，建议使用<text class="index-page__intro-em">微信一键登录</text>并使用<text class="index-page__intro-em">微信订阅消息通知</text>，此方式最方便。</text>
+              <text class="index-page__intro-p">若账号想在无足鸟系列软件产品中通用，可<text class="index-page__intro-em">绑定邮箱并设置密码</text>。或者使用普通注册方式创建账号，<text class="index-page__intro-strong">一次注册，多端畅享</text>。使用普通注册方式时，<text class="index-page__intro-warning">请务必牢记账号与密码</text>，避免账号丢失或密码泄露。</text>
+              <view class="index-page__intro-action" @click="startBeginnerGuide">
+                <text class="index-page__intro-action-text">点我开启新手引导</text>
+              </view>
             </view>
           </view>
         </view>
@@ -113,6 +115,9 @@
       </view>
 
       <BottomNav active="home" />
+
+      <!-- 新手引导遮罩（仅在引导激活时渲染，position:fixed 覆盖整屏） -->
+      <BeginnerGuide />
     </view>
   </view>
 </template>
@@ -145,7 +150,9 @@ import { onShow, onHide } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
 import AnnouncementCard from '../../components/AnnouncementCard.vue'
+import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import { useUserStore } from '../../store/modules/user'
+import { useGuideStore } from '../../store/modules/guide'
 import { listPlans } from '../../api/modules/plan'
 import { createCheckin, listTodayCheckins } from '../../api/modules/checkin'
 import { getRecentAnnouncements } from '../../api/modules/announcement'
@@ -157,6 +164,8 @@ import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 
 useShare({ title: '首页' })
 
+const guideStore = useGuideStore()
+
 // 未登录介绍卡片：点击开源地址复制到剪贴板
 function copyRepoUrl() {
   uni.setClipboardData({
@@ -165,6 +174,11 @@ function copyRepoUrl() {
       uni.showToast({ title: '链接已复制', icon: 'none' })
     }
   })
+}
+
+// 开启新手引导
+function startBeginnerGuide() {
+  guideStore.startGuide()
 }
 
 const userStore = useUserStore()
@@ -693,6 +707,8 @@ function handleLongPressEnd() {
 
 // 页面显示时加载数据（含从其他页面返回时刷新），并启动每分钟刷新定时器
 onShow(() => {
+  // 新手引导：上报当前页面（引导激活时推进/回退步骤）
+  guideStore.onPageEnter('home')
   // loadActivePlans 内部已加载今日所有打卡记录并按新规则排序，无需再单独加载
   loadActivePlans()
   // 并行加载最近 7 天公告（不阻塞任务卡片）
@@ -859,6 +875,69 @@ onUnmounted(() => {
   font-size: 30rpx;
   line-height: 48rpx;
   word-break: break-all;
+}
+
+/* ===== 介绍卡片重点强调样式 =====
+   层级（由弱到强）：
+   - em：行内强调（绿色加粗，呼应链接色，突出关键能力/操作）
+   - strong：整句强调（深色加粗，用于必要前提与核心卖点）
+   - warning：警示强调（红色加粗，用于风险提示）
+   - label：段落子标题（加粗前缀，呼应 section-title 形成层级）
+   - highlights：核心卖点高亮块（绿色描边胶囊，整句突出）
+   - action：行动入口（绿色描边胶囊，引导用户点击） */
+
+.index-page__intro-highlights {
+  display: block;
+  margin: 16rpx 0 12rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 16rpx;
+  background: #e8f5e0;
+  /* 1px 内描边保留避免高分屏消失 */
+  box-shadow: inset 0 0 0 1px #c7e4b0;
+  color: #2f6c00;
+  font-size: 32rpx;
+  line-height: 44rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+.index-page__intro-em {
+  color: #2f6c00;
+  font-weight: 600;
+}
+
+.index-page__intro-strong {
+  color: #0e0f0c;
+  font-weight: 600;
+}
+
+.index-page__intro-warning {
+  color: #d03238;
+  font-weight: 600;
+}
+
+.index-page__intro-label {
+  color: #0e0f0c;
+  font-weight: 600;
+}
+
+.index-page__intro-action {
+  margin-top: 24rpx;
+  height: 96rpx;
+  padding: 24rpx 0;
+  box-sizing: border-box;
+  background: #9fe870;
+  border-radius: 48rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.index-page__intro-action-text {
+  color: #0e0f0c;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 500;
 }
 
 /* ===== 任务卡片区域 ===== */
@@ -1251,6 +1330,24 @@ onUnmounted(() => {
   }
   .index-page__intro-p {
     margin-bottom: 6px;
+  }
+  /* 重点强调样式：rpx→px 锁定，避免宽屏过度放大 */
+  .index-page__intro-highlights {
+    margin: 8px 0 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 22px;
+  }
+  .index-page__intro-action {
+    margin-top: 12px;
+    height: 48px;
+    padding: 12px 0;
+    border-radius: 24px;
+  }
+  .index-page__intro-action-text {
+    font-size: 16px;
+    line-height: 24px;
   }
   .index-page__intro-login {
     margin-top: 12px;

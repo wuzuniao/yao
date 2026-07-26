@@ -118,24 +118,27 @@
           "描述": "可复用组件目录",
           "NoticeButton.vue": "通知按钮组件（一级页面专用），图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onShow 时强制刷新未读数量（绕过节流），触发后端自动标记已读并返回清理后的真实数量；含 NoticeButton 的页面切换时均会触发；点击 navigateTo 直达站内信页 /pages/user/messages。仅用于 index/record/settings 三个一级页面",
           "BackButton.vue": "返回按钮组件（次级页面专用），以 NoticeButton 为蓝本，图标使用 fanhui.png，点击触发 uni.navigateBack 返回上一页（页面栈为空时 reLaunch 回首页）。用于 notification/plan/profile/login/register/contact/help/messages/privacy/forgot-password 等次级页面",
-          "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项",
+          "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项。设置 tab 含 guide-target-settings-tab 类供新手引导定位（useGuideTarget composable 上报位置）",
           "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,文本自动换行)，用于 notification/profile/help/contact 等页面",
           "AnnouncementCard.vue": "首页公告临时卡片组件：接收最近7天公告，用 announcementRead 过滤未读后逐条轮播（每条10秒，最新优先），flex:1 填充首页空白高度保持一屏；倒计时常驻右上角；点击卡片暂停倒计时并满屏展示（全屏卡片固定高度70vh，标题+内容置于 scroll-view，标题多行完整显示，内容超出时卡片内右侧滚动），再次点击缩回继续",
-          "PasswordEye.vue": "密码显隐切换眼睛图标（纯 CSS 绘制，替代原 mima_1.png 图片资源）：纯展示组件，Props visible(Boolean) 表示密码是否明文可见，默认 false（闭眼，向下弯曲的闭合弧线，密码隐藏），true 为睁眼（完整眼形轮廓+瞳孔，密码明文可见）；不含点击逻辑。睁眼/闭眼两种状态视觉差异明显。用于 login/register/forgot-password/profile 的密码框统一边框容器内右侧，点击切换由父页面包裹容器（.{page}__eye）的 @click 处理"
+          "PasswordEye.vue": "密码显隐切换眼睛图标（纯 CSS 绘制，替代原 mima_1.png 图片资源）：纯展示组件，Props visible(Boolean) 表示密码是否明文可见，默认 false（闭眼，向下弯曲的闭合弧线，密码隐藏），true 为睁眼（完整眼形轮廓+瞳孔，密码明文可见）；不含点击逻辑。睁眼/闭眼两种状态视觉差异明显。用于 login/register/forgot-password/profile 的密码框统一边框容器内右侧，点击切换由父页面包裹容器（.{page}__eye）的 @click 处理",
+          "BeginnerGuide.vue": "新手引导遮罩组件：跨页面新手引导的视觉呈现层。读取 guide store 自动判断是否渲染及渲染哪个步骤。微信小程序端：视觉层用单个 view 的 box-shadow 大扩散一次性绘制高亮洞以外的灰色蒙版（单层连续渲染、无相邻 view 拼接处，杜绝 1px 拼接线，背景颜色一致），点击阻挡层用 4 个透明矩形覆盖高亮洞以外的整屏区域（pointer-events:auto），高亮洞内不放置任何 view，点击直达目标；高亮边框直接用 box-shadow 绘制于真实 view（不使用 ::after 伪元素，避免微信小程序伪元素不尊重 pointer-events:none 而误拦目标点击）并带呼吸动画。H5 端用全屏 SVG mask 精确挖洞。步骤卡片显示步骤序号（第X步/共3步）、标题、说明文字与跳过按钮，自动定位在目标下方或上方。监听 userStore.userInfo 变化，登录成功时自动完成引导。在 index/settings/login 三个页面引入"
         },
         "composables": {
           "描述": "组合式函数（Composables）目录，参考 Vue 3 官方规范",
           "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面",
           "useInputLimit.js": "输入框字符过滤与长度限制工具，导出 useInputLimit(maxLength, allowedPattern?) 组合式函数，返回 { max, filter, handleInput, wasAtLimit, limitReached, limitHint, checkLimit }。实现字符限制与后端字段严格匹配（配合 input 组件 :maxlength）与白名单正则过滤特殊字符；提示仅在达到上限后继续输入时触发（非达到上限时立即触发），通过 limitHint 返回已达 X 字上限。用于 login/register/forgot-password/profile/plan/notification 页面",
           "useShare.js": "微信分享统一配置组合式函数，导出 useShare(options?)，内部注册 onShareAppMessage（转发给朋友）与 onShareTimeline（分享到朋友圈）两个页面生命周期钩子，并在 onLoad 中调用 wx.showShareMenu({menus:['shareAppMessage','shareTimeline']}) 显式启用右上角菜单分享按钮（否则按钮显示为灰色不可点击）。复制链接依赖转发功能启用后自动可用。用于全部 13 个页面",
-          "useWechatSubscribe.js": "微信订阅消息授权组合式函数，导出 useWechatSubscribe()，内部封装 uni.requestSubscribeMessage（仅在 MP-WEIXIN 生效，#ifdef 守卫）。requestSubscribe({silent}) 在用户手势中请求一次授权，成功(accept)后调用 grantWechatChannel 后端接口 +1 额度；静默模式(silent:true)用于打卡完成时补充授权额度，失败不提示。模板 ID 来自环境变量 VITE_WX_SUBSCRIBE_TEMPLATE_ID"
+          "useWechatSubscribe.js": "微信订阅消息授权组合式函数，导出 useWechatSubscribe()，内部封装 uni.requestSubscribeMessage（仅在 MP-WEIXIN 生效，#ifdef 守卫）。requestSubscribe({silent}) 在用户手势中请求一次授权，成功(accept)后调用 grantWechatChannel 后端接口 +1 额度；静默模式(silent:true)用于打卡完成时补充授权额度，失败不提示。模板 ID 来自环境变量 VITE_WX_SUBSCRIBE_TEMPLATE_ID",
+          "useGuideTarget.js": "新手引导目标元素位置上报组合式函数，导出 useGuideTarget(targetKey, selector)。在含引导目标的组件/页面中调用，自动监听 guide store 状态，当引导激活且当前步骤匹配本目标时，通过 uni.createSelectorQuery().in(instance.proxy) 查询目标元素 boundingClientRect 并上报到 guide store（.in() 确保能穿透微信小程序自定义组件 shadow 边界）。查询带重试机制（最多 8 次、每次间隔 120ms），覆盖页面入场动画期间目标节点尚未完成布局导致首次查询为空的情况，避免 BeginnerGuide 回退到全屏阻挡蒙版而误吞目标按钮点击；组件卸载时自动清理位置数据。用于 BottomNav(设置tab)/settings.vue(用户资料卡)/login.vue(微信登录按钮)"
         },
         "store": {
           "描述": "Pinia 状态管理目录，管理全局共享状态（用户登录信息等）",
           "index.js": "Pinia 实例创建与导出，供 main.js 注册",
           "modules": {
             "描述": "按业务模块拆分的 Store 目录",
-            "user.js": "用户状态管理（Pinia）：userInfo 用户信息、accessToken 登录令牌（独立于 userInfo 存储，供请求拦截器读取）、unreadCount 全局未读站内信数量（供 NoticeButton 图标切换）、setUser(登录成功时同时保存 token)/clearUser(同时清除 userInfo 与 accessToken)/loadUserFromStorage(同时加载两者)/verifyUserExists(基于 accessToken 判断登录态)/startDeletionCountdown/clearDeletionTimer/loadUnreadCount（10秒节流查询未读数量）/setUnreadCount（站内信页同步）/decrementUnread（标记已读减一），支持本地存储持久化；setUser 与 /info 响应持久化 role（0-普通用户，7-管理员）供公告管理页权限判断"
+            "user.js": "用户状态管理（Pinia）：userInfo 用户信息、accessToken 登录令牌（独立于 userInfo 存储，供请求拦截器读取）、unreadCount 全局未读站内信数量（供 NoticeButton 图标切换）、setUser(登录成功时同时保存 token)/clearUser(同时清除 userInfo 与 accessToken)/loadUserFromStorage(同时加载两者)/verifyUserExists(基于 accessToken 判断登录态)/startDeletionCountdown/clearDeletionTimer/loadUnreadCount（10秒节流查询未读数量）/setUnreadCount（站内信页同步）/decrementUnread（标记已读减一），支持本地存储持久化；setUser 与 /info 响应持久化 role（0-普通用户，7-管理员）供公告管理页权限判断",
+            "guide.js": "新手引导状态管理（Pinia）：管理跨页面新手引导的全局状态。isActive 引导是否激活、currentStep 当前步骤索引、currentPage 当前页面名称（由各页面 onShow 上报）、targetRects 各目标元素位置信息（由 useGuideTarget composable 上报）、steps 引导步骤配置（首页→设置页→登录页，3步登录流程）。Actions: startGuide(开启引导)/skipGuide(跳过)/completeGuide(完成)/onPageEnter(页面上报当前页面，自动推进或回退步骤)/setTargetRect+clearTargetRect(目标位置上报与清理)"
           }
         },
         "pages": {

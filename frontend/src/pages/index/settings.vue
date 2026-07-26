@@ -6,7 +6,7 @@
       <!-- 用户资料卡 + 公告管理（靠近，减少间距） -->
       <view class="settings-page__near-group">
         <!-- 用户资料卡片 -->
-        <view class="settings-page__profile-card" @click="goProfileOrLogin">
+        <view class="settings-page__profile-card guide-target-profile-card" :style="profileCardActiveStyle" @click="goProfileOrLogin">
           <view class="settings-page__profile-card-glow"></view>
           <view class="settings-page__profile-info">
             <text class="settings-page__profile-name">{{ displayName }}</text>
@@ -73,6 +73,9 @@
     </view>
 
     <BottomNav active="settings" />
+
+    <!-- 新手引导遮罩（仅在引导激活时渲染） -->
+    <BeginnerGuide />
   </view>
 </template>
 
@@ -89,19 +92,27 @@
  *  - 底部固定导航栏（BottomNav），当前激活项为"设置"
  */
 import { computed, ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
+import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import touxiangHei from '../../assets/images/touxiang/hei.png'
 import touxiangHong from '../../assets/images/touxiang/hong.png'
 import touxiangLan from '../../assets/images/touxiang/lan.png'
 import { useUserStore } from '../../store/modules/user'
+import { useGuideStore } from '../../store/modules/guide'
 import { listNotificationChannels } from '../../api/modules/notification'
 import { listPlans } from '../../api/modules/plan'
 import { useShare } from '../../composables/useShare'
+import { useGuideTarget } from '../../composables/useGuideTarget'
 
 useShare({ title: '设置' })
 
 const userStore = useUserStore()
+const guideStore = useGuideStore()
+
+// 新手引导：上报用户资料卡片位置（引导第 2 步目标）
+const { activeStyle: profileCardActiveStyle } = useGuideTarget('profile-card', '.guide-target-profile-card')
 
 // 账号是否处于删除冷静期（status=0）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
@@ -160,6 +171,11 @@ async function loadPlans() {
 onMounted(() => {
   loadChannels()
   loadPlans()
+})
+
+// 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
+onShow(() => {
+  guideStore.onPageEnter('settings')
 })
 
 // 头像 key 与图片资源的映射
