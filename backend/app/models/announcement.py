@@ -8,7 +8,8 @@ class Announcement(Base):
     """
     全站公告表 ORM 模型（对应 wuzuniao_yao.announcements 表）
     --------------------------------------------------------------------------
-    每条公告一行，由管理员发布；用户侧投递后续实现
+    每条公告一行，由管理员发布；用户侧通过首页临时公告卡片轮播展示
+    （GET /api/v1/announcements/recent + 前端 AnnouncementCard.vue 逐条轮播）
     """
 
     __tablename__ = "announcements"

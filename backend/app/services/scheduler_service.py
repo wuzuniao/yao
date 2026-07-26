@@ -447,15 +447,18 @@ class NotificationDispatcher:
                                   LOG_STATUS_FAILED, f"密码解密失败: {e}")
             return
 
-        # 4. 组装邮件内容
+        # 4. 组装邮件内容（正文按打卡计划字段逐行展示，由 Email.send_notification 按字段行渲染）
         trigger_desc = TRIGGER_DESC.get(trigger_type, "提醒")
         reminder_str = plan_time.notification_time.strftime("%H:%M")
-        subject = f"【按时打卡】{plan.name} - {trigger_desc}"
-        content = (
-            f"您的打卡计划「{plan.name}」{trigger_desc}（提醒时间：{reminder_str}）。\n"
-            + (f"备注：{plan.remark}\n" if plan.remark else "")
-            + "\n请尽快打开小程序完成打卡。"
-        )
+        subject = f"【按时吃药】{plan.name} - {trigger_desc}"
+        # 每行"字段名：值"，由 Email.send_notification 识别首个冒号切分字段名/值逐行渲染
+        content = "\n".join([
+            f"计划名称：{plan.name}",
+            f"备注：{plan.remark or '无'}",
+            f"计划周期：{plan.start_date} ~ {plan.end_date}",
+            f"提醒时间：{reminder_str}",
+            f"触发类型：{trigger_desc}",
+        ])
 
         # 5. SMTP 发送（在线程池中执行同步调用，避免阻塞事件循环）
         status = LOG_STATUS_SUCCESS
