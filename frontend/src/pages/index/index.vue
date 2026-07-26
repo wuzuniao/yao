@@ -10,6 +10,7 @@
           <view class="index-page__intro-scroll">
             <view class="index-page__intro-section">
               <text class="index-page__intro-p">制定通用打卡计划并按时提醒、记录的跨端APP。</text>
+              <text class="index-page__intro-p">免费、易用、安全、开源。</text>
               <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可自行部署此小程序。</text>
               <text class="index-page__intro-p">开源地址：<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
             </view>
@@ -122,10 +123,11 @@
  * --------------------------------------------------------------------------
  * 功能：应用主入口，展示用户当日打卡任务与打卡按钮
  *  - 顶部通知按钮（NoticeButton）
- *  - 任务卡片：从 checkin_plans 表获取当前用户进行中计划，按 priority 升序排序
+ *  - 任务卡片：从 checkin_plans 表获取当前用户进行中计划，按"到达提醒时间且未打卡优先"规则排序
+ *    - 排序规则：当前匹配区间未打卡的排前（冲突时按 priority 升序），已打卡/无提醒的排后（按最近提醒时间升序）
  *    - 主要卡片：展示当前选中任务，不设置点击事件，显示计划名称、备注
  *    - 次要卡片：展示第二个任务，点击后与主要卡片内容互换；3+任务时右侧显示"..."按钮
- *    - "..."按钮：3+任务时显示，点击展开任务列表，可选择任务替换到主要卡片
+ *    - "..."按钮：3+任务时显示，点击展开任务列表（同主/次卡片排序规则），可选择任务替换到主要卡片
  *  - 空状态：未登录显示欢迎语，已登录无计划显示创建提示
  *  - 立即打卡按钮（多状态）：
  *    - 灰色"无打卡任务"：未登录/无任务/不在计划日期范围内/无提醒时间
@@ -145,7 +147,7 @@ import BottomNav from '../../components/BottomNav.vue'
 import AnnouncementCard from '../../components/AnnouncementCard.vue'
 import { useUserStore } from '../../store/modules/user'
 import { listPlans } from '../../api/modules/plan'
-import { createCheckin, listTodayCheckinsByPlan } from '../../api/modules/checkin'
+import { createCheckin, listTodayCheckins } from '../../api/modules/checkin'
 import { getRecentAnnouncements } from '../../api/modules/announcement'
 import { listNotificationChannels } from '../../api/modules/notification'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
@@ -178,9 +180,9 @@ const primaryPlanId = ref(null)
 const secondaryPlanId = ref(null)
 // 是否显示任务列表弹层
 const showTaskList = ref(false)
-// 今日打卡记录列表（含打卡时间分钟数，用于"匹配打卡记录"判定 done/active）
-// 结构：[{ timeId, minutes }]，minutes = 实际打卡时间的小时*60+分钟
-const todayCheckinMinutes = ref([])
+// 今日所有计划的打卡记录（按 plan_id 分组，用于排序与"匹配打卡记录"判定）
+// 结构：{ [planId]: [{ timeId, minutes }] }，minutes = 实际打卡时间的小时*60+分钟
+const allTodayCheckins = ref({})
 // 最近 7 天公告列表（普通用户），用于首页临时卡片轮播
 const recentAnnouncements = ref([])
 // 当前用户的通知渠道列表（用于判断计划是否关联微信通知方式）
@@ -215,6 +217,12 @@ const primaryPlan = computed(() => {
     return activePlans.value.find(p => p.id === primaryPlanId.value) || activePlans.value[0]
   }
   return activePlans.value[0]
+})
+
+// 主要卡片计划今日打卡记录（从 allTodayCheckins 派生，供 checkinState 判定 done/active）
+const todayCheckinMinutes = computed(() => {
+  if (!primaryPlan.value) return []
+  return allTodayCheckins.value[primaryPlan.value.id] || []
 })
 
 // 次要卡片计划（支持双 ref 跟踪，点击次要卡片时与主要卡片互换内容）
@@ -377,51 +385,98 @@ const hasWechatNotification = computed(() => {
 
 // ===== 数据加载 =====
 
-// 计算默认主要卡片索引（当前时间在提醒时间前后2小时范围内的优先；都在范围内时优先级高的为主；优先级相同时先创建的为主）
-function computeDefaultPrimaryIndex(plans, nowMinutes) {
-  if (plans.length === 0) return -1
-  if (plans.length === 1) return 0
-  // 找出当前时间在提醒时间前后2小时范围内的计划（plans 已按 priority 升序、created_at 升序排序）
-  for (let i = 0; i < plans.length; i++) {
-    const plan = plans[i]
-    const times = (plan.notification_times || []).map(t => {
-      const [h, m] = t.notification_time.split(':').map(Number)
-      return h * 60 + m
-    })
-    if (times.some(t => Math.abs(nowMinutes - t) <= 120)) {
-      return i
+// 计算单个计划的排序键（用于主要/次要卡片及任务列表排序）
+// 排序规则（与用户确认）：
+//   1. 第一键 group：当前匹配区间"未打卡"的计划排前（group=0），"已打卡"或无提醒时间的排后（group=1）
+//      —— "到达提醒时间"判定为当前时间落在某提醒的匹配区间内（getMatchIntervals 按相邻中点划分，覆盖全天）
+//   2. 第二键 sortKey：
+//      - group=0（未打卡）：按 priority 升序（冲突时优先级高的在前）
+//      - group=1（已打卡/无提醒）：按"下一个最近提醒时间"升序（未来最近的任务在前，无提醒时间设为 Infinity 排最后）
+//   3. 第三键 priority：group=1 同提醒时间时按优先级升序
+//   4. 第四键 createdAt：保持稳定排序
+function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
+  const priority = plan.priority ?? 3
+  const createdAt = new Date(plan.created_at || 0).getTime()
+
+  const times = (plan.notification_times || []).map(t => {
+    const [h, m] = t.notification_time.split(':').map(Number)
+    return { id: t.id, minutes: h * 60 + m }
+  }).sort((a, b) => a.minutes - b.minutes)
+
+  if (times.length === 0) {
+    // 无提醒时间：归到 group=1，最近提醒时间设为 Infinity 排最后
+    return { group: 1, sortKey: Infinity, priority, createdAt }
+  }
+
+  // 计算当前匹配区间索引（全天无留白，必定能找到）
+  const intervals = getMatchIntervals(times)
+  let currentIdx = intervals.length - 1
+  for (let i = 0; i < intervals.length; i++) {
+    if (nowMinutes >= intervals[i].start && nowMinutes < intervals[i].end) {
+      currentIdx = i
+      break
     }
   }
-  // 没有在范围内的，回退到第一个（优先级最高且先创建）
-  return 0
+
+  // 判定当前匹配区间是否已打卡
+  const interval = intervals[currentIdx]
+  const isChecked = (checkinMinutesList || []).some(m => m >= interval.start && m < interval.end)
+
+  // 计算下一个最近提醒时间（>= nowMinutes 的最小提醒时间，无则回绕到明天第一个 +1440）
+  let nextReminder = Infinity
+  for (const t of times) {
+    if (t.minutes >= nowMinutes) {
+      nextReminder = t.minutes
+      break
+    }
+  }
+  if (nextReminder === Infinity) {
+    nextReminder = times[0].minutes + 1440
+  }
+
+  if (!isChecked) {
+    // group=0：当前匹配区间未打卡，sortKey 用 priority（冲突时优先级高的在前）
+    return { group: 0, sortKey: priority, priority, createdAt }
+  }
+  // group=1：当前匹配区间已打卡，sortKey 用下一个最近提醒时间
+  return { group: 1, sortKey: nextReminder, priority, createdAt }
 }
 
-// 加载进行中的计划（仅 status=1，按 priority 升序、created_at 升序排序）
+// 按新规则排序 plans（当前匹配区间未打卡的排前，冲突时按优先级；已打卡的排后，按最近提醒时间）
+function sortPlansByCheckinStatus(plans, nowMinutes, allCheckinsByPlan) {
+  return [...plans].sort((a, b) => {
+    const keyA = computePlanSortKey(a, nowMinutes, allCheckinsByPlan[a.id])
+    const keyB = computePlanSortKey(b, nowMinutes, allCheckinsByPlan[b.id])
+    if (keyA.group !== keyB.group) return keyA.group - keyB.group
+    if (keyA.sortKey !== keyB.sortKey) return keyA.sortKey - keyB.sortKey
+    if (keyA.priority !== keyB.priority) return keyA.priority - keyB.priority
+    return keyA.createdAt - keyB.createdAt
+  })
+}
+
+// 加载进行中的计划（仅 status=1，按"当前匹配区间未打卡优先，冲突时按优先级"规则排序）
 async function loadActivePlans() {
   if (!isLoggedIn.value) {
     activePlans.value = []
+    allTodayCheckins.value = {}
     return
   }
   try {
     const res = await listPlans()
     if (res.code === 0 && res.data) {
-      // 仅保留进行中的计划，按 priority 升序排序；同优先级时先创建的在前
-      activePlans.value = res.data
-        .filter(p => p.status === 1)
-        .sort((a, b) => {
-          const pa = a.priority ?? 3
-          const pb = b.priority ?? 3
-          if (pa !== pb) return pa - pb
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-        })
-      // 设置默认主要卡片（当前时间在提醒时间前后2小时范围内的优先）
+      // 仅保留进行中的计划
+      const plans = res.data.filter(p => p.status === 1)
+      // 加载今日所有计划打卡记录（排序依赖打卡状态）
+      await loadAllTodayCheckins()
+      // 按新规则排序：当前匹配区间未打卡的排前，已打卡的排后
       const now = new Date()
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      activePlans.value = sortPlansByCheckinStatus(plans, nowMinutes, allTodayCheckins.value)
+      // 设置默认主要卡片（排序后第一项即最优；用户已手动选择且仍存在时保持）
       const currentPrimary = primaryPlanId.value
       const primaryExists = currentPrimary !== null && activePlans.value.some(p => p.id === currentPrimary)
       if (!primaryExists) {
-        const defaultIdx = computeDefaultPrimaryIndex(activePlans.value, nowMinutes)
-        primaryPlanId.value = defaultIdx >= 0 ? activePlans.value[defaultIdx].id : null
+        primaryPlanId.value = activePlans.value.length > 0 ? activePlans.value[0].id : null
       }
     }
   } catch (e) {
@@ -461,24 +516,46 @@ async function loadRecentAnnouncements() {
   }
 }
 
-// 加载今日打卡记录（针对主要卡片计划）
-// 异步查询数据库，存储打卡记录的分钟数列表，用于"匹配打卡记录"判定 done/active
-async function loadTodayCheckins() {
-  if (!primaryPlan.value || !isLoggedIn.value) {
-    todayCheckinMinutes.value = []
+// 加载今日所有计划的打卡记录（按 plan_id 分组，用于排序与 done/active 判定）
+async function loadAllTodayCheckins() {
+  if (!isLoggedIn.value) {
+    allTodayCheckins.value = {}
     return
   }
   try {
-    const res = await listTodayCheckinsByPlan(primaryPlan.value.id)
+    const res = await listTodayCheckins()
     if (res.code === 0 && res.data) {
-      const records = res.data.records || []
-      todayCheckinMinutes.value = records
-        .filter(r => r.actual_time)
-        .map(r => ({ timeId: r.plan_time_id, minutes: parseIsoToMinutes(r.actual_time) }))
+      const grouped = {}
+      for (const r of res.data) {
+        if (!r.actual_time) continue
+        const planId = r.plan_id
+        if (!grouped[planId]) grouped[planId] = []
+        grouped[planId].push({
+          timeId: r.plan_time_id,
+          minutes: parseIsoToMinutes(r.actual_time)
+        })
+      }
+      allTodayCheckins.value = grouped
     }
   } catch (e) {
     // 数据库连接异常时不阻塞界面，按钮保持默认状态
     console.warn('加载打卡记录失败', e)
+  }
+}
+
+// 刷新打卡状态：重新加载所有打卡记录并按新规则重排 activePlans（保持用户已选主要卡片）
+// 用于每分钟定时刷新，确保任务状态变化（如到提醒时间、已打卡）时主要/次要卡片及时更新
+async function refreshCheckinStatus() {
+  if (!isLoggedIn.value || !hasActivePlans.value) return
+  await loadAllTodayCheckins()
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  activePlans.value = sortPlansByCheckinStatus(activePlans.value, nowMinutes, allTodayCheckins.value)
+  // 用户已手动选择且仍存在时保持；否则取排序后第一项
+  const currentPrimary = primaryPlanId.value
+  const primaryExists = currentPrimary !== null && activePlans.value.some(p => p.id === currentPrimary)
+  if (!primaryExists) {
+    primaryPlanId.value = activePlans.value.length > 0 ? activePlans.value[0].id : null
   }
 }
 
@@ -492,13 +569,12 @@ function toggleTaskList() {
 // 点击次要卡片：次要卡片与主要卡片内容互换
 function handleSecondaryClick() {
   if (secondaryPlan.value && primaryPlan.value) {
-    // 互换主要和次要卡片的计划ID
+    // 互换主要和次要卡片的计划ID（todayCheckinMinutes 为 computed，会自动跟随 primaryPlan 更新）
     const oldPrimaryId = primaryPlan.value.id
     primaryPlanId.value = secondaryPlan.value.id
     secondaryPlanId.value = oldPrimaryId
     showTaskList.value = false
     forceActive.value = false
-    loadTodayCheckins()
   }
 }
 
@@ -519,7 +595,6 @@ function handleSelectTask(plan) {
   }
   showTaskList.value = false
   forceActive.value = false
-  loadTodayCheckins()
 }
 
 // ===== 打卡功能 =====
@@ -549,9 +624,13 @@ async function handleCheckin() {
       actual_time: localTimeStr
     })
     if (res.code === 0) {
-      // 立即把打卡记录加入本地列表，触发 checkinState 重算为 done
+      // 立即把打卡记录加入 allTodayCheckins，触发 checkinState 重算为 done
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
-      todayCheckinMinutes.value.push({ timeId, minutes: nowMinutes })
+      const planId = primaryPlan.value.id
+      if (!allTodayCheckins.value[planId]) {
+        allTodayCheckins.value[planId] = []
+      }
+      allTodayCheckins.value[planId].push({ timeId, minutes: nowMinutes })
       // 打卡成功后重置长按标志
       forceActive.value = false
       // 触发后端自动标记已读并同步刷新 NoticeButton 图标状态
@@ -614,11 +693,8 @@ function handleLongPressEnd() {
 
 // 页面显示时加载数据（含从其他页面返回时刷新），并启动每分钟刷新定时器
 onShow(() => {
-  loadActivePlans().then(() => {
-    if (primaryPlan.value) {
-      loadTodayCheckins()
-    }
-  })
+  // loadActivePlans 内部已加载今日所有打卡记录并按新规则排序，无需再单独加载
+  loadActivePlans()
   // 并行加载最近 7 天公告（不阻塞任务卡片）
   loadRecentAnnouncements()
   // 并行加载用户通知渠道，用于判断打卡后是否需要补授权微信订阅消息
@@ -627,12 +703,10 @@ onShow(() => {
   if (userStore.userInfo) {
     userStore.loadUnreadCount(true)
   }
-  // 每分钟刷新打卡时段状态（用户在线时才检查）
+  // 每分钟刷新打卡状态：重新加载所有打卡记录并按新规则重排（用户在线时才检查）
   if (!refreshTimer) {
     refreshTimer = setInterval(() => {
-      if (primaryPlan.value) {
-        loadTodayCheckins()
-      }
+      refreshCheckinStatus()
     }, 60000)
   }
 })
