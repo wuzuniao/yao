@@ -8,6 +8,7 @@
     <view class="announcement-card__badge">{{ remaining }}s</view>
     <view :key="current.id" class="announcement-card__body">
       <text class="announcement-card__title">{{ displayTitle }}</text>
+      <text class="announcement-card__meta">{{ displayCreatedAt }}</text>
       <text class="announcement-card__content">{{ current.content }}</text>
     </view>
   </view>
@@ -23,6 +24,7 @@
       <!-- 卡片尺寸固定；标题+内容放入 scroll-view，超出时卡片内右侧滚动 -->
       <scroll-view scroll-y class="announcement-fullscreen__scroll" @click.stop="collapse">
         <text class="announcement-fullscreen__title">{{ displayTitle }}</text>
+        <text class="announcement-fullscreen__meta">{{ displayCreatedAt }}</text>
         <text class="announcement-fullscreen__content">{{ current.content }}</text>
       </scroll-view>
     </view>
@@ -65,6 +67,13 @@ const visible = computed(
 const current = computed(() => (visible.value ? queue.value[currentIndex.value] : null))
 // 标题统一前缀：固定拼接「【官方公告】」
 const displayTitle = computed(() => (current.value ? `【官方公告】${current.value.title}` : ''))
+// 创建时间小字：取 created_at 的日期+分钟部分（YYYY-MM-DD HH:MM），不做时区转换
+const displayCreatedAt = computed(() => {
+  if (!current.value || !current.value.created_at) return ''
+  // 兼容 "2026-07-02T14:30:00" 与 "2026-07-02 14:30:00" 两种格式
+  const dt = String(current.value.created_at).replace('T', ' ')
+  return dt.slice(0, 16)
+})
 
 function markCurrentRead() {
   if (current.value) markRead(current.value)
@@ -187,6 +196,15 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
+/* 创建时间小字：标题下方次要信息，弱化色彩 */
+.announcement-card__meta {
+  margin-top: 8rpx;
+  color: #7a7b79;
+  font-size: 24rpx;
+  line-height: 36rpx;
+  font-weight: 400;
+}
+
 .announcement-card__content {
   margin-top: 16rpx;
   color: #454745;
@@ -271,6 +289,16 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+/* 创建时间小字：标题下方次要信息，弱化色彩 */
+.announcement-fullscreen__meta {
+  display: block;
+  margin-top: 12rpx;
+  color: #7a7b79;
+  font-size: 26rpx;
+  line-height: 40rpx;
+  font-weight: 400;
+}
+
 .announcement-fullscreen__content {
   display: block;
   margin-top: 24rpx;
@@ -332,6 +360,11 @@ onUnmounted(() => {
     line-height: 26px;
     padding-right: 60px;
   }
+  .announcement-card__meta {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 18px;
+  }
   .announcement-card__content {
     margin-top: 8px;
     font-size: 14px;
@@ -356,6 +389,11 @@ onUnmounted(() => {
     font-size: 24px;
     line-height: 32px;
     padding-right: 60px;
+  }
+  .announcement-fullscreen__meta {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 20px;
   }
   .announcement-fullscreen__content {
     margin-top: 12px;
