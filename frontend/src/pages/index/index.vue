@@ -3,7 +3,13 @@
     <view class="index-page__frame">
       <NoticeButton />
 
-      <view class="index-page__main-canvas" :class="{ 'index-page__main-canvas--guest': !isLoggedIn }">
+      <view
+        class="index-page__main-canvas"
+        :class="{
+          'index-page__main-canvas--guest': !isLoggedIn,
+          'index-page__main-canvas--empty': isLoggedIn && !hasActivePlans
+        }"
+      >
         <!-- 未登录：介绍卡片（标题“按时吃药”，介绍小程序、功能与登录引导） -->
         <view v-if="!isLoggedIn" class="index-page__intro-card">
           <text class="index-page__intro-title">按时吃药</text>
@@ -33,9 +39,19 @@
 
         <!-- 已登录：原有任务卡片 / 空状态 + 公告卡 + 打卡按钮 -->
         <template v-else>
-          <!-- 空状态提示（已登录无进行中计划时，隐藏任务卡片） -->
-          <view v-if="!hasActivePlans" class="index-page__empty">
-            <text class="index-page__empty-text">{{ emptyText }}</text>
+          <!-- 空状态提示（已登录无进行中计划时，展示新手引导卡片；样式参考未登录介绍卡片） -->
+          <view v-if="!hasActivePlans" class="index-page__guide-card">
+            <text class="index-page__guide-title" decode>新手引导</text>
+            <view class="index-page__guide-content">
+              <view class="index-page__guide-section">
+                <text class="index-page__guide-line" decode><text class="index-page__guide-em">【可选】</text>点击设置页 <text class="index-page__guide-arrow" decode>-></text> 通知方式 <text class="index-page__guide-arrow" decode>-></text> 新增消息通知方式，建议使用微信订阅消息。</text>
+                <text class="index-page__guide-line" decode>点击设置页 <text class="index-page__guide-arrow" decode>-></text> 制定计划 <text class="index-page__guide-arrow" decode>-></text> 创建打卡计划。</text>
+                <text class="index-page__guide-line" decode>若APP不会操作，可参考<text class="index-page__guide-link">帮助中心</text>Q&A，或通过邮箱反馈问题。</text>
+              </view>
+            </view>
+            <view class="index-page__guide-action" @click="startLoggedInGuide">
+              <text class="index-page__guide-action-text" decode>点我重新开启新手引导</text>
+            </view>
           </view>
 
           <!-- 任务卡片区域（已登录且有进行中计划时显示） -->
@@ -65,16 +81,20 @@
           </view>
         </view>
 
-          <!-- 公告临时卡片（最近7天未读公告轮播，填充首页空白高度，位于任务卡与打卡按钮之间） -->
+          <!-- 公告临时卡片（最近7天未读公告轮播，填充首页空白高度，位于任务卡与打卡按钮之间）；新手引导期间隐藏，避免与引导卡片/高亮区域冲突 -->
           <AnnouncementCard
-            v-if="recentAnnouncements.length"
+            v-if="recentAnnouncements.length && !guideStore.isActive"
             :announcements="recentAnnouncements"
           />
 
           <!-- 立即打卡按钮（状态：灰色无任务 / 红色立即打卡 / 已完成 / 未到打卡时间） -->
-          <view class="index-page__checkin-shell">
+          <view
+            class="index-page__checkin-shell"
+            :class="{ 'index-page__checkin-shell--empty': isLoggedIn && !hasActivePlans }"
+          >
             <view
-              class="index-page__checkin-button"
+              class="index-page__checkin-button guide-target-checkin-button"
+              :style="checkinButtonActiveStyle"
               :class="{
                 'index-page__checkin-button--disabled': isButtonDisabled,
                 'index-page__checkin-button--done': isCheckinDone,
@@ -133,15 +153,18 @@
  *    - 主要卡片：展示当前选中任务，不设置点击事件，显示计划名称、备注
  *    - 次要卡片：展示第二个任务，点击后与主要卡片内容互换；3+任务时右侧显示"..."按钮
  *    - "..."按钮：3+任务时显示，点击展开任务列表（同主/次卡片排序规则），可选择任务替换到主要卡片
- *  - 空状态：未登录显示欢迎语，已登录无计划显示创建提示
+ *  - 空状态：未登录显示介绍卡片（含功能说明与开启新手引导入口）；已登录无进行中计划显示"新手引导"卡片，
+ *    提供操作指引并支持一键开启引导（从步骤 1 开始，点击设置后自动跳到步骤 4 继续）
  *  - 立即打卡按钮（多状态）：
  *    - 灰色"无打卡任务"：未登录/无任务/不在计划日期范围内/无提醒时间
  *    - 橙色"未到打卡时间"：未到第一个提醒时间的"开始打卡时间"（提醒时间前2小时），不显示图标
  *    - 红色"立即打卡"：已到开始打卡时间且当前匹配区间未打卡
  *    - 绿色"已打卡"：当前匹配区间已匹配到打卡记录，持续到匹配区间结束（下一个中点或24:00）
  *    - 长按3秒：waiting/done 状态可长按3秒重置为"立即打卡"
+ *    - 新手引导最后一步：在打卡按钮高亮区域内点击即完成引导，不触发正常打卡流程（即使按钮为 disabled/done/waiting 状态）
  *    - 打卡成功后不弹窗，按钮直接转为绿色"已打卡"状态
  *    - 打卡防抖：同一任务3秒内只允许点击一次
+ *    - 新手引导期间禁用长按重置
  *    - 打卡记录匹配：按相邻提醒的中点划分匹配区间，覆盖全天0:00-24:00无间隙、无留白
  *    - 用户不在线时（onHide）不进行检查，清除定时器；onShow 时重启并立即同步
  */
@@ -161,10 +184,14 @@ import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
 import { useShare } from '../../composables/useShare'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
+import { useGuideTarget } from '../../composables/useGuideTarget'
 
 useShare({ title: '首页' })
 
 const guideStore = useGuideStore()
+
+// 新手引导：上报首页打卡按钮位置
+const { activeStyle: checkinButtonActiveStyle } = useGuideTarget('checkin-button', '.guide-target-checkin-button')
 
 // 未登录介绍卡片：点击开源地址复制到剪贴板
 function copyRepoUrl() {
@@ -179,6 +206,11 @@ function copyRepoUrl() {
 // 开启新手引导
 function startBeginnerGuide() {
   guideStore.startGuide()
+}
+
+// 已登录用户从首页空状态开启新手引导：从步骤 1 开始，点击设置后自动跳到步骤 4
+function startLoggedInGuide() {
+  guideStore.startGuideForLoggedIn()
 }
 
 const userStore = useUserStore()
@@ -218,11 +250,6 @@ let lastCheckinTime = 0
 
 const isLoggedIn = computed(() => !!userStore.userInfo)
 const hasActivePlans = computed(() => activePlans.value.length > 0)
-
-// 空状态提示文本
-const emptyText = computed(() => {
-  return '请先到设置界面创建您的打卡计划，常见问题可参考同界面里的帮助中心。'
-})
 
 // 主要卡片计划
 const primaryPlan = computed(() => {
@@ -617,6 +644,11 @@ function handleSelectTask(plan) {
 // 打卡成功后立即将记录加入本地列表，触发 checkinState 重算为 done（绿色"已打卡"，不弹窗）
 // 防抖：同一任务3秒内只允许点击一次
 async function handleCheckin() {
+  // 新手引导：最后一步在打卡按钮高亮范围内点击即完成引导，不触发正常打卡流程
+  if (guideStore.isActive && guideStore.currentStepData?.target === 'checkin-button') {
+    guideStore.completeGuide()
+    return
+  }
   // 仅 active 状态可点击打卡（done/waiting/disabled 均被拦截）
   if (checkinState.value.status !== 'active') return
   const timeId = checkinState.value.timeId
@@ -662,6 +694,8 @@ async function handleCheckin() {
 
 // 长按3秒重置开始：非 active 状态长按触发，显示 3-2-1 倒计时
 function handleLongPress() {
+  // 新手引导期间禁用长按重置，避免干扰引导流程
+  if (guideStore.isActive && guideStore.currentStepData?.target === 'checkin-button') return
   // 仅在非 disabled 状态下生效（必须有计划且在日期范围内）
   if (!primaryPlan.value || !isWithinDateRange.value) return
   // active 状态无需重置
@@ -790,28 +824,31 @@ onUnmounted(() => {
   gap: 64rpx;
 }
 
+.index-page__main-canvas--empty {
+  /* 已登录无计划中：使用百分比距离控制上下留白，确保卡片与打卡按钮在一屏内完整展示；
+     padding-top 避开顶部通知按钮；padding-bottom 置 0，由打卡按钮外壳的 margin-bottom 控制与底部导航栏的距离。
+     当卡片内容可在该区域内完整显示时不会出现滚动条，超出时才允许自然滚动。 */
+  padding-top: 14vh;
+  padding-bottom: 0;
+  justify-content: center;
+  gap: 0;
+}
+
+/* 已登录空状态：引导卡片与打卡按钮之间的百分比间距 */
+.index-page__main-canvas--empty .index-page__guide-card {
+  margin-bottom: 2vh;
+}
+
+/* 已登录空状态：打卡按钮使用百分比距离控制与底部导航栏的留白 */
+.index-page__checkin-shell--empty {
+  margin-top: auto;
+  margin-bottom: 16vh;
+}
+
 /* 未登录：内容区底部预留与记录页(.record-page padding-bottom:240rpx)一致的距离，
    保证介绍卡片底部到导航栏顶部保持一定间距，不贴底 */
 .index-page__main-canvas--guest {
   padding-bottom: 240rpx;
-}
-
-/* ===== 空状态提示 ===== */
-.index-page__empty {
-  width: 684rpx;
-  padding: 96rpx 32rpx;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.index-page__empty-text {
-  color: #454745;
-  font-size: 40rpx;
-  line-height: 60rpx;
-  font-weight: 400;
-  text-align: center;
 }
 
 /* ===== 未登录介绍卡片 ===== */
@@ -938,6 +975,99 @@ onUnmounted(() => {
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
+}
+
+/* ===== 已登录空状态：新手引导卡片（样式参考未登录介绍卡片） ===== */
+.index-page__guide-card {
+  width: 684rpx;
+  padding: 48rpx 32rpx 32rpx;
+  box-sizing: border-box;
+  border-radius: 64rpx;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.index-page__guide-title {
+  color: #0e0f0c;
+  font-size: 56rpx;
+  line-height: 80rpx;
+  font-weight: 600;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.index-page__guide-content {
+  margin-top: 24rpx;
+  margin-bottom: 24rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.index-page__guide-section {
+  margin-bottom: 32rpx;
+}
+
+.index-page__guide-section:last-child {
+  margin-bottom: 0;
+}
+
+.index-page__guide-section-title {
+  display: block;
+  color: #0e0f0c;
+  font-size: 36rpx;
+  line-height: 52rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.index-page__guide-line {
+  display: block;
+  color: #454745;
+  font-size: 30rpx;
+  line-height: 48rpx;
+  font-weight: 400;
+  margin-bottom: 12rpx;
+}
+
+.index-page__guide-line:last-child {
+  margin-bottom: 0;
+}
+
+.index-page__guide-em {
+  color: #2f6c00;
+  font-weight: 600;
+}
+
+.index-page__guide-arrow {
+  color: #7a7b79;
+  font-weight: 400;
+}
+
+.index-page__guide-link {
+  color: #2f6c00;
+  font-weight: 600;
+}
+
+.index-page__guide-action {
+  margin-top: 24rpx;
+  height: 96rpx;
+  padding: 24rpx 0;
+  box-sizing: border-box;
+  background: #9fe870;
+  border-radius: 48rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.index-page__guide-action-text {
+  color: #0e0f0c;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 500;
+  text-align: center;
 }
 
 /* ===== 任务卡片区域 ===== */
@@ -1251,14 +1381,27 @@ onUnmounted(() => {
     /* gap 32rpx：hero 与打卡按钮之间的最小间隔，保证视觉分隔 */
     gap: 32rpx;
   }
-  .index-page__hero {
-    padding-top: 16rpx;
+  .index-page__main-canvas--empty {
+    /* 小屏进一步压缩百分比留白，确保卡片与打卡按钮一屏完整显示 */
+    padding-top: 11vh;
+    padding-bottom: 0;
+    gap: 0;
+  }
+  .index-page__main-canvas--empty .index-page__guide-card {
+    margin-bottom: 1vh;
   }
   .index-page__checkin-shell {
     /* padding-top 24rpx + margin-bottom 280rpx：压缩打卡按钮上下留白 */
     /* margin-bottom 280rpx = 导航栏高172rpx + 底部偏移30rpx + 按钮距导航栏顶部78rpx */
     padding: 24rpx 150rpx 0;
     margin-bottom: 280rpx;
+  }
+  .index-page__checkin-shell--empty {
+    margin-top: auto;
+    margin-bottom: 14vh;
+  }
+  .index-page__hero {
+    padding-top: 16rpx;
   }
 }
 
@@ -1274,7 +1417,7 @@ onUnmounted(() => {
  * ========================================================================== */
 @media screen and (min-width: 768px) {
   /* 内容容器固定 342px 居中，避免宽屏拉伸 */
-  .index-page__empty,
+  .index-page__guide-card,
   .index-page__hero,
   .index-page__primary-card,
   .index-page__secondary-card,
@@ -1293,13 +1436,57 @@ onUnmounted(() => {
     padding-bottom: 120px;
   }
 
-  /* 空状态 */
-  .index-page__empty {
-    padding: 48px 16px;
+  /* 已登录空状态：继续使用百分比距离控制上下留白，打卡按钮底部间距同步百分比 */
+  .index-page__main-canvas--empty {
+    padding-top: 14vh;
+    padding-bottom: 0;
+    justify-content: center;
+    gap: 0;
   }
-  .index-page__empty-text {
-    font-size: 20px;
-    line-height: 30px;
+  .index-page__main-canvas--empty .index-page__guide-card {
+    margin-bottom: 2vh;
+  }
+  .index-page__checkin-shell--empty {
+    margin-top: auto;
+    margin-bottom: 16vh;
+  }
+
+  /* 已登录空状态：新手引导卡片 */
+  .index-page__guide-card {
+    width: 342px;
+    padding: 24px 16px 16px;
+    border-radius: 32px;
+  }
+  .index-page__guide-title {
+    font-size: 28px;
+    line-height: 40px;
+  }
+  .index-page__guide-content {
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+  .index-page__guide-section {
+    margin-bottom: 16px;
+  }
+  .index-page__guide-section-title {
+    font-size: 18px;
+    line-height: 26px;
+    margin-bottom: 6px;
+  }
+  .index-page__guide-line {
+    font-size: 15px;
+    line-height: 24px;
+    margin-bottom: 6px;
+  }
+  .index-page__guide-action {
+    margin-top: 12px;
+    height: 48px;
+    padding: 12px 0;
+    border-radius: 24px;
+  }
+  .index-page__guide-action-text {
+    font-size: 16px;
+    line-height: 24px;
   }
 
   /* 未登录介绍卡片 */

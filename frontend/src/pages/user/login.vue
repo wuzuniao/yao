@@ -87,7 +87,7 @@
             <text class="login-page__remember-text">查看并同意</text>
             <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
           </view>
-          <view class="login-page__submit" @click="handleLogin">
+          <view class="login-page__submit guide-target-login-submit" :style="loginSubmitActiveStyle" @click="handleLogin">
             <text class="login-page__submit-text">登录</text>
           </view>
         </view>
@@ -102,7 +102,7 @@
     <!-- 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现；仅"立即注册"可点击） -->
     <view v-if="loginMode === 'normal'" class="login-page__footer">
       <text class="login-page__footer-text">还没有账号？</text>
-      <text class="login-page__footer-link" @click="goRegister">立即注册</text>
+      <text class="login-page__footer-link guide-target-register-link" :style="registerLinkActiveStyle" @click="goRegister">立即注册</text>
     </view>
 
     <!-- 新手引导遮罩（仅在引导激活时渲染） -->
@@ -148,6 +148,9 @@ const guideStore = useGuideStore()
 
 // 新手引导：上报微信一键登录按钮位置（引导第 3 步目标）
 const { activeStyle: wechatBtnActiveStyle } = useGuideTarget('wechat-login', '.guide-target-wechat-login')
+// 新手引导：上报「立即注册」链接与普通登录按钮位置（非微信小程序端第 3 步目标）
+const { activeStyle: registerLinkActiveStyle } = useGuideTarget('register-link', '.guide-target-register-link')
+const { activeStyle: loginSubmitActiveStyle } = useGuideTarget('login-submit', '.guide-target-login-submit')
 
 // 登录方式：'wechat'(默认微信一键登录) | 'normal'(账号密码登录)
 // 注册页跳转时 URL 带 ?mode=normal，则初始展示账号密码卡片

@@ -11,7 +11,7 @@
       </view>
 
       <!-- 新建计划入口卡（点击后切换为"新建计划详情"表单卡，隐藏所有已有计划） -->
-      <view class="plan-page__new-entry" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
+      <view class="plan-page__new-entry guide-target-new-plan" :style="newPlanActiveStyle" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
         <image class="plan-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
         <text class="plan-page__new-entry-text">新建计划</text>
       </view>
@@ -379,6 +379,9 @@
         </view>
       </view>
     </view>
+
+    <!-- 新手引导遮罩（仅在引导激活时渲染） -->
+    <BeginnerGuide />
   </view>
 </template>
 
@@ -396,8 +399,12 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref, onMounted, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
+import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
+import { useGuideTarget } from '../../composables/useGuideTarget'
+import { useGuideStore } from '../../store/modules/guide'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
 import { listNotificationChannels } from '../../api/modules/notification'
@@ -411,6 +418,15 @@ import { useShare } from '../../composables/useShare'
 useShare({ title: '制定计划' })
 
 const userStore = useUserStore()
+const guideStore = useGuideStore()
+
+// 新手引导：上报「新建计划」入口位置
+const { activeStyle: newPlanActiveStyle } = useGuideTarget('new-plan', '.guide-target-new-plan')
+
+// 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
+onShow(() => {
+  guideStore.onPageEnter('plan')
+})
 
 // 已有计划列表（从数据库加载，后端已按 status>priority>created_at 排序）
 const plans = ref([])
@@ -586,6 +602,10 @@ async function handleNewEntry() {
   form.times = [getCurrentTime()]
   form.priority = 3
   form.status = 1
+  // 新手引导：当前步骤为「新建计划」时，点击后进入下一步（步骤 6：返回首页）
+  if (guideStore.isActive && guideStore.currentStepData?.target === 'new-plan') {
+    guideStore.nextStep()
+  }
 }
 
 // ===== 新建表单事件处理 =====

@@ -1,5 +1,5 @@
 <template>
-  <template v-if="visible">
+  <template v-if="visible && ready">
     <!-- #ifdef H5 -->
     <!-- SVG 精确蒙版：全屏覆盖，中心挖圆角矩形洞，避免四角漏白 -->
     <svg
@@ -71,8 +71,8 @@
       @touchmove.stop
     >
       <view class="beginner-guide__card-header">
-        <text class="beginner-guide__step-badge">第 {{ stepData.stepNumber }} 步 / 共 {{ totalSteps }} 步</text>
-        <text class="beginner-guide__skip" @click.stop="handleSkip">跳过</text>
+        <text class="beginner-guide__step-badge">第 {{ guideStore.displayStepNumber }} 步 / 共 {{ guideStore.displayTotalSteps }} 步</text>
+        <text class="beginner-guide__skip" @click.stop="handleSkip">{{ skipText }}</text>
       </view>
       <text class="beginner-guide__card-title">{{ stepData.title }}</text>
       <text class="beginner-guide__card-desc">{{ stepData.description }}</text>
@@ -91,7 +91,11 @@
  *  - 高亮边框：围绕目标元素描边，吸引视线（pointer-events:none 不阻挡目标点击）
  *  - 步骤卡片：显示步骤序号、标题、说明文字，附带"跳过"按钮
  *  - 目标位置由 useGuideTarget composable 在各页面/组件内查询并上报到 guide store
- *  - 登录成功后监听 userStore.userInfo 自动完成引导
+ *  - 支持步骤分支：可选步骤点击「跳过」可跳转到指定后续步骤（如步骤 4 通知方式分支）
+ *  - 支持步骤配置 shape（circle/pill）实现高亮圆角与目标完全一致，避免胶囊按钮/圆形按钮出现白边
+ *  - 支持步骤配置 cardPosition='bottom' 强制提示卡片位于目标下方，避免覆盖表单卡片；
+ *    cardPosition='anchor-top' 基于 cardAnchor 指定元素顶部定位，使卡片底部位于参考元素顶部上方 12px；上方空间不足时 fallback 到参考元素内部
+ *  - 所有步骤均在对应页面加载完成、目标元素位置成功上报后才显示蒙版/高亮/卡片；滚动过程中 useGuideTarget 持续刷新位置，高亮与卡片同步跟随
  *
  * 蒙版原理：
  *  - H5：使用 SVG mask 精确挖洞，pointer-events:none 不阻挡目标点击。
@@ -105,12 +109,10 @@
  * 使用方式：在需要引导的页面引入 <BeginnerGuide /> 即可，组件内部读取 guide store
  * 自动判断是否渲染及渲染哪个步骤。
  */
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useGuideStore } from '../store/modules/guide'
-import { useUserStore } from '../store/modules/user'
 
 const guideStore = useGuideStore()
-const userStore = useUserStore()
 
 // 屏幕尺寸（px，用于蒙版计算）
 const screenWidth = ref(375)
@@ -150,6 +152,20 @@ const targetRect = computed(() => {
   return guideStore.targetRects[stepData.value.target] || null
 })
 
+// 当前步骤是否已准备好显示：页面匹配 + 目标元素位置已上报；
+// 若步骤配置了 cardAnchor，还需锚点元素位置已上报。
+// 这样可以确保对应页面加载完成、目标元素布局稳定后，高亮区域与提示卡片再出现，
+// 同时 useGuideTarget 的定时刷新会保证滚动过程中两者同步跟随。
+const ready = computed(() => {
+  if (!visible.value) return false
+  if (!targetRect.value) return false
+  const anchorKey = stepData.value?.cardAnchor
+  if (anchorKey) {
+    return !!guideStore.targetRects[anchorKey]
+  }
+  return true
+})
+
 // 当前步骤的高亮区域外边距（px），默认 0，仅微信登录图标需要外扩
 const stepPadding = computed(() => stepData.value?.padding ?? 0)
 
@@ -176,10 +192,17 @@ function rpxToPx(rpx) {
   return (rpx * screenWidth.value) / 750
 }
 
-// 高亮框圆角（px）：接近正方形的目标用圆形，否则用 32rpx 大圆角
+// 高亮框圆角（px）：根据步骤配置的 shape 或目标长宽比自动选择
+// - shape='circle'：正圆（短边一半）
+// - shape='pill'：胶囊形（短边一半，与 border-radius:9999px 的按钮完全贴合）
+// - 其它：默认 32rpx 大圆角
 const highlightRadiusValue = computed(() => {
   const rect = highlightRect.value
   if (!rect) return rpxToPx(32)
+  const shape = stepData.value?.shape
+  if (shape === 'circle' || shape === 'pill') {
+    return Math.min(rect.width, rect.height) / 2
+  }
   const ratio = Math.max(rect.width, rect.height) / Math.min(rect.width, rect.height)
   if (ratio <= 1.3) {
     return Math.min(rect.width, rect.height) / 2
@@ -284,18 +307,41 @@ const svgMaskStyle = computed(() => ({
   height: screenHeight.value + 'px'
 }))
 
-// 步骤卡片定位：优先放在目标下方，空间不足时放上方
+// 步骤卡片定位：
+// - 默认：优先放在目标下方，空间不足时放上方
+// - cardPosition='bottom'：强制卡片位于目标下方
+// - cardPosition='top-viewport'：固定于视口顶部（16px 安全边距），确保在长页面底部目标时卡片仍可见且不覆盖表单卡片
+// - cardPosition='anchor-top'：基于 cardAnchor 指定的参考元素顶部定位，卡片底部位于参考元素顶部上方 12px；
+//   极端情况下上方空间不足时，改为置于参考元素内部（顶部偏下 12px），优先保证可见。用于「授权订阅提醒」步骤
 const cardStyle = computed(() => {
   const rect = targetRect.value
   if (!rect) return {}
   const gap = 16
+  const safeTop = 16
   const cardWidth = Math.min(screenWidth.value - 32, 300)
-  let top = rect.bottom + gap
-  // 下方空间不足时放上方
-  if (top + cardHeight > screenHeight.value) {
-    top = rect.top - cardHeight - gap
-    // 上方也不够时，强制放下方（极端情况）
-    if (top < 0) top = rect.bottom + gap
+  const position = stepData.value?.cardPosition
+  const anchorKey = stepData.value?.cardAnchor
+  const anchorRect = anchorKey ? guideStore.targetRects[anchorKey] : null
+  let top
+  if (position === 'top-viewport') {
+    top = safeTop
+  } else if (position === 'anchor-top' && anchorRect) {
+    const anchorGap = 12
+    top = anchorRect.top - cardHeight - anchorGap
+    // 极端情况下若卡片被顶到屏幕外，则置于新建通知方式卡片内部（顶部偏下 12px），优先保证可见
+    if (top < safeTop) {
+      top = anchorRect.top + anchorGap
+    }
+  } else {
+    top = rect.bottom + gap
+    // 未强制下方时：下方空间不足则放上方
+    if (position !== 'bottom') {
+      if (top + cardHeight > screenHeight.value) {
+        top = rect.top - cardHeight - gap
+        // 上方也不够时，强制放下方（极端情况）
+        if (top < 0) top = rect.bottom + gap
+      }
+    }
   }
   // 水平居中于目标，但限制在屏幕内
   let left = rect.left + rect.width / 2 - cardWidth / 2
@@ -310,24 +356,20 @@ const cardStyle = computed(() => {
   }
 })
 
-// 跳过引导
+// 当前是否为内部步骤数组的最后一步
+const isLastInternalStep = computed(() => guideStore.currentStep === guideStore.steps.length - 1)
+
+// 跳过按钮文本：最后一步显示「完成」，其余显示「跳过」
+const skipText = computed(() => (isLastInternalStep.value ? '完成' : '跳过'))
+
+// 跳过引导：普通步骤结束引导；带 skipTo 的步骤跳转到指定后续步骤（支持可选分支）
 function handleSkip() {
+  if (stepData.value?.skipTo) {
+    guideStore.skipToStepByTarget(stepData.value.skipTo)
+    return
+  }
   guideStore.skipGuide()
 }
-
-// 监听登录成功：自动完成引导
-const stopUserWatch = watch(
-  () => userStore.userInfo,
-  (val) => {
-    if (val && guideStore.isActive) {
-      guideStore.completeGuide()
-    }
-  }
-)
-
-onUnmounted(() => {
-  stopUserWatch()
-})
 </script>
 
 <style lang="scss" scoped>

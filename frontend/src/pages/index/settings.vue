@@ -27,7 +27,7 @@
 
       <!-- 分组 1：制定计划 + 通知方式（删除冷静期内整体置灰禁点击，独占整行） -->
       <view class="settings-page__group1" :class="{ 'settings-page__group1--disabled': isDeletionScheduled }">
-        <view class="settings-page__link-card settings-page__link-card--plan" @click="!isDeletionScheduled && goPlan()">
+        <view class="settings-page__link-card settings-page__link-card--plan guide-target-plan-method" :style="planMethodActiveStyle" @click="!isDeletionScheduled && goPlan()">
           <view class="settings-page__link-left">
             <text class="settings-page__link-title">制定计划</text>
             <!-- 仅当存在进行中的计划时显示"进行中"状态徽章 -->
@@ -43,7 +43,7 @@
           </view>
         </view>
 
-        <view class="settings-page__link-card" @click="!isDeletionScheduled && goNotification()">
+        <view class="settings-page__link-card guide-target-notification-method" :style="notificationMethodActiveStyle" @click="!isDeletionScheduled && goNotification()">
           <view class="settings-page__link-left">
             <text class="settings-page__link-title">通知方式</text>
           </view>
@@ -111,8 +111,10 @@ useShare({ title: '设置' })
 const userStore = useUserStore()
 const guideStore = useGuideStore()
 
-// 新手引导：上报用户资料卡片位置（引导第 2 步目标）
+// 新手引导：上报用户资料卡片、通知方式、制定计划入口位置
 const { activeStyle: profileCardActiveStyle } = useGuideTarget('profile-card', '.guide-target-profile-card')
+const { activeStyle: notificationMethodActiveStyle } = useGuideTarget('notification-method', '.guide-target-notification-method')
+const { activeStyle: planMethodActiveStyle } = useGuideTarget('plan-method', '.guide-target-plan-method')
 
 // 账号是否处于删除冷静期（status=0）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)

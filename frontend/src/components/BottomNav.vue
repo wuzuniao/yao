@@ -1,8 +1,9 @@
 <template>
   <view class="bottom-nav">
-    <view 
-      class="bottom-nav__item" 
+    <view
+      class="bottom-nav__item guide-target-home-tab"
       :class="{ 'bottom-nav__item--active': active === 'home' }"
+      :style="homeTabActiveStyle"
       @click="handleClick('home')"
     >
       <image 
@@ -51,6 +52,7 @@ import settingsActiveIcon from '../assets/images/dh_shezhi_1.png'
 import settingsInactiveIcon from '../assets/images/dh_shezhi_0.png'
 import { useGuideTarget } from '../composables/useGuideTarget'
 
+const { activeStyle: homeTabActiveStyle } = useGuideTarget('home-tab', '.guide-target-home-tab')
 const { activeStyle: settingsTabActiveStyle } = useGuideTarget('settings-tab', '.guide-target-settings-tab')
 
 const props = defineProps({

@@ -146,7 +146,7 @@
           </view>
 
           <!-- 注册按钮 -->
-          <view class="register-page__submit" @click="handleRegister">
+          <view class="register-page__submit guide-target-register-submit" :style="registerSubmitActiveStyle" @click="handleRegister">
             <text class="register-page__submit-text">注册</text>
           </view>
         </view>
@@ -181,14 +181,22 @@
  * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
  */
 import { reactive, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
 import PasswordEye from '../../components/PasswordEye.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { sendRegisterCode, registerUser } from '../../api/modules/user'
 import { useShare } from '../../composables/useShare'
+import { useGuideTarget } from '../../composables/useGuideTarget'
+import { useGuideStore } from '../../store/modules/guide'
 
 useShare({ title: '注册账号' })
+
+const guideStore = useGuideStore()
+
+// 新手引导：上报「注册」按钮位置（非微信小程序端第 3 步目标）
+const { activeStyle: registerSubmitActiveStyle } = useGuideTarget('register-submit', '.guide-target-register-submit')
 
 const form = reactive({
   username: '',
@@ -222,6 +230,11 @@ const passwordLimit = useInputLimit(20)
 const confirmPwdLimit = useInputLimit(20)
 const emailLimit = useInputLimit(254)
 const codeLimit = useInputLimit(6, /^\d$/)
+
+// 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
+onShow(() => {
+  guideStore.onPageEnter('register')
+})
 
 // 密码显隐切换（默认隐藏，点击眼睛睁眼显示明文）
 const showPassword = ref(false)
