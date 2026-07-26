@@ -382,7 +382,18 @@ function goPrivacy() {
 .settings-page__group1 {
   display: flex;
   flex-direction: column;
-  gap: 32rpx;
+  gap: 0;
+}
+
+/* 分组 1 两卡片贴合为整体：相邻边去圆角，仅保留外侧圆角，
+   中间分隔由两卡片各自的 inset 1px 描边在贴合处自然形成 */
+.settings-page__group1 .settings-page__link-card:first-child {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.settings-page__group1 .settings-page__link-card:last-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 /* 删除冷静期内（status=0）分组整体置灰并禁用交互 */
@@ -430,7 +441,7 @@ function goPrivacy() {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 48rpx 32rpx;
+  padding: 32rpx 32rpx;
   box-sizing: border-box;
   border-radius: 48rpx;
   background: #ffffff;
@@ -607,10 +618,10 @@ function goPrivacy() {
   }
   /* 分组 1 */
   .settings-page__group1 {
-    gap: 16px;
+    gap: 0;
   }
   .settings-page__link-card {
-    padding: 24px 16px;
+    padding: 16px 16px;
     border-radius: 24px;
   }
   .settings-page__link-left {
