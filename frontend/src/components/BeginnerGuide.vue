@@ -109,7 +109,7 @@
  * 使用方式：在需要引导的页面引入 <BeginnerGuide /> 即可，组件内部读取 guide store
  * 自动判断是否渲染及渲染哪个步骤。
  */
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch, onUnmounted } from 'vue'
 import { useGuideStore } from '../store/modules/guide'
 
 const guideStore = useGuideStore()
@@ -154,8 +154,7 @@ const targetRect = computed(() => {
 
 // 当前步骤是否已准备好显示：页面匹配 + 目标元素位置已上报；
 // 若步骤配置了 cardAnchor，还需锚点元素位置已上报。
-// 这样可以确保对应页面加载完成、目标元素布局稳定后，高亮区域与提示卡片再出现，
-// 同时 useGuideTarget 的定时刷新会保证滚动过程中两者同步跟随。
+// 这样可以确保对应页面加载完成、目标元素布局稳定后，高亮区域与提示卡片再出现。
 const ready = computed(() => {
   if (!visible.value) return false
   if (!targetRect.value) return false
@@ -165,6 +164,25 @@ const ready = computed(() => {
   }
   return true
 })
+
+// 微信小程序：引导就绪时禁用 page 滚动，防止用户滚动导致高亮与目标不匹配。
+// 原蒙版 4 个透明矩形只覆盖高亮洞以外区域（@touchmove.stop），高亮洞内无 view 拦截
+// touchmove，用户在洞内滑动时 touchmove 冒泡到 page 容器，page 滚动，高亮位置与目标错位。
+// 在洞内加 view 会拦截 click（目标按钮点不到），故改用 setPageStyle 在页面级别禁用滚动。
+// 引导结束/组件卸载时恢复，确保页面可正常滚动。
+// #ifdef MP-WEIXIN
+watch(ready, (val) => {
+  if (val) {
+    uni.setPageStyle({ style: { overflow: 'hidden' } })
+  } else {
+    uni.setPageStyle({ style: { overflow: '' } })
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  uni.setPageStyle({ style: { overflow: '' } })
+})
+// #endif
 
 // 当前步骤的高亮区域外边距（px），默认 0，仅微信登录图标需要外扩
 const stepPadding = computed(() => stepData.value?.padding ?? 0)
@@ -224,9 +242,25 @@ const highlightStyle = computed(() => {
 })
 
 // 高亮洞的整数边界：相邻矩形/补片紧邻拼接且互不重叠，避免半透明双重叠加产生拼接线
+//
+// 闪烁根因与缓存说明：
+// useGuideTarget 每 250ms 刷新目标位置，boundingClientRect 返回的浮点值存在 sub-pixel 抖动；
+// 抖动 ≥1px 时 reportRect 去重失效，setTargetRect 创建新 targetRects 引用，触发下游 computed 链重算。
+// 本 computed 用 Math.floor/ceil 取整，会把 sub-pixel 抖动放大为相邻整数跳变（如 T: 100↔101），
+// 若每次返回新对象，下游 topBarStyle/bottomBarStyle/.../highlightStyle 全部重算返回新对象，
+// Vue patcher 全量更新 style，高亮洞位置 1px 反复跳变，肉眼可见频繁闪烁。
+//
+// 修复：基于整数签名缓存返回值，相同签名返回同一对象引用，下游 computed 依赖未变不重算，DOM 不更新。
+// 只有高亮洞整数边界真正变化（如用户滚动、目标位移）时才返回新对象，触发合理更新。
+let _maskBoundsSig = null
+let _maskBoundsVal = null
 const maskBounds = computed(() => {
   const rect = highlightRect.value
-  if (!rect) return null
+  if (!rect) {
+    _maskBoundsSig = null
+    _maskBoundsVal = null
+    return null
+  }
   const T = Math.floor(rect.top)
   const B = Math.ceil(rect.bottom)
   const L = Math.floor(rect.left)
@@ -234,7 +268,12 @@ const maskBounds = computed(() => {
   const r = highlightRadiusValue.value
   // 圆角补片边长，限制为圆角半径与半宽/半高的最小值，确保四角补片互不重叠
   const cs = Math.max(0, Math.min(r, (R - L) / 2, (B - T) / 2))
-  return { T, B, L, R, cs }
+  // 签名含四边整数边界与圆角半径整数（cs 取整避免浮点抖动触发新对象）
+  const sig = `${T}|${B}|${L}|${R}|${Math.round(cs)}`
+  if (sig === _maskBoundsSig) return _maskBoundsVal
+  _maskBoundsSig = sig
+  _maskBoundsVal = { T, B, L, R, cs }
+  return _maskBoundsVal
 })
 
 // 微信小程序：四边矩形蒙版样式（整数边界、互不重叠，高亮区域内无 view，点击直达目标）
@@ -313,9 +352,18 @@ const svgMaskStyle = computed(() => ({
 // - cardPosition='top-viewport'：固定于视口顶部（16px 安全边距），确保在长页面底部目标时卡片仍可见且不覆盖表单卡片
 // - cardPosition='anchor-top'：基于 cardAnchor 指定的参考元素顶部定位，卡片底部位于参考元素顶部上方 12px；
 //   极端情况下上方空间不足时，改为置于参考元素内部（顶部偏下 12px），优先保证可见。用于「授权订阅提醒」步骤
+//
+// 缓存说明：与 maskBounds 同理，基于整数签名复用对象引用，避免 targetRect 浮点抖动触发 DOM 频繁更新。
+// 仅在卡片整数位置真正变化时返回新对象，sub-pixel 抖动被拦截。
+let _cardStyleSig = null
+let _cardStyleVal = null
 const cardStyle = computed(() => {
   const rect = targetRect.value
-  if (!rect) return {}
+  if (!rect) {
+    _cardStyleSig = null
+    _cardStyleVal = null
+    return {}
+  }
   const gap = 16
   const safeTop = 16
   const cardWidth = Math.min(screenWidth.value - 32, 300)
@@ -349,11 +397,16 @@ const cardStyle = computed(() => {
   if (left + cardWidth > screenWidth.value - 16) {
     left = screenWidth.value - cardWidth - 16
   }
-  return {
+  // 整数签名：top/left 取整，避免浮点抖动触发新对象；cardWidth 由 screenWidth 决定，稳定
+  const sig = `${Math.round(top)}|${Math.round(left)}|${cardWidth}`
+  if (sig === _cardStyleSig) return _cardStyleVal
+  _cardStyleSig = sig
+  _cardStyleVal = {
     top: top + 'px',
     left: left + 'px',
     width: cardWidth + 'px'
   }
+  return _cardStyleVal
 })
 
 // 当前是否为内部步骤数组的最后一步

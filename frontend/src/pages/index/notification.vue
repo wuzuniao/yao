@@ -1,4 +1,11 @@
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <!-- 引导激活时禁用 page 滚动：原蒙版 4 个透明矩形只覆盖高亮洞以外区域，
+       高亮洞内无 view 拦截 touchmove，用户在洞内滑动时 page 滚动导致高亮与目标错位。
+       page-meta 的 scroll-y 是微信小程序官方属性，可可靠禁用 page 滚动（iOS/Android 均生效），
+       且不拦截 click，高亮洞内目标按钮仍可点击 -->
+  <page-meta :scroll-y="!guideScrollLock" />
+  <!-- #endif -->
   <view class="notification-page">
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
@@ -372,6 +379,9 @@ useShare({ title: '通知方式' })
 
 const userStore = useUserStore()
 const guideStore = useGuideStore()
+
+// 引导激活且当前页面为通知方式页时，禁用 page 滚动（配合 page-meta 的 scroll-y）
+const guideScrollLock = computed(() => guideStore.isActive && guideStore.currentPage === 'notification')
 
 // 新手引导：上报「添加新的通知方式」、「授权订阅提醒」按钮与新建通知方式表单卡位置
 const { activeStyle: addNotificationActiveStyle } = useGuideTarget('add-notification', '.guide-target-add-notification')

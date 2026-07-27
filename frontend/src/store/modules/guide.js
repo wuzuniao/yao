@@ -374,15 +374,16 @@ export const useGuideStore = defineStore('guide', () => {
   }
 
   // 设置目标元素位置（由 useGuideTarget composable 调用）
+  // 属性级赋值：直接修改 targetRects.value[key]，触发 key 级响应式依赖，
+  // 不创建新对象引用，避免 ref 级依赖触发导致 BeginnerGuide 所有依赖 targetRects
+  // 的 computed 链全量重算（ref 内 plain object 在 ref 创建时已被 reactive 包装）。
   function setTargetRect(key, rect) {
-    targetRects.value = { ...targetRects.value, [key]: rect }
+    targetRects.value[key] = rect
   }
 
   // 清除目标元素位置（页面离开时清理）
   function clearTargetRect(key) {
-    const next = { ...targetRects.value }
-    delete next[key]
-    targetRects.value = next
+    delete targetRects.value[key]
   }
 
   return {

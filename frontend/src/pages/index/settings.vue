@@ -91,7 +91,7 @@
  *  - 分组 2（帮助入口）：帮助中心、联系我们、隐私政策
  *  - 底部固定导航栏（BottomNav），当前激活项为"设置"
  */
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
@@ -112,15 +112,29 @@ const userStore = useUserStore()
 const guideStore = useGuideStore()
 
 // 新手引导：上报用户资料卡片、通知方式、制定计划入口位置
-const { activeStyle: profileCardActiveStyle } = useGuideTarget('profile-card', '.guide-target-profile-card')
-const { activeStyle: notificationMethodActiveStyle } = useGuideTarget('notification-method', '.guide-target-notification-method')
-const { activeStyle: planMethodActiveStyle } = useGuideTarget('plan-method', '.guide-target-plan-method')
+// 解构 requery 方法，供管理员按钮出现导致布局变化时手动重新查询
+const { activeStyle: profileCardActiveStyle, requery: requeryProfile } = useGuideTarget('profile-card', '.guide-target-profile-card')
+const { activeStyle: notificationMethodActiveStyle, requery: requeryNotification } = useGuideTarget('notification-method', '.guide-target-notification-method')
+const { activeStyle: planMethodActiveStyle, requery: requeryPlan } = useGuideTarget('plan-method', '.guide-target-plan-method')
 
 // 账号是否处于删除冷静期（status=0）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 
 // 是否为管理员（role=7）
 const isAdmin = computed(() => userStore.userInfo?.role === 7)
+
+// 管理员按钮出现/消失会导致设置页布局变化（公告管理卡片插入用户资料卡与功能入口之间），
+// 引导激活时需重新查询所有目标位置，确保高亮与实际按钮匹配
+watch(isAdmin, () => {
+  if (!guideStore.isActive) return
+  nextTick(() => {
+    setTimeout(() => {
+      requeryProfile()
+      requeryNotification()
+      requeryPlan()
+    }, 150)
+  })
+})
 
 // 用户的通知渠道列表和计划列表（从数据库动态加载）
 const channels = ref([])
@@ -167,6 +181,18 @@ async function loadPlans() {
     }
   } catch (e) {
     console.warn('加载计划列表失败', e)
+  } finally {
+    // 引导激活时重新查询目标位置：loadPlans 完成后"进行中"徽章显示/隐藏会改变
+    // plan-method 卡片高度，进而影响 notification-method 位置（group1 两卡片贴合）
+    if (guideStore.isActive) {
+      nextTick(() => {
+        setTimeout(() => {
+          requeryProfile()
+          requeryNotification()
+          requeryPlan()
+        }, 150)
+      })
+    }
   }
 }
 
