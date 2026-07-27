@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
@@ -71,8 +71,8 @@ async def publish_announcement(
 
 @router.put("/{announcement_id}")
 async def update_announcement(
-    announcement_id: int,
-    payload: AnnouncementUpdate,
+    announcement_id: int = Path(..., gt=0, description="公告ID，必须为正整数"),
+    payload: AnnouncementUpdate = Body(...),
     admin_id: int = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -95,7 +95,7 @@ async def update_announcement(
 
 @router.delete("/{announcement_id}")
 async def delete_announcement(
-    announcement_id: int,
+    announcement_id: int = Path(..., gt=0, description="公告ID，必须为正整数"),
     admin_id: int = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):

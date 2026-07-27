@@ -24,5 +24,7 @@ class User(Base):
     # role：0-普通用户（默认），7-管理员
     role = Column(SmallInteger, nullable=False, default=0, comment="角色：0-普通用户，7-管理员")
     last_login_at = Column(DateTime, nullable=True)
+    # 早于此时间签发的 token 一律失效（改密码/重置密码/删除账号/退出登录时设置）
+    token_invalid_before = Column(DateTime, nullable=True, comment="早于此时间签发的 token 一律失效")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

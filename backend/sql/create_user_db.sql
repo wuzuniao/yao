@@ -25,6 +25,7 @@ CREATE TABLE `users` (
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1-正常，0-待删除（后台任务1分钟后清理）',
   `role` TINYINT NOT NULL DEFAULT 0 COMMENT '角色：0-普通用户（默认），7-管理员',
   `last_login_at` DATETIME NULL COMMENT '最后登录时间',
+  `token_invalid_before` DATETIME NULL COMMENT '早于此时间签发的 token 一律失效（改密码/重置密码/删除账号/退出登录后设置）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
   PRIMARY KEY (`id`),

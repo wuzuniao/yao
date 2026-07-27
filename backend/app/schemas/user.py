@@ -142,10 +142,7 @@ class UpdateAvatar(BaseModel):
     @field_validator("avatar_url")
     @classmethod
     def validate_avatar_url(cls, v: str) -> str:
-        v = Security.sanitize_string(v, max_length=500, field_name="头像地址")
-        if not v:
-            raise ValueError("头像地址不能为空")
-        return v
+        return Security.validate_avatar_url(v)
 
 
 class ScheduleDeletion(BaseModel):

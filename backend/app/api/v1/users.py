@@ -4,6 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
+from ...core.rate_limit import (
+    limit_login,
+    limit_register,
+    limit_reset_password,
+    limit_send_code,
+)
 from ...core.security import Security
 from ...models.user_miniapp_account import UserMiniappAccount
 from ...schemas.user import (
@@ -26,6 +32,7 @@ from ...schemas.user import (
     WeChatLogin,
 )
 from ...services.user_service import User
+from ...utils.logger import logger
 
 router = APIRouter()
 
@@ -60,7 +67,7 @@ async def _user_payload(db: AsyncSession, db_user) -> dict:
     }
 
 
-@router.post("/register")
+@router.post("/register", dependencies=[Depends(limit_register)])
 async def register(payload: RegisterUser, db: AsyncSession = Depends(get_db)):
     """
     用户注册接口
@@ -89,7 +96,7 @@ async def register(payload: RegisterUser, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/send-code")
+@router.post("/send-code", dependencies=[Depends(limit_send_code)])
 async def send_code(payload: SendCode, db: AsyncSession = Depends(get_db)):
     """
     发送注册验证码接口
@@ -105,7 +112,7 @@ async def send_code(payload: SendCode, db: AsyncSession = Depends(get_db)):
     return {"code": 0, "msg": "验证码已发送", "data": None}
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(limit_login)])
 async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     """
     用户登录接口
@@ -128,7 +135,7 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.post("/send-reset-code")
+@router.post("/send-reset-code", dependencies=[Depends(limit_send_code)])
 async def send_reset_code(payload: SendResetCode, db: AsyncSession = Depends(get_db)):
     """
     发送密码找回验证码接口
@@ -144,7 +151,7 @@ async def send_reset_code(payload: SendResetCode, db: AsyncSession = Depends(get
     return {"code": 0, "msg": "验证码已发送", "data": None}
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", dependencies=[Depends(limit_reset_password)])
 async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_db)):
     """
     重置密码接口
@@ -223,7 +230,7 @@ async def change_password(
     }
 
 
-@router.post("/send-change-email-old-code")
+@router.post("/send-change-email-old-code", dependencies=[Depends(limit_send_code)])
 async def send_change_email_old_code(
     payload: SendChangeEmailOldCode,
     user_id: int = Depends(get_current_user_id),
@@ -240,7 +247,7 @@ async def send_change_email_old_code(
     return {"code": 0, "msg": "验证码已发送", "data": None}
 
 
-@router.post("/send-change-email-new-code")
+@router.post("/send-change-email-new-code", dependencies=[Depends(limit_send_code)])
 async def send_change_email_new_code(
     payload: SendChangeEmailNewCode,
     user_id: int = Depends(get_current_user_id),
@@ -355,6 +362,24 @@ async def cancel_deletion(
             "status": db_user.status,
         },
     }
+
+
+@router.post("/logout")
+async def logout(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    退出登录接口（user_id 来自 JWT）
+    - 设置 token_invalid_before 使当前 token 立即失效
+    - 前端需同步清除本地存储的 access_token
+    """
+    user_service = User(db)
+    try:
+        await user_service.logout(user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"code": 0, "msg": "退出成功", "data": None}
 
 
 @router.put("/update-username")
@@ -472,7 +497,7 @@ async def get_user_info(
     }
 
 
-@router.post("/wechat-login")
+@router.post("/wechat-login", dependencies=[Depends(limit_login)])
 async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db)):
     """
     微信一键登录接口
@@ -487,7 +512,9 @@ async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"微信登录服务异常：{e}")
+        # 详细异常记录到日志，前端仅返回通用提示（避免泄露内部信息）
+        logger.exception(f"微信登录服务异常：{e}")
+        raise HTTPException(status_code=500, detail="微信登录服务异常，请稍后重试")
     return {
         "code": 0,
         "msg": "登录成功",
@@ -514,7 +541,9 @@ async def bind_wechat(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"微信绑定失败：{e}")
+        # 详细异常记录到日志，前端仅返回通用提示（避免泄露内部信息）
+        logger.exception(f"微信绑定失败：{e}")
+        raise HTTPException(status_code=500, detail="微信绑定服务异常，请稍后重试")
     return {
         "code": 0,
         "msg": "微信绑定成功",

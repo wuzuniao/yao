@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
@@ -75,7 +75,7 @@ async def list_today_checkins(
 
 @router.get("/today/{plan_id}")
 async def list_today_checkins_by_plan(
-    plan_id: int,
+    plan_id: int = Path(..., gt=0, description="计划ID，必须为正整数"),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):

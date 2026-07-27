@@ -37,6 +37,18 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = ""
     JWT_EXPIRE_DAYS: int = 7
 
+    # CORS 允许的源（逗号分隔，如 "https://yao.wuzuniao.com,http://localhost:8000"）
+    # 微信小程序请求不携带 Origin 头，不受 CORS 限制；此项主要约束 Web 端访问
+    # 实际值从 .env 文件读取，此处为开发环境默认值
+    CORS_ALLOW_ORIGINS: str = "https://yao.wuzuniao.com,http://localhost:8000"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """解析 CORS_ALLOW_ORIGINS 为列表（去除空白与重复项）"""
+        return list(dict.fromkeys(
+            origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()
+        ))
+
     class Config:
         env_file = str(_BASE_DIR / ".env")
         extra = "allow"

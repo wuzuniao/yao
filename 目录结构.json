@@ -11,7 +11,7 @@
           "v1": {
             "描述": "版本化接口，存放v1版本的API接口定义",
             "__init__.py": "v1路由初始化文件，注册 users/notification-channels/plans/checkins/notification-logs/announcements 六个子路由",
-            "users.py": "用户模块API接口：注册 register/登录 login/微信登录 wechat-login/重置密码 reset-password 为公开接口（成功后返回 access_token）；GET /info 查询当前用户信息（JWT 保护）、修改用户名/头像/签名/密码/邮箱/绑定邮箱/设置密码/预约删除/取消删除等均为 JWT 保护接口，user_id 由 token 解析；/info 与 login/register/wechat-login 响应新增返回 role 字段（0-普通用户，7-管理员）",
+            "users.py": "用户模块API接口：注册 register/登录 login/微信登录 wechat-login/重置密码 reset-password 为公开接口（成功后返回 access_token，均应用限流：login/wechat-login 5次/分钟、register/reset-password 3次/分钟、send-code 系列 3次/分钟）；GET /info 查询当前用户信息（JWT 保护）、修改用户名/头像/签名/密码/邮箱/绑定邮箱/设置密码/预约删除/取消删除/退出登录 logout 等均为 JWT 保护接口，user_id 由 token 解析；/info 与 login/register/wechat-login 响应新增返回 role 字段（0-普通用户，7-管理员）；微信接口异常不回显原始错误，记录日志后返回通用提示",
             "notification_channels.py": "通知渠道API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询通知渠道列表、POST /email 创建邮件渠道（密码AES-256-GCM加密存储）、PUT /email 更新邮件渠道（password空字符串保留原密码）、DELETE / 删除渠道（站内信禁删）、POST /wechat/grant 微信订阅授权回调（用户每同意一次授权即+1下发额度并启用微信渠道，返回 {enabled,granted,sent,remaining}）。响应中邮件渠道password字段始终返回空值；微信渠道额外返回 wechat_quota{granted,sent} 与 remaining 剩余可下发次数",
             "plans.py": "计划API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询用户计划列表（按status+priority+created_at排序）、POST 创建计划（含通知时间点/关联渠道/priority优先级）、PUT /{plan_id} 更新计划、DELETE /{plan_id} 删除计划",
             "checkins.py": "打卡记录API接口（均 JWT 保护，user_id 由 token 解析）：POST /checkins 创建打卡记录（允许重复打卡，解析时间后去除时区确保 naive Shanghai datetime）、GET /checkins/today 查询今日所有打卡、GET /checkins/today/{plan_id} 查询某计划今日打卡（返回checked_time_ids数组）、GET /checkins/month?year=&month= 查询某月有打卡记录的日期列表、GET /checkins/day?date= 查询某天打卡详情（含计划提醒时间及打卡状态）",
@@ -21,15 +21,16 @@
         },
         "core": {
           "描述": "核心配置与工具",
-          "config.py": "统一读取.env配置，自动切换开发/生产环境，含 ENCRYPTION_SECRET_KEY 加密密钥、JWT_SECRET_KEY/JWT_EXPIRE_DAYS 认证密钥配置、微信订阅消息配置（WX_SUBSCRIBE_TEMPLATE_ID 模板ID/WX_SUBSCRIBE_PAGE 跳转页/WX_SUBSCRIBE_ORG_NAME 机构名称，均来自环境变量）",
+          "config.py": "统一读取.env配置，自动切换开发/生产环境，含 ENCRYPTION_SECRET_KEY 加密密钥、JWT_SECRET_KEY/JWT_EXPIRE_DAYS 认证密钥配置、CORS_ALLOW_ORIGINS 跨域白名单（逗号分隔，通过 cors_origins_list 属性解析为列表）、微信订阅消息配置（WX_SUBSCRIBE_TEMPLATE_ID 模板ID/WX_SUBSCRIBE_PAGE 跳转页/WX_SUBSCRIBE_ORG_NAME 机构名称，均来自环境变量）",
           "database.py": "数据库连接引擎（SQLAlchemy异步），connect_args 设置 session time_zone='+08:00' 确保上海时区",
-          "security.py": "Security 安全验证类，集中管理所有后端安全相关验证逻辑。包含：密码哈希/校验（bcrypt）、密码复杂度验证、用户名格式验证、验证码格式验证、邮箱格式验证、SMTP参数验证、通用输入实体化（sanitize_string：去除控制字符+首尾空白+长度校验）、正整数ID验证（validate_positive_int）、输出数据过滤（filter_output：移除password_hash/session_key等敏感字段）、JWT 令牌生成/校验（generate_token(user_id, role=0)：HS256签名+sub/role/iat/exp 载荷（role: 0-普通用户，7-管理员）+7天过期；verify_token：解签+过期/无效异常区分）。所有 Schema 的 field_validator 均调用此类，不自行实现验证逻辑",
-          "deps.py": "FastAPI 依赖注入：get_current_user_id 依赖，从 Authorization 头解析 Bearer token，调用 Security.verify_token 校验并返回 user_id。所有受保护接口通过 Depends(get_current_user_id) 获取当前用户ID，替代原请求体/路径中的 user_id 参数；新增 get_current_admin 依赖，在 get_current_user_id 基础上校验 role==7，非管理员返回 403，公告接口通过 Depends(get_current_admin) 保护"
+          "security.py": "Security 安全验证类，集中管理所有后端安全相关验证逻辑。包含：密码哈希/校验（bcrypt）、密码复杂度验证、用户名格式验证、验证码格式验证、邮箱格式验证、SMTP参数验证、通用输入实体化（sanitize_string：去除控制字符+首尾空白+长度校验）、正整数ID验证（validate_positive_int）、头像URL协议白名单校验（validate_avatar_url：禁止 javascript:/data:/vbscript:/file: 等危险协议，防 XSS）、输出数据过滤（filter_output：移除password_hash/session_key等敏感字段）、JWT 令牌生成/校验（generate_token(user_id, role=0)：HS256签名+sub/role/iat/exp 载荷（role: 0-普通用户，7-管理员）+7天过期；verify_token：解签+过期/无效异常区分）。所有 Schema 的 field_validator 均调用此类，不自行实现验证逻辑",
+          "deps.py": "FastAPI 依赖注入：get_current_user_id 与 get_current_admin 依赖，从 Authorization 头解析 Bearer token，调用 Security.verify_token 校验。安全校验：(1) JWT 签名与过期校验；(2) 数据库查询校验用户存在性、status==1（防止账号删除后旧 token 仍可用）；(3) token_invalid_before 校验（改密码/重置密码/退出登录/删除账号后，旧 token 立即失效）；(4) get_current_admin 额外校验 role==7，非管理员返回 403。公告接口通过 Depends(get_current_admin) 保护，其余受保护接口通过 Depends(get_current_user_id)",
+          "rate_limit.py": "进程内字典限流器（滑动窗口算法），按 客户端IP+接口路径 维度计数，窗口内超过阈值返回 429。预定义策略：limit_login(5次/分钟)、limit_register(3次/分钟)、limit_send_code(3次/分钟)、limit_reset_password(3次/分钟)。适用于单进程部署，多进程需迁移至 Redis"
         },
         "models": {
           "描述": "SQLAlchemy ORM模型，对应数据库表结构",
           "__init__.py": "模型包初始化文件",
-          "user.py": "用户数据表模型（ORM，对应 wuzuniao_yonghu.users），含 id/username/password_hash/signature/avatar_url/email/status/role 字段；role: 0-普通用户，7-管理员",
+          "user.py": "用户数据表模型（ORM，对应 wuzuniao_yonghu.users），含 id/username/password_hash/signature/avatar_url/email/status/role/last_login_at/token_invalid_before 字段；role: 0-普通用户，7-管理员；token_invalid_before: 早于此时间签发的 JWT 一律失效（改密码/重置密码/退出登录/删除账号后设置）",
           "user_miniapp_account.py": "用户-小程序绑定关系表模型（存储openid和session_key）",
           "notification_channel.py": "通知渠道配置表模型（NotificationChannel：channel_type=站内信/邮件/微信，channel_value=用户ID或JSON配置；微信渠道 channel_value 存 {granted,sent} 授权额度）",
           "plan.py": "计划相关表模型（CheckinPlan 主表含 priority 优先级字段 + PlanNotificationTime 通知时间点表 + PlanNotificationChannel 计划-渠道多对多关联表）",
@@ -50,7 +51,7 @@
         "services": {
           "描述": "业务逻辑层，供api层调用，与框架无关",
           "__init__.py": "服务包初始化文件",
-          "user_service.py": "用户业务逻辑服务（User 类：注册/登录/验证码校验/资料修改/微信登录/默认用户名生成/用户名更新/密码设置/邮箱绑定（含账号合并）/删除计划/到期账号清理/自动创建站内信通知渠道）",
+          "user_service.py": "用户业务逻辑服务（User 类：注册/登录/验证码校验/资料修改/微信登录/默认用户名生成/用户名更新/密码设置/邮箱绑定（含账号合并）/删除计划/到期账号清理/自动创建站内信通知渠道）。安全特性：验证码存储 (code,expire_at,fail_count) 三元组，连续失败 5 次销毁验证码防爆破；微信 session_key 通过 AES-256-GCM 加密存储（encrypt）；change_password/reset_password/schedule_deletion/logout 时设置 token_invalid_before 使旧 token 立即失效",
           "email_service.py": "邮箱操作服务（Email 类：send_verification_code 系统腾讯企业邮发送验证码；send_notification 使用用户自配 SMTP（notification_channels.channel_value）发送打卡通知邮件，端口465走SSL/其他走STARTTLS）",
           "wechat_service.py": "微信服务（WeChatService 类）：get_access_token 用 client_credential 换取并缓存微信 access_token（模块级缓存，提前5分钟过期避免边界失效）；send_subscribe_message 调用 message/subscribe/send 下发一次性订阅消息，返回微信原始响应（含 errcode/errmsg）；依赖 httpx.AsyncClient 与 settings 中的 WX_APPID/WX_APP_SECRET/WX_SUBSCRIBE_TEMPLATE_ID",
           "notification_channel_service.py": "通知渠道业务服务（NotificationChannelService 类：list_by_user/get_by_id/ensure_znx_channel/create_email_channel（密码AES-256-GCM加密存储）/update_email_channel（password空保留原密码）/delete_channel（站内信禁删）/parse_email_channel_value/get_or_create_wechat_channel（微信渠道默认启用）/grant_wechat（授权+1额度并返回剩余）/parse_wechat_channel_value（解析 {granted,sent}））",
@@ -68,13 +69,14 @@
           "timezone.py": "时区工具模块，统一上海时区 UTC+8：SHANGHAI_TZ 常量、now_shanghai() 返回 naive 上海 datetime、today_shanghai() 返回上海 date",
           "announcementRead.js": "公告已读持久化工具：announcementReadState 本地存储 {exp,readMap}，exp 取自当前 JWT 过期时间戳（秒），readMap 为 {公告id:已读时的updated_at}；getTokenExp 解析 JWT exp（兼容小程序无 atob，回退 uni.base64ToArrayBuffer）、loadReadMap 读取当前 token 下已读映射（exp 缺失/不匹配/过期返回空）、markRead(item) 记录该公告 updated_at、getUnread 过滤未读（仅 id 存在且 updated_at 一致才算已读）；已读绑定当前登录 token（过期/重新登录失效），且公告 updated_at 变化（后端更新）即重新展示"
         },
-        "main.py": "FastAPI应用入口，负责挂载路由和中间件；lifespan 中实例化 SchedulerService 并调用 start_all/stop_all，由其统一管理后台循环（账号清理/计划关闭/通知派发）"
+        "main.py": "FastAPI应用入口，负责挂载路由和中间件；CORS 中间件使用 settings.cors_origins_list 白名单（来自 CORS_ALLOW_ORIGINS 环境变量），allow_methods 限定为 GET/POST/PUT/DELETE/OPTIONS，allow_headers 限定为 Authorization/Content-Type；lifespan 中实例化 SchedulerService 并调用 start_all/stop_all，由其统一管理后台循环（账号清理/计划关闭/通知派发）"
       },
       "sql": {
         "描述": "数据库脚本目录（SQL建表+运维工具）",
-        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本：users 表（含 role 列：0-普通用户/7-管理员，以及 status 列用于删除冷静期等状态）与 user_miniapp_accounts 表（用户与微信小程序 openid 绑定）",
+        "create_user_db.sql": "创建wuzuniao_yonghu用户库的SQL脚本：users 表（含 role 列：0-普通用户/7-管理员、status 列用于删除冷静期、token_invalid_before 列用于 token 失效控制）与 user_miniapp_accounts 表（用户与微信小程序 openid 绑定）",
+        "add_token_invalid_before.sql": "增量脚本：为 users 表新增 token_invalid_before 字段（DATETIME NULL，早于此时间签发的 JWT 一律失效）。生产环境按 create_*.sql → add_*.sql 顺序执行",
         "create_yao_db.sql": "创建wuzuniao_yao业务库的SQL脚本，含 7 张表：checkin_plans（打卡计划主表）、plan_notification_times（计划内各通知时间点）、checkin_records（打卡记录，含复合索引 idx_user_plan_actual(user_id,plan_id,actual_time) 与 idx_user_actual(user_id,actual_time) 优化日期范围查询）、notification_channels（通知渠道：站内信/短信/微信等）、plan_notification_channels（计划与通知渠道关联）、notification_logs（通知发送日志，含 plan_time_id/notify_date/trigger_type 列：0-准时/1-超10分钟/2-1小时或中点催办，以及去重索引 idx_dedup(plan_time_id,trigger_type,notify_date,channel_id) 用于定时通知防重）、announcements（全站公告表）",
-        "rotate_encryption_key.py": "邮箱专用密码加密密钥轮换脚本（Linux运维）。通过项目 settings 模块读取 backend/.env 中的 ENCRYPTION_SECRET_KEY（旧密钥）和 DATABASE_URL，生成新密钥，用旧密钥解密 notification_channels 表中所有邮件渠道的 password，用新密钥重新加密后在数据库事务中更新（全部成功提交否则回滚），最后原子替换 .env 中的密钥。用法：python3 backend/sql/rotate_encryption_key.py"
+        "rotate_encryption_key.py": "加密密钥轮换脚本（邮件密码 + 微信 session_key，Linux运维）。通过项目 settings 模块读取 backend/.env 中的 ENCRYPTION_SECRET_KEY（旧密钥）和 DATABASE_URL，生成新密钥，用旧密钥解密 notification_channels 表（wuzuniao_yao 库）中邮件渠道的 password 和 user_miniapp_accounts 表（wuzuniao_yonghu 库，跨库查询）中的 session_key，用新密钥重新加密后在同一数据库事务中更新（全部成功提交否则回滚），最后原子替换 .env 中的密钥。session_key 支持明文/密文自适应：尝试旧密钥解密，成功则视为密文重新加密，失败则视为明文直接加密。用法：python3 backend/sql/rotate_encryption_key.py"
       },
       "logs": {
         "描述": "本地运行日志目录，.gitignore忽略"

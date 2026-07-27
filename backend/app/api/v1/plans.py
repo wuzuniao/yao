@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
@@ -78,7 +78,7 @@ async def create_plan(
 
 @router.delete("/{plan_id}")
 async def delete_plan(
-    plan_id: int,
+    plan_id: int = Path(..., gt=0, description="计划ID，必须为正整数"),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -93,8 +93,8 @@ async def delete_plan(
 
 @router.put("/{plan_id}")
 async def update_plan(
-    plan_id: int,
-    payload: UpdatePlan,
+    plan_id: int = Path(..., gt=0, description="计划ID，必须为正整数"),
+    payload: UpdatePlan = Body(...),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):

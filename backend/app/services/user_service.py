@@ -17,17 +17,21 @@ from ..models.plan import CheckinPlan, PlanNotificationTime, PlanNotificationCha
 from ..models.checkin_record import CheckinRecord
 from ..models.notification_log import NotificationLog
 from ..schemas.notification_channel import CHANNEL_TYPE_ZNX, CHANNEL_TYPE_WECHAT
+from ..utils.crypto import encrypt
 from ..utils.timezone import now_shanghai
 from ..utils.logger import logger
 from .email_service import Email
 
 
-# 邮箱验证码暂存：email:purpose -> (code, expire_timestamp)
+# 邮箱验证码暂存：email:purpose -> (code, expire_timestamp, fail_count)
 # 说明：当前为进程内存储（开发阶段单进程足够），生产环境建议迁移至 Redis
 # purpose 用于区分验证码用途：register（注册）、reset（找回密码）、change_old（修改邮箱-旧邮箱验证）、change_new（修改邮箱-新邮箱验证）
-_verification_codes: dict[str, tuple[str, float]] = {}
+# fail_count：连续失败次数，超过阈值后销毁验证码，防止暴力枚举
+_verification_codes: dict[str, tuple[str, float, int]] = {}
 # 验证码有效期 5 分钟
 CODE_EXPIRE_SECONDS: int = 300
+# 验证码连续失败次数上限（超过后销毁，要求用户重新获取）
+CODE_MAX_FAIL_COUNT: int = 5
 
 
 class User:
@@ -77,7 +81,8 @@ class User:
         # 生成 6 位数字验证码
         code = "".join(secrets.choice("0123456789") for _ in range(6))
         key = self._get_code_key(email, purpose)
-        _verification_codes[key] = (code, time.time() + CODE_EXPIRE_SECONDS)
+        # 存储格式：(code, expire_at, fail_count)，发送时重置失败计数
+        _verification_codes[key] = (code, time.time() + CODE_EXPIRE_SECONDS, 0)
         # 同步发送验证邮件（在线程池中执行同步 SMTP 调用，避免阻塞事件循环）
         # 失败时 RuntimeError 向上传播，由 API 层返回 500，前端提示用户可重试
         await asyncio.to_thread(Email().send_verification_code, email, code)
@@ -86,6 +91,8 @@ class User:
     def verify_code_for_purpose(self, email: str, code: str, purpose: str) -> bool:
         """
         校验验证码是否匹配（按用途区分）
+        - 验证失败累计 fail_count，超过 CODE_MAX_FAIL_COUNT 后销毁验证码（防暴力枚举）
+        - 验证成功立即销毁（一次性使用）
         :param email: 收件人邮箱
         :param code: 用户输入的验证码
         :param purpose: 验证码用途
@@ -95,12 +102,18 @@ class User:
         record = _verification_codes.get(key)
         if not record:
             return False
-        stored_code, expire_at = record
+        stored_code, expire_at, fail_count = record
         # 过期判定
         if time.time() > expire_at:
             _verification_codes.pop(key, None)
             return False
         if stored_code != code:
+            fail_count += 1
+            if fail_count >= CODE_MAX_FAIL_COUNT:
+                # 连续失败超阈值，销毁验证码（要求用户重新获取）
+                _verification_codes.pop(key, None)
+            else:
+                _verification_codes[key] = (stored_code, expire_at, fail_count)
             return False
         # 验证通过，立即销毁验证码（一次性使用）
         _verification_codes.pop(key, None)
@@ -219,6 +232,8 @@ class User:
     async def reset_password(self, email: str, code: str, new_password: str) -> UserModel:
         """
         重置密码：验证验证码后更新密码
+        - 更新密码后设置 token_invalid_before，使此前签发的 token 全部失效
+          （防止盗号者继续使用旧 token；用户需用新密码重新登录）
         :param email: 用户邮箱
         :param code: 验证码
         :param new_password: 新密码
@@ -232,8 +247,9 @@ class User:
         user = await self.get_by_email(email)
         if not user:
             raise ValueError("用户不存在")
-        # 3. 更新密码
+        # 3. 更新密码并使旧 token 失效
         user.password_hash = Security.hash_password(new_password)
+        user.token_invalid_before = now_shanghai()
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -257,6 +273,8 @@ class User:
     async def change_password(self, user_id: int, old_password: str, new_password: str) -> UserModel:
         """
         修改密码：验证旧密码后更新新密码
+        - 更新密码后设置 token_invalid_before，使此前签发的 token 全部失效
+          （防止账号被盗后用户改密码保护账号，盗号者旧 token 立即失效）
         :param user_id: 用户ID
         :param old_password: 旧密码
         :param new_password: 新密码
@@ -270,8 +288,9 @@ class User:
         # 2. 验证旧密码
         if not Security.verify_password(old_password, user.password_hash):
             raise ValueError("旧密码错误")
-        # 3. 更新新密码
+        # 3. 更新新密码并使旧 token 失效
         user.password_hash = Security.hash_password(new_password)
+        user.token_invalid_before = now_shanghai()
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -349,6 +368,7 @@ class User:
     async def schedule_deletion(self, user_id: int) -> UserModel:
         """
         计划删除账号：将 status 置为 0，后台任务在 updated_at 24小时后自动清理
+        - 同时设置 token_invalid_before 使旧 token 立即失效，防止账号被滥用
         :param user_id: 用户ID
         :return: UserModel（更新后的用户对象）
         :raises ValueError: 用户不存在
@@ -357,6 +377,7 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         user.status = 0
+        user.token_invalid_before = now_shanghai()
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -375,6 +396,19 @@ class User:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+
+    async def logout(self, user_id: int) -> None:
+        """
+        退出登录：设置 token_invalid_before 使当前 token 立即失效
+        - 用户需重新登录获取新 token
+        :param user_id: 用户ID
+        :raises ValueError: 用户不存在
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            raise ValueError("用户不存在")
+        user.token_invalid_before = now_shanghai()
+        await self.db.commit()
 
     async def purge_expired_deletions(self) -> int:
         """
@@ -504,8 +538,8 @@ class User:
         miniapp_account = result.scalar_one_or_none()
 
         if miniapp_account:
-            # 2a. 已绑定：更新 session_key，获取关联用户
-            miniapp_account.session_key = session_key
+            # 2a. 已绑定：更新 session_key（加密存储，防止数据库泄露后暴露会话密钥）
+            miniapp_account.session_key = encrypt(session_key)
             user = await self.get_by_id(miniapp_account.user_id)
             if not user:
                 raise ValueError("用户数据异常，请联系管理员")
@@ -525,7 +559,7 @@ class User:
                 user_id=user.id,
                 app_id=app_id,
                 openid=openid,
-                session_key=session_key,
+                session_key=encrypt(session_key),
             )
             self.db.add(miniapp_account)
             # 自动为新微信登录用户创建站内信通知渠道（channel_value=用户ID）
@@ -565,15 +599,15 @@ class User:
         if miniapp_account:
             if miniapp_account.user_id != user_id:
                 raise ValueError("该微信账号已绑定其他用户，请先解绑或使用该微信账号登录")
-            # 已绑定到本人：更新 session_key（幂等）
-            miniapp_account.session_key = session_key
+            # 已绑定到本人：更新 session_key（加密存储，幂等）
+            miniapp_account.session_key = encrypt(session_key)
         else:
             # 未绑定：为当前用户创建微信账号记录
             miniapp_account = UserMiniappAccount(
                 user_id=user_id,
                 app_id=app_id,
                 openid=openid,
-                session_key=session_key,
+                session_key=encrypt(session_key),
             )
             self.db.add(miniapp_account)
         # 3. 提交并返回当前用户

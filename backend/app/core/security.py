@@ -164,6 +164,23 @@ class Security:
             raise ValueError(f"{field_name}必须为正整数")
         return value
 
+    @staticmethod
+    def validate_avatar_url(url: str) -> str:
+        """
+        校验头像 URL 协议白名单
+        - 允许 http://、https:// 开头的远程 URL
+        - 允许 / 开头的相对路径（如 /static/avatar.png）
+        - 允许短标识符（如 hei、lan 等本地资源名，前端自行映射）
+        - 禁止 javascript:、data:、vbscript:、file: 等危险协议（防 XSS）
+        """
+        url = Security.sanitize_string(url, max_length=500, field_name="头像地址")
+        if not url:
+            raise ValueError("头像地址不能为空")
+        lower = url.lower()
+        if lower.startswith(("javascript:", "data:", "vbscript:", "file:")):
+            raise ValueError("头像地址协议不合法")
+        return url
+
     # ===== JWT 认证 =====
 
     @staticmethod
