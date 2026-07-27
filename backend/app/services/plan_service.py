@@ -9,6 +9,8 @@ from ..models.plan import (
     PlanNotificationChannel,
     PlanNotificationTime,
 )
+from ..models.checkin_record import CheckinRecord
+from ..models.notification_log import NotificationLog
 from ..models.notification_channel import NotificationChannel
 from ..utils.logger import logger
 from ..utils.timezone import today_shanghai
@@ -128,23 +130,34 @@ class PlanService:
         return plan
 
     async def delete_plan(self, plan_id: int, user_id: int) -> None:
-        """删除计划（同时删除关联的时间点和渠道关联）"""
+        """
+        删除计划
+        - 以 plan_id 为过滤条件，级联删除关联的打卡记录、通知记录、通知时间点、计划-渠道关联
+        - 通知渠道本身保留，仅删除与该计划的关联记录
+        """
         plan = await self.get_by_id(plan_id)
         if not plan:
             raise ValueError("计划不存在")
         if plan.user_id != user_id:
             raise ValueError("无权操作该计划")
 
-        # 删除关联的时间点
+        # 按 plan_id 批量删除关联数据（先删引用 plan_time_id 的日志/记录，再删时间点）
+        await self.db.execute(
+            delete(CheckinRecord).where(CheckinRecord.plan_id == plan_id)
+        )
+        await self.db.execute(
+            delete(NotificationLog).where(NotificationLog.plan_id == plan_id)
+        )
         await self.db.execute(
             delete(PlanNotificationTime).where(PlanNotificationTime.plan_id == plan_id)
         )
-        # 删除关联的渠道
         await self.db.execute(
             delete(PlanNotificationChannel).where(PlanNotificationChannel.plan_id == plan_id)
         )
-        # 删除主记录
-        await self.db.delete(plan)
+        # 删除计划主记录（使用语句删除，避免 ORM 级联对已手动删除的关联表发出二次删除警告）
+        await self.db.execute(
+            delete(CheckinPlan).where(CheckinPlan.id == plan_id)
+        )
         await self.db.commit()
 
     async def update_plan(

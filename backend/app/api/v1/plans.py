@@ -82,7 +82,7 @@ async def delete_plan(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除计划（user_id 来自 JWT，同时删除关联的时间点和渠道）"""
+    """删除计划（user_id 来自 JWT，按 plan_id 级联删除关联的打卡记录、通知记录、时间点与渠道关联，通知渠道保留）"""
     service = PlanService(db)
     try:
         await service.delete_plan(plan_id=plan_id, user_id=user_id)
