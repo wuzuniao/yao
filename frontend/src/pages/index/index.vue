@@ -427,12 +427,12 @@ const hasWechatNotification = computed(() => {
 // ===== 数据加载 =====
 
 // 计算单个计划的排序键（用于主要/次要卡片及任务列表排序）
-// 排序规则（与用户确认）：
-//   1. 第一键 group：当前匹配区间"未打卡"的计划排前（group=0），"已打卡"或无提醒时间的排后（group=1）
-//      —— "到达提醒时间"判定为当前时间落在某提醒的匹配区间内（getMatchIntervals 按相邻中点划分，覆盖全天）
+// 排序规则：
+//   1. 第一键 group：提醒时间已到且当前匹配区间未打卡的排前（group=0），其余排后（group=1）
+//      —— "提醒时间已到"判定为 nowMinutes >= 当前匹配区间对应的提醒时间（times[currentIdx].minutes）
 //   2. 第二键 sortKey：
-//      - group=0（未打卡）：按 priority 升序（冲突时优先级高的在前）
-//      - group=1（已打卡/无提醒）：按"下一个最近提醒时间"升序（未来最近的任务在前，无提醒时间设为 Infinity 排最后）
+//      - group=0（提醒已到且未打卡）：按 priority 升序（冲突时优先级高的在前）
+//      - group=1（提醒未到/已打卡/无提醒）：按"下一个最近提醒时间"升序（未来最近的任务在前，无提醒时间设为 Infinity 排最后）
 //   3. 第三键 priority：group=1 同提醒时间时按优先级升序
 //   4. 第四键 createdAt：保持稳定排序
 function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
@@ -459,9 +459,13 @@ function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
     }
   }
 
-  // 判定当前匹配区间是否已打卡
+  // 判定当前匹配区间是否已打卡（checkinMinutesList 元素为 { timeId, minutes }，需取 .minutes 比较）
   const interval = intervals[currentIdx]
-  const isChecked = (checkinMinutesList || []).some(m => m >= interval.start && m < interval.end)
+  const isChecked = (checkinMinutesList || []).some(m => m.minutes >= interval.start && m.minutes < interval.end)
+
+  // 判定"提醒时间是否已到"：当前时间 >= 当前匹配区间对应的提醒时间
+  // 例：提醒 8:00/16:00，当前 14:00 在 16:00 的匹配区间内，16:00 未到 → isReminderReached=false
+  const isReminderReached = nowMinutes >= times[currentIdx].minutes
 
   // 计算下一个最近提醒时间（>= nowMinutes 的最小提醒时间，无则回绕到明天第一个 +1440）
   let nextReminder = Infinity
@@ -475,15 +479,15 @@ function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
     nextReminder = times[0].minutes + 1440
   }
 
-  if (!isChecked) {
-    // group=0：当前匹配区间未打卡，sortKey 用 priority（冲突时优先级高的在前）
+  if (isReminderReached && !isChecked) {
+    // group=0：提醒时间已到且当前匹配区间未打卡，sortKey 用 priority（冲突时优先级高的在前）
     return { group: 0, sortKey: priority, priority, createdAt }
   }
-  // group=1：当前匹配区间已打卡，sortKey 用下一个最近提醒时间
+  // group=1：提醒时间未到、已打卡、或无提醒，sortKey 用下一个最近提醒时间
   return { group: 1, sortKey: nextReminder, priority, createdAt }
 }
 
-// 按新规则排序 plans（当前匹配区间未打卡的排前，冲突时按优先级；已打卡的排后，按最近提醒时间）
+// 按新规则排序 plans（提醒时间已到且未打卡的排前，冲突时按优先级；其余排后，按最近提醒时间）
 function sortPlansByCheckinStatus(plans, nowMinutes, allCheckinsByPlan) {
   return [...plans].sort((a, b) => {
     const keyA = computePlanSortKey(a, nowMinutes, allCheckinsByPlan[a.id])
@@ -584,20 +588,26 @@ async function loadAllTodayCheckins() {
   }
 }
 
-// 刷新打卡状态：重新加载所有打卡记录并按新规则重排 activePlans（保持用户已选主要卡片）
-// 用于每分钟定时刷新，确保任务状态变化（如到提醒时间、已打卡）时主要/次要卡片及时更新
+// 刷新打卡状态：重新加载所有打卡记录并按新规则重排 activePlans，每次刷新替换用户选择
+// 用于每1分钟定时刷新：到达提醒时间且未打卡的任务优先展示到主要卡片，替换掉用户1分钟前的选择
 async function refreshCheckinStatus() {
   if (!isLoggedIn.value || !hasActivePlans.value) return
   await loadAllTodayCheckins()
   const now = new Date()
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   activePlans.value = sortPlansByCheckinStatus(activePlans.value, nowMinutes, allTodayCheckins.value)
-  // 用户已手动选择且仍存在时保持；否则取排序后第一项
-  const currentPrimary = primaryPlanId.value
-  const primaryExists = currentPrimary !== null && activePlans.value.some(p => p.id === currentPrimary)
-  if (!primaryExists) {
-    primaryPlanId.value = activePlans.value.length > 0 ? activePlans.value[0].id : null
-  }
+  // 每次刷新都按新规则重新选择主要/次要卡片（排序后第一项为主要，第二项为次要）
+  primaryPlanId.value = activePlans.value.length > 0 ? activePlans.value[0].id : null
+  secondaryPlanId.value = null
+  forceActive.value = false
+}
+
+// 启动/重置1分钟刷新计时器（用户主动选择任务时调用以重置，保证用户选择至少保留1分钟）
+function startRefreshTimer() {
+  if (refreshTimer) clearInterval(refreshTimer)
+  refreshTimer = setInterval(() => {
+    refreshCheckinStatus()
+  }, 60000) // 1分钟
 }
 
 // ===== 任务切换 =====
@@ -616,6 +626,8 @@ function handleSecondaryClick() {
     secondaryPlanId.value = oldPrimaryId
     showTaskList.value = false
     forceActive.value = false
+    // 用户主动选择，重置1分钟刷新计时器（保证该选择至少保留1分钟）
+    startRefreshTimer()
   }
 }
 
@@ -636,6 +648,8 @@ function handleSelectTask(plan) {
   }
   showTaskList.value = false
   forceActive.value = false
+  // 用户主动选择，重置1分钟刷新计时器（保证该选择至少保留1分钟）
+  startRefreshTimer()
 }
 
 // ===== 打卡功能 =====
@@ -739,7 +753,7 @@ function handleLongPressEnd() {
 
 // ===== 生命周期 =====
 
-// 页面显示时加载数据（含从其他页面返回时刷新），并启动每分钟刷新定时器
+// 页面显示时加载数据（含从其他页面返回时刷新），并启动每1分钟刷新定时器
 onShow(() => {
   // 新手引导：上报当前页面（引导激活时推进/回退步骤）
   guideStore.onPageEnter('home')
@@ -753,12 +767,9 @@ onShow(() => {
   if (userStore.userInfo) {
     userStore.loadUnreadCount(true)
   }
-  // 每分钟刷新打卡状态：重新加载所有打卡记录并按新规则重排（用户在线时才检查）
-  if (!refreshTimer) {
-    refreshTimer = setInterval(() => {
-      refreshCheckinStatus()
-    }, 60000)
-  }
+  // 每1分钟刷新打卡状态：重新加载所有打卡记录并按新规则重排，替换用户选择
+  // 用户主动选择任务时会重置此计时器，保证选择至少保留1分钟
+  startRefreshTimer()
 })
 
 // 页面隐藏时清除定时器（用户不在线时不进行检查）
