@@ -5,7 +5,7 @@
 
     <view class="help-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="帮助中心" desc="找到常见问题的解答，或了解如何更好地管理您的习惯。" />
+      <PageHeader title="帮助中心" desc="找到常见问题的解答，解决APP使用问题。" />
 
       <!-- FAQ 卡片列表 -->
       <view class="help-page__list">
@@ -21,7 +21,7 @@
           <view class="help-page__card-body">
             <text class="help-page__card-title">如何允许微信通知？</text>
             <text class="help-page__card-text">通知方式页面中，授权订阅消息「打卡提醒」，打卡计划中添加「微信」通知方式。</text>
-            <text class="help-page__card-text">授权订阅消息通知后，勾选「总是保持以上选择」后，后续每次打卡时会静默+1次授权通知，且不再弹窗；也就是每次打卡自动+1次授权通知次数。不勾选则会弹窗提示。</text>
+            <text class="help-page__card-text">授权订阅消息通知后，勾选「总是保持以上选择」，后续每次打卡时会静默+1次授权通知，且不再弹窗；也就是每次打卡自动+1次授权通知次数。不勾选则会弹窗提示。</text>
             <text class="help-page__card-text">可在通知方式页多次授权增加通知次数。</text>
           </view>
         </view>
@@ -162,7 +162,7 @@ function copySmtpLink() {
   color: #0e0f0c;
   font-size: 32rpx;
   line-height: 48rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .help-page__card-text {
@@ -199,6 +199,7 @@ function copySmtpLink() {
   .help-page__card-title {
     font-size: 16px;
     line-height: 24px;
+    font-weight: 700;
   }
   .help-page__card-text {
     font-size: 16px;

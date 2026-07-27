@@ -220,15 +220,15 @@ useShare({ title: '隐私政策' })
   font-weight: 600;
 }
 
-/* ===== 前言（对应设计稿前言段落）===== */
+/* ===== 前言（对应设计稿前言段落，参考 PageHeader desc 样式）===== */
 .privacy-page__intro {
-  padding-bottom: 48rpx;
+  padding-bottom: 32rpx;
 }
 
 .privacy-page__intro-text {
-  color: #0e0f0c;
-  font-size: 40rpx;
-  line-height: 65.2rpx;
+  color: var(--color-text-secondary);
+  font-size: 32rpx;
+  line-height: 48rpx;
   font-weight: 400;
   white-space: pre-line;
 }
@@ -401,11 +401,11 @@ useShare({ title: '隐私政策' })
     line-height: 36px;
   }
   .privacy-page__intro {
-    padding-bottom: 24px;
+    padding-bottom: 16px;
   }
   .privacy-page__intro-text {
-    font-size: 20px;
-    line-height: 32.6px;
+    font-size: 16px;
+    line-height: 24px;
   }
   .privacy-page__card {
     padding: 24px;
