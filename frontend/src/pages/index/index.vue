@@ -428,16 +428,22 @@ const hasWechatNotification = computed(() => {
 
 // 计算单个计划的排序键（用于主要/次要卡片及任务列表排序）
 // 排序规则：
-//   1. 第一键 group：提醒时间已到且当前匹配区间未打卡的排前（group=0），其余排后（group=1）
+//   1. 第一键 dateGroup：今天在计划日期范围内（start_date <= today <= end_date）的排前（dateGroup=0），否则排后（dateGroup=1）
+//   2. 第二键 group：提醒时间已到且当前匹配区间未打卡的排前（group=0），其余排后（group=1）
 //      —— "提醒时间已到"判定为 nowMinutes >= 当前匹配区间对应的提醒时间（times[currentIdx].minutes）
-//   2. 第二键 sortKey：
+//   3. 第三键 sortKey：
 //      - group=0（提醒已到且未打卡）：按 priority 升序（冲突时优先级高的在前）
 //      - group=1（提醒未到/已打卡/无提醒）：按"下一个最近提醒时间"升序（未来最近的任务在前，无提醒时间设为 Infinity 排最后）
-//   3. 第三键 priority：group=1 同提醒时间时按优先级升序
-//   4. 第四键 createdAt：保持稳定排序
+//   4. 第四键 priority：group=1 同提醒时间时按优先级升序
+//   5. 第五键 createdAt：保持稳定排序
 function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
   const priority = plan.priority ?? 3
   const createdAt = new Date(plan.created_at || 0).getTime()
+
+  // 第一键：今天是否在计划日期范围内
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const dateGroup = (plan.start_date <= todayStr && todayStr <= plan.end_date) ? 0 : 1
 
   const times = (plan.notification_times || []).map(t => {
     const [h, m] = t.notification_time.split(':').map(Number)
@@ -446,7 +452,7 @@ function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
 
   if (times.length === 0) {
     // 无提醒时间：归到 group=1，最近提醒时间设为 Infinity 排最后
-    return { group: 1, sortKey: Infinity, priority, createdAt }
+    return { dateGroup, group: 1, sortKey: Infinity, priority, createdAt }
   }
 
   // 计算当前匹配区间索引（全天无留白，必定能找到）
@@ -481,17 +487,20 @@ function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
 
   if (isReminderReached && !isChecked) {
     // group=0：提醒时间已到且当前匹配区间未打卡，sortKey 用 priority（冲突时优先级高的在前）
-    return { group: 0, sortKey: priority, priority, createdAt }
+    return { dateGroup, group: 0, sortKey: priority, priority, createdAt }
   }
   // group=1：提醒时间未到、已打卡、或无提醒，sortKey 用下一个最近提醒时间
-  return { group: 1, sortKey: nextReminder, priority, createdAt }
+  return { dateGroup, group: 1, sortKey: nextReminder, priority, createdAt }
 }
 
-// 按新规则排序 plans（提醒时间已到且未打卡的排前，冲突时按优先级；其余排后，按最近提醒时间）
+// 按新规则排序 plans：
+//   1. 先按 dateGroup 升序：今天在计划日期范围内的排前
+//   2. 日期分组内按 group/sortKey/priority/createdAt 排序
 function sortPlansByCheckinStatus(plans, nowMinutes, allCheckinsByPlan) {
   return [...plans].sort((a, b) => {
     const keyA = computePlanSortKey(a, nowMinutes, allCheckinsByPlan[a.id])
     const keyB = computePlanSortKey(b, nowMinutes, allCheckinsByPlan[b.id])
+    if (keyA.dateGroup !== keyB.dateGroup) return keyA.dateGroup - keyB.dateGroup
     if (keyA.group !== keyB.group) return keyA.group - keyB.group
     if (keyA.sortKey !== keyB.sortKey) return keyA.sortKey - keyB.sortKey
     if (keyA.priority !== keyB.priority) return keyA.priority - keyB.priority
