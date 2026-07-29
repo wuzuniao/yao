@@ -10,8 +10,24 @@
         <text class="announcement-page__desc">发布与管理全站公告，仅管理员可操作。</text>
       </view>
 
+      <!-- 公告模板入口卡（点击后切换为模板编辑表单，隐藏已有公告列表） -->
+      <view
+        class="announcement-page__template-entry"
+        v-if="!showForm && !editingId && !isEditingTemplate"
+        @click="handleTemplateEntry"
+      >
+        <text class="announcement-page__template-entry-title">公告模板</text>
+        <text class="announcement-page__template-entry-subtitle">
+          {{ templateForm.title || '点击编辑公告模板' }}
+        </text>
+      </view>
+
       <!-- 发布公告入口卡（点击后切换为发布表单，隐藏已有公告列表） -->
-      <view class="announcement-page__new-entry" v-if="!showForm && !editingId" @click="handleNewEntry">
+      <view
+        class="announcement-page__new-entry"
+        v-if="!showForm && !editingId && !isEditingTemplate"
+        @click="handleNewEntry"
+      >
         <image class="announcement-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
         <text class="announcement-page__new-entry-text">发布公告</text>
       </view>
@@ -67,8 +83,59 @@
         </view>
       </view>
 
+      <!-- 模板编辑表单（默认隐藏，点击"公告模板"后显示） -->
+      <view class="announcement-page__form-wrap" v-if="isEditingTemplate">
+        <view class="announcement-page__form announcement-page__form--fade-in">
+          <text class="announcement-page__form-heading">编辑公告模板</text>
+
+          <!-- 公告标题 -->
+          <view class="announcement-page__field">
+            <text class="announcement-page__label">公告标题</text>
+            <input
+              class="announcement-page__input"
+              v-model="templateForm.title"
+              placeholder="请输入公告标题"
+              placeholder-class="announcement-page__placeholder"
+              :placeholder-style="phStyle('title')"
+              :maxlength="templateTitleLimit.max"
+              @input="e => templateForm.title = templateTitleLimit.handleInput(e)"
+              @focus="onFocus('title')"
+              @blur="onBlur"
+            />
+            <text v-if="templateTitleLimit.limitReached" class="announcement-page__limit-text">{{ templateTitleLimit.limitHint }}</text>
+          </view>
+
+          <!-- 公告内容 -->
+          <view class="announcement-page__field">
+            <text class="announcement-page__label">公告内容</text>
+            <textarea
+              class="announcement-page__textarea"
+              v-model="templateForm.content"
+              placeholder="请输入公告内容"
+              placeholder-class="announcement-page__placeholder"
+              :placeholder-style="phStyle('content')"
+              :maxlength="templateContentLimit.max"
+              @input="e => templateForm.content = templateContentLimit.handleInput(e)"
+              @focus="onFocus('content')"
+              @blur="onBlur"
+            />
+            <text v-if="templateContentLimit.limitReached" class="announcement-page__limit-text">{{ templateContentLimit.limitHint }}</text>
+          </view>
+
+          <!-- 取消 / 更新 -->
+          <view class="announcement-page__actions">
+            <view class="announcement-page__cancel" @click="cancelTemplate">
+              <text class="announcement-page__cancel-text">取消</text>
+            </view>
+            <view class="announcement-page__save" @click="handleTemplateUpdate">
+              <text class="announcement-page__save-text">更新</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
       <!-- 已有公告列表（从数据库动态加载，点击卡片就地展开编辑表单） -->
-      <view class="announcement-page__list" v-if="!showForm && announcements.length > 0">
+      <view class="announcement-page__list" v-if="!showForm && !isEditingTemplate && announcements.length > 0">
         <view
           v-for="item in announcements"
           :key="item.id"
@@ -142,8 +209,9 @@
  * 公告管理页（announcement.vue，分包 pages/user 下）
  * --------------------------------------------------------------------------
  * 功能：全站公告的发布 / 更新 / 删除（仅管理员可进入，前端角色 + 后端守卫双重校验）
- *  - 发布公告：点击"发布公告"入口卡后显示表单（标题 + 内容 + 取消/提交）
- *  - 公告列表：从数据库加载全部公告，按创建时间倒序（后端已排序）
+ *  - 公告模板：顶部"公告模板"入口卡，点击后编辑 id=1 的公共模板（标题 + 内容 + 取消/更新）
+ *  - 发布公告：点击"发布公告"入口卡后显示表单，自动用 id=1 模板内容预填充；提交后新增记录
+ *  - 公告列表：从数据库加载全部公告（已排除 id=1 模板），按创建时间倒序（后端已排序）
  *  - 就地展开编辑：点击公告卡片在卡片下方展开编辑表单（标题 + 内容 + 取消/更新）
  *  - 删除：点击卡片右上角垃圾桶图标（@click.stop 防误触展开）二次确认后删除
  *  - onLoad 角色守卫：非管理员（role !== 7）提示无权限并退回设置页
@@ -156,6 +224,7 @@ import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
 import {
   getAnnouncements,
+  getAnnouncementTemplate,
   publishAnnouncement,
   updateAnnouncement,
   deleteAnnouncement
@@ -168,12 +237,14 @@ useShare({ title: '公告管理' })
 
 const userStore = useUserStore()
 
-// 公告列表（从数据库加载，后端已按 created_at 倒序）
+// 公告列表（从数据库加载，后端已按 created_at 倒序；已排除 id=1 模板）
 const announcements = ref([])
 // 卡片切换：默认显示"发布公告"入口卡，点击后切换为发布表单
 const showForm = ref(false)
 // 当前展开编辑的公告ID（null 表示无展开）
 const editingId = ref(null)
+// 是否显示模板编辑表单
+const isEditingTemplate = ref(false)
 // 表单提交中标志位（防止重复提交）
 const isSubmitting = ref(false)
 
@@ -181,6 +252,8 @@ const isSubmitting = ref(false)
 const form = reactive({ title: '', content: '' })
 // 编辑表单（点击公告卡片时填充）
 const editingForm = reactive({ title: '', content: '' })
+// 模板表单（id=1 的公共模板）
+const templateForm = reactive({ title: '', content: '' })
 
 // 输入框 placeholder 聚焦交互
 const { onFocus, onBlur, phStyle } = usePlaceholder()
@@ -189,6 +262,8 @@ const titleLimit = useInputLimit(200)
 const contentLimit = useInputLimit(5000)
 const editTitleLimit = useInputLimit(200)
 const editContentLimit = useInputLimit(5000)
+const templateTitleLimit = useInputLimit(200)
+const templateContentLimit = useInputLimit(5000)
 
 onLoad(() => {
   // 角色守卫：非管理员禁止进入（服务端接口另有 get_current_admin 兜底）
@@ -198,17 +273,31 @@ onLoad(() => {
     return
   }
   loadAnnouncements()
+  loadTemplate()
 })
 
-// 加载公告列表
+// 加载公告列表（后端已排除 id=1 模板，此处再做一次防御性过滤）
 async function loadAnnouncements() {
   try {
     const res = await getAnnouncements()
     if (res.code === 0 && res.data) {
-      announcements.value = res.data
+      announcements.value = res.data.filter(item => item.id !== 1)
     }
   } catch (e) {
     console.warn('加载公告列表失败', e)
+  }
+}
+
+// 加载公共公告模板（id=1）
+async function loadTemplate() {
+  try {
+    const res = await getAnnouncementTemplate()
+    if (res.code === 0 && res.data) {
+      templateForm.title = res.data.title || ''
+      templateForm.content = res.data.content || ''
+    }
+  } catch (e) {
+    console.warn('加载公告模板失败', e)
   }
 }
 
@@ -245,16 +334,19 @@ function toggleEdit(item) {
   }
   editingId.value = item.id
   showForm.value = false
+  isEditingTemplate.value = false
   editingForm.title = item.title || ''
   editingForm.content = item.content || ''
 }
 
-// 发布入口：点击"发布公告"，隐藏列表，显示发布表单
-function handleNewEntry() {
+// 发布入口：点击"发布公告"，隐藏列表，显示发布表单；用 id=1 模板预填充输入框
+async function handleNewEntry() {
   showForm.value = true
   editingId.value = null
-  form.title = ''
-  form.content = ''
+  isEditingTemplate.value = false
+  await loadTemplate()
+  form.title = templateForm.title || ''
+  form.content = templateForm.content || ''
 }
 
 // 取消发布表单
@@ -265,6 +357,51 @@ function cancelForm() {
 // 取消编辑
 function cancelEdit() {
   editingId.value = null
+}
+
+// 模板入口：点击"公告模板"，隐藏列表，显示模板编辑表单
+async function handleTemplateEntry() {
+  isEditingTemplate.value = true
+  showForm.value = false
+  editingId.value = null
+  await loadTemplate()
+}
+
+// 取消模板编辑表单
+function cancelTemplate() {
+  isEditingTemplate.value = false
+}
+
+// 更新公共公告模板（id=1）
+async function handleTemplateUpdate() {
+  if (isSubmitting.value) return
+  if (!userStore.userInfo) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  if (!templateForm.title.trim()) {
+    uni.showToast({ title: '请输入公告标题', icon: 'none' })
+    return
+  }
+  if (!templateForm.content.trim()) {
+    uni.showToast({ title: '请输入公告内容', icon: 'none' })
+    return
+  }
+  isSubmitting.value = true
+  try {
+    const res = await updateAnnouncement(1, {
+      title: templateForm.title,
+      content: templateForm.content
+    })
+    if (res.code === 0) {
+      uni.showToast({ title: '模板更新成功', icon: 'success' })
+      isEditingTemplate.value = false
+    }
+  } catch (e) {
+    uni.showToast({ title: e.message || '模板更新失败', icon: 'none' })
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 // 发布新公告
@@ -398,6 +535,38 @@ async function handleUpdate(announcementId) {
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
+}
+
+/* ===== 公告模板入口卡 ===== */
+.announcement-page__template-entry {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8rpx;
+  padding: 32rpx 48rpx;
+  box-sizing: border-box;
+  min-height: 192rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #c1cab5;
+}
+
+.announcement-page__template-entry-title {
+  color: #2f6c00;
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 500;
+}
+
+.announcement-page__template-entry-subtitle {
+  color: #454745;
+  font-size: 28rpx;
+  line-height: 40rpx;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===== 发布/编辑表单 ===== */
@@ -670,6 +839,20 @@ async function handleUpdate(announcementId) {
   .announcement-page__new-entry-text {
     font-size: 16px;
     line-height: 24px;
+  }
+  .announcement-page__template-entry {
+    gap: 4px;
+    padding: 16px 24px;
+    min-height: 96px;
+    border-radius: 12px;
+  }
+  .announcement-page__template-entry-title {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .announcement-page__template-entry-subtitle {
+    font-size: 14px;
+    line-height: 20px;
   }
   .announcement-page__form {
     padding: 16px;

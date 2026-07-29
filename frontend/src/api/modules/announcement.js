@@ -11,11 +11,21 @@ export function getAnnouncements() {
 }
 
 /**
- * 查询最近 7 天内发布的公告（普通用户），按创建时间倒序
+ * 查询最近 7 天内发布的公告（普通用户），按创建时间倒序；后端已排除 id=1 模板
  */
 export function getRecentAnnouncements() {
   return request({
     url: '/api/v1/announcements/recent',
+    method: 'GET'
+  })
+}
+
+/**
+ * 查询公共公告模板（id=1，仅管理员）
+ */
+export function getAnnouncementTemplate() {
+  return request({
+    url: '/api/v1/announcements/template',
     method: 'GET'
   })
 }

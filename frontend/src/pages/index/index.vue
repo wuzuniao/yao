@@ -555,6 +555,7 @@ async function loadUserChannels() {
 }
 
 // 加载最近 7 天公告（普通用户），用于首页临时卡片轮播；失败不阻塞首页
+// 后端接口已排除 id=1 的公共模板，此处再做一次防御性过滤
 async function loadRecentAnnouncements() {
   if (!isLoggedIn.value) {
     recentAnnouncements.value = []
@@ -563,7 +564,7 @@ async function loadRecentAnnouncements() {
   try {
     const res = await getRecentAnnouncements()
     if (res.code === 0 && res.data) {
-      recentAnnouncements.value = res.data
+      recentAnnouncements.value = res.data.filter(item => item.id !== 1)
     }
   } catch (e) {
     console.warn('加载公告失败', e)

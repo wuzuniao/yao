@@ -25,14 +25,16 @@ class AnnouncementService:
         return announcement
 
     async def list_all(self) -> list[Announcement]:
-        """查询全部公告，按创建时间倒序（最新在前）"""
+        """查询全部公告（排除 id=1 的公共模板），按创建时间倒序（最新在前）"""
         result = await self.db.execute(
-            select(Announcement).order_by(Announcement.created_at.desc())
+            select(Announcement)
+            .where(Announcement.id != 1)
+            .order_by(Announcement.created_at.desc())
         )
         return list(result.scalars().all())
 
     async def list_recent(self, days: int = 7) -> list[Announcement]:
-        """查询最近 days 天内发布的公告，按创建时间倒序（最新在前）
+        """查询最近 days 天内发布的公告（排除 id=1 的公共模板），按创建时间倒序（最新在前）
 
         - 采用数据库服务器时间 func.now()，避免应用层时区偏差
         - 仅返回 created_at >= now - days 的记录
@@ -42,15 +44,30 @@ class AnnouncementService:
         since = func.date_sub(func.now(), text(f"INTERVAL {days} DAY"))
         result = await self.db.execute(
             select(Announcement)
+            .where(Announcement.id != 1)
             .where(Announcement.created_at >= since)
             .order_by(Announcement.created_at.desc())
         )
         return list(result.scalars().all())
 
+    async def get_template(self) -> Announcement | None:
+        """查询公共公告模板（id=1）"""
+        result = await self.db.execute(
+            select(Announcement).where(Announcement.id == 1)
+        )
+        return result.scalar_one_or_none()
+
     async def update(self, announcement_id: int, title: str, content: str) -> Announcement:
-        """更新指定公告，返回更新后的记录"""
+        """更新指定公告，返回更新后的记录；id=1 的公共模板不存在时自动创建"""
         announcement = await self._get_by_id(announcement_id)
-        if not announcement:
+        if announcement is None:
+            if announcement_id == 1:
+                announcement = Announcement(id=1, title=title, content=content)
+                self.db.add(announcement)
+                await self.db.flush()
+                await self.db.commit()
+                await self.db.refresh(announcement)
+                return announcement
             raise ValueError("公告不存在")
         announcement.title = title
         announcement.content = content

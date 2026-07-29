@@ -25,7 +25,7 @@ async def list_announcements(
     admin_id: int = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询全部公告（仅管理员）"""
+    """查询全部公告（仅管理员）；排除 id=1 的公共模板"""
     service = AnnouncementService(db)
     announcements = await service.list_all()
     return {
@@ -40,13 +40,30 @@ async def list_recent_announcements(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询最近 7 天内发布的公告（普通用户），按创建时间倒序"""
+    """查询最近 7 天内发布的公告（普通用户），按创建时间倒序；排除 id=1 公共模板"""
     service = AnnouncementService(db)
     announcements = await service.list_recent(days=7)
     return {
         "code": 0,
         "msg": "success",
         "data": [_announcement_to_dict(a) for a in announcements],
+    }
+
+
+@router.get("/template")
+async def get_announcement_template(
+    admin_id: int = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询公共公告模板（id=1），管理员用于发布表单预填充与模板编辑"""
+    service = AnnouncementService(db)
+    template = await service.get_template()
+    if not template:
+        raise HTTPException(status_code=404, detail="公告模板不存在")
+    return {
+        "code": 0,
+        "msg": "success",
+        "data": _announcement_to_dict(template),
     }
 
 
@@ -76,7 +93,7 @@ async def update_announcement(
     admin_id: int = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新公告（仅管理员）"""
+    """更新公告（仅管理员）；更新 id=1 的公共模板时若记录不存在则自动创建"""
     service = AnnouncementService(db)
     try:
         announcement = await service.update(
