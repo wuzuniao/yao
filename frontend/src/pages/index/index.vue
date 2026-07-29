@@ -879,14 +879,14 @@ onUnmounted(() => {
   padding: 48rpx 32rpx 32rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
 }
 
 .index-page__intro-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 56rpx;
   line-height: 80rpx;
   font-weight: 600;
@@ -908,7 +908,7 @@ onUnmounted(() => {
 
 .index-page__intro-section-title {
   display: block;
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 52rpx;
   font-weight: 600;
@@ -917,7 +917,7 @@ onUnmounted(() => {
 
 .index-page__intro-p {
   display: block;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 30rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -929,7 +929,7 @@ onUnmounted(() => {
 }
 
 .index-page__intro-link {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 30rpx;
   line-height: 48rpx;
   word-break: break-all;
@@ -949,10 +949,10 @@ onUnmounted(() => {
   margin: 16rpx 0 12rpx;
   padding: 12rpx 24rpx;
   border-radius: 16rpx;
-  background: #e8f5e0;
+  background: var(--color-brand-bg-light);
   /* 1px 内描边保留避免高分屏消失 */
-  box-shadow: inset 0 0 0 1px #c7e4b0;
-  color: #2f6c00;
+  box-shadow: inset 0 0 0 1px var(--color-brand-border-light);
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 44rpx;
   font-weight: 600;
@@ -960,22 +960,22 @@ onUnmounted(() => {
 }
 
 .index-page__intro-em {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-weight: 600;
 }
 
 .index-page__intro-strong {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
 .index-page__intro-warning {
-  color: #d03238;
+  color: var(--color-danger);
   font-weight: 600;
 }
 
 .index-page__intro-label {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
@@ -984,7 +984,7 @@ onUnmounted(() => {
   height: 96rpx;
   padding: 24rpx 0;
   box-sizing: border-box;
-  background: #9fe870;
+  background: var(--color-brand-bg);
   border-radius: 48rpx;
   display: flex;
   justify-content: center;
@@ -992,7 +992,7 @@ onUnmounted(() => {
 }
 
 .index-page__intro-action-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1004,14 +1004,14 @@ onUnmounted(() => {
   padding: 48rpx 32rpx 32rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
 }
 
 .index-page__guide-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 56rpx;
   line-height: 80rpx;
   font-weight: 600;
@@ -1036,7 +1036,7 @@ onUnmounted(() => {
 
 .index-page__guide-section-title {
   display: block;
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 52rpx;
   font-weight: 600;
@@ -1045,7 +1045,7 @@ onUnmounted(() => {
 
 .index-page__guide-line {
   display: block;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 30rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -1057,17 +1057,17 @@ onUnmounted(() => {
 }
 
 .index-page__guide-em {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-weight: 600;
 }
 
 .index-page__guide-arrow {
-  color: #7a7b79;
+  color: var(--color-text-muted);
   font-weight: 400;
 }
 
 .index-page__guide-link {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-weight: 600;
 }
 
@@ -1076,7 +1076,7 @@ onUnmounted(() => {
   height: 96rpx;
   padding: 24rpx 0;
   box-sizing: border-box;
-  background: #9fe870;
+  background: var(--color-brand-bg);
   border-radius: 48rpx;
   display: flex;
   justify-content: center;
@@ -1084,7 +1084,7 @@ onUnmounted(() => {
 }
 
 .index-page__guide-action-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1105,9 +1105,9 @@ onUnmounted(() => {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   /* box-shadow 偏移/模糊保留 px（视觉特效不随屏缩放），1px 内描边保留 */
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .index-page__primary-copy {
@@ -1118,7 +1118,7 @@ onUnmounted(() => {
 }
 
 .index-page__primary-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 48rpx;
   line-height: 64rpx;
   font-weight: 600;
@@ -1132,7 +1132,7 @@ onUnmounted(() => {
 
 .index-page__primary-desc {
   margin-top: 8rpx;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -1157,7 +1157,7 @@ onUnmounted(() => {
   padding: 8rpx 16rpx;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #9fe870;
+  background: var(--color-brand-bg);
   display: inline-flex;
   align-items: center;
   gap: 8rpx;
@@ -1167,11 +1167,11 @@ onUnmounted(() => {
   width: 16rpx;
   height: 16rpx;
   border-radius: 9999px;
-  background: #2ead4b;
+  background: var(--color-success);
 }
 
 .index-page__status-text {
-  color: #2e6900;
+  color: var(--color-brand-dark);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 500;
@@ -1184,9 +1184,9 @@ onUnmounted(() => {
   padding: 64rpx 32rpx 24rpx;
   box-sizing: border-box;
   border-radius: 0 0 64rpx 64rpx;
-  background: #f3f3f4;
+  background: var(--color-separator);
   /* 1px 内描边保留，避免高分屏消失 */
-  box-shadow: inset 0 0 0 1px #e2e2e2;
+  box-shadow: inset 0 0 0 1px var(--color-border-card);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1201,7 +1201,7 @@ onUnmounted(() => {
 }
 
 .index-page__secondary-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1215,7 +1215,7 @@ onUnmounted(() => {
 }
 
 .index-page__secondary-desc {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
   font-weight: 400;
@@ -1239,7 +1239,7 @@ onUnmounted(() => {
 }
 
 .index-page__secondary-more-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 40rpx;
   line-height: 48rpx;
   font-weight: 600;
@@ -1266,20 +1266,20 @@ onUnmounted(() => {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 32rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   display: flex;
   flex-direction: column;
   gap: 16rpx;
 }
 
 .index-page__task-list-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 600;
   padding-bottom: 16rpx;
   /* 1px 物理边框保留 */
-  border-bottom: 1px solid #e8ebe6;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .index-page__task-item {
@@ -1290,15 +1290,15 @@ onUnmounted(() => {
   padding: 24rpx;
   box-sizing: border-box;
   border-radius: 16rpx;
-  background: #f9f9f9;
+  background: var(--color-card-bg-alt);
 }
 
 .index-page__task-item--active {
-  background: #e8f5e0;
+  background: var(--color-brand-bg-light);
 }
 
 .index-page__task-item-name {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -1311,7 +1311,7 @@ onUnmounted(() => {
 }
 
 .index-page__task-item-check {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   font-weight: 600;
 }
@@ -1332,7 +1332,7 @@ onUnmounted(() => {
   width: 384rpx;
   height: 384rpx;
   border-radius: 9999px;
-  background: #d03238;
+  background: var(--color-danger);
   /* box-shadow 偏移/模糊保留 px */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
@@ -1343,18 +1343,18 @@ onUnmounted(() => {
 
 /* 禁用态（未登录/无任务/不在计划日期范围）：灰色背景，不显示图标，文字垂直居中 */
 .index-page__checkin-button--disabled {
-  background: #8a8a8a;
+  background: var(--color-btn-disabled-bg);
   box-shadow: none;
 }
 
 /* 已完成态（当前匹配区间内已打卡）：绿色背景 */
 .index-page__checkin-button--done {
-  background: #2ead4b;
+  background: var(--color-success);
 }
 
 /* 未到打卡时间态（未到第一个提醒时间的开始打卡时间，即提醒前2小时）：橙色背景 */
 .index-page__checkin-button--waiting {
-  background: #d97706;
+  background: var(--color-warning);
 }
 
 .index-page__checkin-icon {
@@ -1366,7 +1366,7 @@ onUnmounted(() => {
 
 .index-page__checkin-text {
   margin-top: 64rpx;
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1374,7 +1374,7 @@ onUnmounted(() => {
 
 /* 长按重置倒计时数字，占满按钮并垂直居中 */
 .index-page__checkin-countdown {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 144rpx;
   line-height: 384rpx;
   font-weight: 600;

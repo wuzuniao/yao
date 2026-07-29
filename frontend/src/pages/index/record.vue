@@ -381,7 +381,7 @@ onShow(() => {
   padding: 48rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -414,11 +414,11 @@ onShow(() => {
 }
 
 .record-page__calendar-arrow--left {
-  border-right: 7.4px solid #0e0f0c;
+  border-right: 7.4px solid var(--color-text-primary);
 }
 
 .record-page__calendar-arrow--right {
-  border-left: 7.4px solid #0e0f0c;
+  border-left: 7.4px solid var(--color-text-primary);
 }
 
 /* 年月选择器标题组 */
@@ -434,7 +434,7 @@ onShow(() => {
 }
 
 .record-page__calendar-year {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 48rpx;
   line-height: 64rpx;
   font-weight: 600;
@@ -442,7 +442,7 @@ onShow(() => {
 }
 
 .record-page__calendar-month {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 48rpx;
   line-height: 64rpx;
   font-weight: 600;
@@ -458,7 +458,7 @@ onShow(() => {
 
 .record-page__calendar-weekday {
   text-align: center;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
   font-weight: 400;
@@ -481,7 +481,7 @@ onShow(() => {
 }
 
 .record-page__calendar-day-num {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -489,7 +489,7 @@ onShow(() => {
 }
 
 .record-page__calendar-day-num--selected {
-  color: #225100;
+  color: var(--color-brand-darker);
 }
 
 .record-page__calendar-today {
@@ -497,7 +497,7 @@ onShow(() => {
   height: 72rpx;
   border-radius: 9999px;
   /* 绿色内边框始终区分"今天"；浅绿色背景仅在 today 被选中时通过 --active 修饰符叠加 */
-  box-shadow: inset 0 0 0 2px #2f6c00;
+  box-shadow: inset 0 0 0 2px var(--color-brand);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -505,14 +505,14 @@ onShow(() => {
 
 /* 修饰符：今天被选中时叠加浅绿色背景，与其他日期选中态视觉一致 */
 .record-page__calendar-today--active {
-  background: #e2f6d5;
+  background: var(--color-selected-bg);
 }
 
 .record-page__calendar-selected {
   width: 72rpx;
   height: 72rpx;
   border-radius: 9999px;
-  background: #e2f6d5;
+  background: var(--color-selected-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -524,7 +524,7 @@ onShow(() => {
   width: 8rpx;
   height: 8rpx;
   border-radius: 9999px;
-  background: #2ead4b;
+  background: var(--color-success);
 }
 
 /* ===== 当天打卡详情卡片 ===== */
@@ -533,7 +533,7 @@ onShow(() => {
   padding: 48rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -554,7 +554,7 @@ onShow(() => {
 }
 
 .record-page__list-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 600;
@@ -575,7 +575,7 @@ onShow(() => {
 
 .record-page__list-item--bordered {
   padding-bottom: 24rpx;
-  border-bottom: 1px solid #e8ebe6;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .record-page__list-item-marker {
@@ -592,11 +592,11 @@ onShow(() => {
   width: 16rpx;
   height: 16rpx;
   border-radius: 9999px;
-  background: #dadada;
+  background: var(--color-dot-inactive);
 }
 
 .record-page__list-item-dot--completed {
-  background: #2ead4b;
+  background: var(--color-success);
 }
 
 .record-page__list-item-content {
@@ -615,28 +615,28 @@ onShow(() => {
 }
 
 .record-page__list-item-time {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
 }
 
 .record-page__list-item-actual-time {
-  color: #2ead4b;
+  color: var(--color-success);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
 }
 
 .record-page__list-item-count {
-  color: #888888;
+  color: var(--color-text-faded);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
 }
 
 .record-page__list-item-name {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -647,7 +647,7 @@ onShow(() => {
 }
 
 .record-page__list-item-remark {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -672,7 +672,7 @@ onShow(() => {
 }
 
 .record-page__list-loading-text {
-  color: #888888;
+  color: var(--color-text-faded);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -686,7 +686,7 @@ onShow(() => {
 }
 
 .record-page__list-error-text {
-  color: #e8553a;
+  color: var(--color-error-text);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;

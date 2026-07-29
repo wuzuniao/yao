@@ -869,7 +869,7 @@ function handleLogout() {
 /* ===== 分组卡片 ===== */
 .profile-page__group {
   border-radius: 48rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
@@ -885,7 +885,7 @@ function handleLogout() {
 }
 
 .profile-page__group-item--bordered {
-  border-bottom: 1px solid #f3f3f4;
+  border-bottom: 1px solid var(--color-separator);
 }
 
 /* 账号待删除状态下（status=0）：分组1整体置灰且禁用所有交互 */
@@ -895,21 +895,21 @@ function handleLogout() {
 }
 
 .profile-page__group-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
 }
 
 .profile-page__group-text--danger {
-  color: #d03238;
+  color: var(--color-danger);
 }
 
 /* ===== 动态表单区域 ===== */
 .profile-page__form-section {
   padding: 24rpx 32rpx;
   box-sizing: border-box;
-  background: #fafafa;
+  background: var(--color-surface-form);
 }
 
 .profile-page__form-field {
@@ -920,7 +920,7 @@ function handleLogout() {
 }
 
 .profile-page__form-label {
-  color: #41493a;
+  color: var(--color-label);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -930,16 +930,16 @@ function handleLogout() {
   height: 88rpx;
   padding: 0 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 16rpx;
-  border: 1px solid #c1cab5;
-  color: #0e0f0c;
+  border: 1px solid var(--color-border-input);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 42rpx;
 }
 
 .profile-page__input--error {
-  border-color: #e5484d;
+  border-color: var(--color-form-error);
 }
 
 /* 密码行：统一边框容器，内含输入框与眼睛图标 */
@@ -947,17 +947,17 @@ function handleLogout() {
   position: relative;
   display: flex;
   align-items: stretch;
-  border: 1px solid #c1cab5;
+  border: 1px solid var(--color-border-input);
   border-radius: 16rpx;
-  background: #fff;
+  background: var(--color-card-bg);
 }
 
 .profile-page__password-row:focus-within {
-  border-color: #454745;
+  border-color: var(--color-text-secondary);
 }
 
 .profile-page__password-row--error {
-  border-color: #e5484d;
+  border-color: var(--color-form-error);
 }
 
 .profile-page__input--password {
@@ -983,19 +983,19 @@ function handleLogout() {
 }
 
 .profile-page__placeholder {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
 }
 
 .profile-page__error-text {
-  color: #e5484d;
+  color: var(--color-form-error);
   font-size: 24rpx;
   line-height: 32rpx;
 }
 
 /* 字符限制提示文字 */
 .profile-page__limit-text {
-  color: #d97706;
+  color: var(--color-warning);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -1014,7 +1014,7 @@ function handleLogout() {
   padding: 0 24rpx;
   box-sizing: border-box;
   border-radius: 16rpx;
-  border: 1px solid #c1cab5;
+  border: 1px solid var(--color-border-input);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1026,7 +1026,7 @@ function handleLogout() {
 }
 
 .profile-page__code-btn-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -1052,15 +1052,15 @@ function handleLogout() {
 }
 
 .profile-page__btn--cancel {
-  background: #f0f0f0;
+  background: var(--color-btn-cancel-bg);
 }
 
 .profile-page__btn--submit {
-  background: #9fe870;
+  background: var(--color-brand-bg);
 }
 
 .profile-page__btn-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -1083,12 +1083,12 @@ function handleLogout() {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f5f5f5;
+  background: var(--color-surface-hover);
 }
 
 .profile-page__avatar-option--selected {
-  border-color: #9fe870;
-  background: #e2f6d5;
+  border-color: var(--color-brand-bg);
+  background: var(--color-selected-bg);
 }
 
 .profile-page__avatar-image {

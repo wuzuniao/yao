@@ -4,11 +4,8 @@
     <BackButton />
 
     <view class="announcement-page__main">
-      <!-- 页面标题区 -->
-      <view class="announcement-page__header">
-        <text class="announcement-page__title">公告管理</text>
-        <text class="announcement-page__desc">发布与管理全站公告，仅管理员可操作。</text>
-      </view>
+      <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/profile 等页面保持一致） -->
+      <PageHeader title="公告管理" desc="发布与管理全站公告，仅管理员可操作。" />
 
       <!-- 公告模板入口卡（点击后切换为模板编辑表单，隐藏已有公告列表） -->
       <view
@@ -219,6 +216,7 @@
 import { reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
+import PageHeader from '../../components/PageHeader.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
@@ -486,30 +484,6 @@ async function handleUpdate(announcementId) {
   gap: 64rpx;
 }
 
-/* ===== 页面标题区 ===== */
-.announcement-page__header {
-  padding: 0 16rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.announcement-page__title {
-  color: #0e0f0c;
-  font-size: 64rpx;
-  line-height: 72rpx;
-  font-weight: 600;
-}
-
-.announcement-page__desc {
-  color: #454745;
-  font-size: 32rpx;
-  line-height: 48rpx;
-  font-weight: 400;
-  padding-top: 8rpx;
-  white-space: pre-line;
-}
-
 /* ===== 发布公告入口卡 ===== */
 .announcement-page__new-entry {
   display: flex;
@@ -520,8 +494,8 @@ async function handleUpdate(announcementId) {
   height: 192rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
 }
 
 .announcement-page__new-entry-icon {
@@ -531,7 +505,7 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__new-entry-text {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -548,19 +522,19 @@ async function handleUpdate(announcementId) {
   box-sizing: border-box;
   min-height: 192rpx;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
 }
 
 .announcement-page__template-entry-title {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
 }
 
 .announcement-page__template-entry-subtitle {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 40rpx;
   max-width: 100%;
@@ -578,8 +552,8 @@ async function handleUpdate(announcementId) {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 32rpx;
@@ -602,7 +576,7 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__form-heading {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 600;
@@ -616,14 +590,14 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__label {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
 }
 
 .announcement-page__placeholder {
-  color: #868685;
+  color: var(--color-text-tertiary);
   font-size: 32rpx;
 }
 
@@ -631,17 +605,17 @@ async function handleUpdate(announcementId) {
   height: 82rpx;
   padding: 0 24rpx;
   box-sizing: border-box;
-  background: #f9f9f9;
+  background: var(--color-card-bg-alt);
   border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px #e8ebe6;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 82rpx;
 }
 
 /* 字符限制提示文字 */
 .announcement-page__limit-text {
-  color: #d97706;
+  color: var(--color-warning);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -653,10 +627,10 @@ async function handleUpdate(announcementId) {
   height: 264rpx;
   padding: 16rpx 24rpx;
   box-sizing: border-box;
-  background: #f9f9f9;
+  background: var(--color-card-bg-alt);
   border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px #e8ebe6;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
 }
@@ -675,8 +649,8 @@ async function handleUpdate(announcementId) {
   padding: 24rpx 0;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e8ebe6;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border);
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -684,7 +658,7 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__cancel-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -696,7 +670,7 @@ async function handleUpdate(announcementId) {
   padding: 24rpx 0;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #2f6c00;
+  background: var(--color-brand);
   box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: row;
@@ -705,7 +679,7 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__save-text {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -728,7 +702,7 @@ async function handleUpdate(announcementId) {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
@@ -761,7 +735,7 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__card-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -771,7 +745,7 @@ async function handleUpdate(announcementId) {
 }
 
 .announcement-page__card-subtitle {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -801,8 +775,8 @@ async function handleUpdate(announcementId) {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 0 0 24rpx 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 32rpx;
@@ -813,19 +787,6 @@ async function handleUpdate(announcementId) {
   .announcement-page__main {
     padding: 105px 24px 32px;
     gap: 32px;
-  }
-  .announcement-page__header {
-    padding: 0 8px;
-    gap: 8px;
-  }
-  .announcement-page__title {
-    font-size: 32px;
-    line-height: 36px;
-  }
-  .announcement-page__desc {
-    font-size: 16px;
-    line-height: 24px;
-    padding-top: 4px;
   }
   .announcement-page__new-entry {
     gap: 8px;

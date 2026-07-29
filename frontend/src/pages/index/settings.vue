@@ -325,8 +325,8 @@ function goPrivacy() {
   padding: 48rpx;
   box-sizing: border-box;
   border-radius: 48rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -364,7 +364,7 @@ function goPrivacy() {
 }
 
 .settings-page__profile-name {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 56rpx;
   line-height: 70rpx;
   font-weight: 600;
@@ -376,7 +376,7 @@ function goPrivacy() {
 }
 
 .settings-page__profile-slogan {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 52rpx;
   font-weight: 400;
@@ -450,12 +450,12 @@ function goPrivacy() {
   padding: 24rpx 32rpx;
   box-sizing: border-box;
   border-radius: 48rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .settings-page__admin-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 600;
@@ -470,13 +470,13 @@ function goPrivacy() {
   padding: 32rpx 32rpx;
   box-sizing: border-box;
   border-radius: 48rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .settings-page__link-card--plan {
-  background: #e2f6d5;
-  box-shadow: inset 0 0 0 1px #9fe870, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-selected-bg);
+  box-shadow: inset 0 0 0 1px var(--color-brand-bg), var(--shadow-card);
 }
 
 .settings-page__link-left {
@@ -486,7 +486,7 @@ function goPrivacy() {
 }
 
 .settings-page__link-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -504,11 +504,11 @@ function goPrivacy() {
   width: 16rpx;
   height: 16rpx;
   border-radius: 9999px;
-  background: #2f6c00;
+  background: var(--color-brand);
 }
 
 .settings-page__link-status-text {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 24rpx;
   line-height: 32rpx;
   font-weight: 400;
@@ -528,7 +528,7 @@ function goPrivacy() {
 }
 
 .settings-page__link-value {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -541,7 +541,7 @@ function goPrivacy() {
 }
 
 .settings-page__link-value--active {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-weight: 500;
 }
 
@@ -552,13 +552,13 @@ function goPrivacy() {
 
 /* ===== 右箭头颜色变体（基础样式复用全局 .u-arrow-right，此处仅覆盖颜色） ===== */
 .settings-page__arrow--green {
-  border-left-color: #2f6c00;
+  border-left-color: var(--color-brand);
 }
 
 /* ===== 分组 2 ===== */
 .settings-page__group2 {
   border-radius: 48rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
@@ -574,11 +574,11 @@ function goPrivacy() {
 }
 
 .settings-page__group2-item--bordered {
-  border-bottom: 1px solid #f3f3f4;
+  border-bottom: 1px solid var(--color-separator);
 }
 
 .settings-page__group2-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;

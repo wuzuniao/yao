@@ -66,8 +66,7 @@
           "__init__.py": "工具包初始化文件",
           "logger.py": "日志配置与工具",
           "crypto.py": "AES-256-GCM 对称加密工具（encrypt/decrypt），用于邮件客户端专用密码加密存储，存储格式 base64(nonce+ciphertext+tag)",
-          "timezone.py": "时区工具模块，统一上海时区 UTC+8：SHANGHAI_TZ 常量、now_shanghai() 返回 naive 上海 datetime、today_shanghai() 返回上海 date",
-          "announcementRead.js": "公告已读持久化工具：announcementReadState 本地存储 {exp,readMap}，exp 取自当前 JWT 过期时间戳（秒），readMap 为 {公告id:已读时的updated_at}；getTokenExp 解析 JWT exp（兼容小程序无 atob，回退 uni.base64ToArrayBuffer）、loadReadMap 读取当前 token 下已读映射（exp 缺失/不匹配/过期返回空）、markRead(item) 记录该公告 updated_at、getUnread 过滤未读（仅 id 存在且 updated_at 一致才算已读）；已读绑定当前登录 token（过期/重新登录失效），且公告 updated_at 变化（后端更新）即重新展示"
+          "timezone.py": "时区工具模块，统一上海时区 UTC+8：SHANGHAI_TZ 常量、now_shanghai() 返回 naive 上海 datetime、today_shanghai() 返回上海 date"
         },
         "main.py": "FastAPI应用入口，负责挂载路由和中间件；CORS 中间件使用 settings.cors_origins_list 白名单（来自 CORS_ALLOW_ORIGINS 环境变量），allow_methods 限定为 GET/POST/PUT/DELETE/OPTIONS，allow_headers 限定为 Authorization/Content-Type；lifespan 中实例化 SchedulerService 并调用 start_all/stop_all，由其统一管理后台循环（账号清理/计划关闭/通知派发）"
       },
@@ -166,6 +165,10 @@
             "forgot-password.vue": "找回密码页面，两步流程：步骤1输入邮箱+验证码验证身份，步骤2设置新密码。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'",
             "announcement.vue": "公告管理页面（分包 pages/user，仅管理员可进入，onLoad 校验 role==7 否则提示无权限并退回）。顶部'公告模板'入口卡点击后编辑 id=1 的公共模板（标题+内容+取消/更新）；'发布公告'入口卡点击后显示表单，自动用 id=1 模板内容预填充输入框，提交后新增公告记录；已有公告卡片列表从数据库加载（已排除 id=1 模板），点击卡片就地展开编辑表单（标题+内容+取消/更新），右上角红色垃圾桶图标点击二次确认后删除；样式与交互对齐 plan.vue（announcement-page__ 前缀/BEM/宽屏断点）"
           }
+        },
+        "utils": {
+          "描述": "前端通用工具函数目录",
+          "announcementRead.js": "公告已读持久化工具：announcementReadState 本地存储 {exp,readMap}，exp 取自当前 JWT 过期时间戳（秒），readMap 为 {公告id:已读时的updated_at}；getTokenExp 解析 JWT exp（兼容小程序无 atob，回退 uni.base64ToArrayBuffer）、loadReadMap 读取当前 token 下已读映射（exp 缺失/不匹配/过期返回空）、markRead(item) 记录该公告 updated_at、getUnread 过滤未读（仅 id 存在且 updated_at 一致才算已读）；已读绑定当前登录 token（过期/重新登录失效），且公告 updated_at 变化（后端更新）即重新展示"
         },
         "App.vue": "应用根组件",
         "main.js": "应用入口文件",

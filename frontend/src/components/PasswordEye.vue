@@ -39,7 +39,7 @@ defineProps({
 .pwd-eye__open {
   width: 44rpx;
   height: 28rpx;
-  border: 3rpx solid #454745;
+  border: 3rpx solid var(--color-text-secondary);
   border-radius: 50% / 58% 58% 42% 42%;
   box-sizing: border-box;
   display: flex;
@@ -52,7 +52,7 @@ defineProps({
   width: 14rpx;
   height: 14rpx;
   border-radius: 50%;
-  background: #454745;
+  background: var(--color-text-secondary);
 }
 
 /* ===== 闭眼：向下弯曲的闭合弧线（仅下边框 + 下圆角）
@@ -60,7 +60,7 @@ defineProps({
 .pwd-eye__closed {
   width: 44rpx;
   height: 22rpx;
-  border: 3rpx solid #454745;
+  border: 3rpx solid var(--color-text-secondary);
   border-top: none;
   border-radius: 0 0 50% 50% / 0 0 70% 70%;
   box-sizing: border-box;

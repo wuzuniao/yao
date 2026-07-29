@@ -94,11 +94,11 @@ function handleClick(type) {
   padding: 16rpx 51rpx;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow:
     0 4px 6px -4px rgba(0, 0, 0, 0.1),
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px #e2e2e2;
+    inset 0 0 0 1px var(--color-border-card);
   display: flex;
   align-items: center;
   gap: 70rpx;
@@ -120,7 +120,7 @@ function handleClick(type) {
 
 .bottom-nav__item--active {
   height: 132rpx;
-  background: #9fe870;
+  background: var(--color-brand-bg);
 }
 
 .bottom-nav__icon {
@@ -143,14 +143,14 @@ function handleClick(type) {
 }
 
 .bottom-nav__text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
 }
 
 .bottom-nav__text--active {
-  color: #2f6c00;
+  color: var(--color-brand);
 }
 
 /* ===== 平板/折叠屏断点（≥768px）=====

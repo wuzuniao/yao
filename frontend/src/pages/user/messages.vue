@@ -267,7 +267,7 @@ onReachBottom(() => {
   position: relative;
   padding: 32rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -277,7 +277,7 @@ onReachBottom(() => {
 
 /* 未读卡片高亮：浅绿背景，与左侧绿色竖条形成视觉强调 */
 .messages-page__card--unread {
-  background: #f1f8e8;
+  background: var(--color-unread-bg);
 }
 
 /* 未读左侧高亮竖条（品牌绿） */
@@ -297,14 +297,14 @@ onReachBottom(() => {
 }
 
 .messages-page__card-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 600;
 }
 
 .messages-page__card-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 52rpx;
   font-weight: 400;
@@ -312,7 +312,7 @@ onReachBottom(() => {
 }
 
 .messages-page__card-time {
-  color: #868685;
+  color: var(--color-text-tertiary);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -327,7 +327,7 @@ onReachBottom(() => {
 }
 
 .messages-page__status-text {
-  color: #868685;
+  color: var(--color-text-tertiary);
   font-size: 28rpx;
 }
 

@@ -480,7 +480,7 @@ function goPrivacy() {
   width: 684rpx;
   padding: 48rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -497,7 +497,7 @@ function goPrivacy() {
 }
 
 .register-page__title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 64rpx;
   line-height: 72rpx;
   font-weight: 600;
@@ -505,7 +505,7 @@ function goPrivacy() {
 }
 
 .register-page__subtitle {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -526,7 +526,7 @@ function goPrivacy() {
 }
 
 .register-page__label {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -536,16 +536,16 @@ function goPrivacy() {
   height: 98rpx;
   padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 42rpx;
 }
 
 .register-page__placeholder {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
 }
 
@@ -554,17 +554,17 @@ function goPrivacy() {
   position: relative;
   display: flex;
   align-items: stretch;
-  border: 1px solid #c1cab5;
+  border: 1px solid var(--color-border-input);
   border-radius: 24rpx;
-  background: #fff;
+  background: var(--color-card-bg);
 }
 
 .register-page__password-row:focus-within {
-  border-color: #454745;
+  border-color: var(--color-text-secondary);
 }
 
 .register-page__password-row--error {
-  border-color: #e5484d;
+  border-color: var(--color-form-error);
 }
 
 .register-page__input--password {
@@ -588,19 +588,19 @@ function goPrivacy() {
 
 /* 输入框错误态：红色边框（覆盖默认 #c1cab5） */
 .register-page__input--error {
-  box-shadow: inset 0 0 0 1px #e5484d;
+  box-shadow: inset 0 0 0 1px var(--color-form-error);
 }
 
 /* 错误提示文字 */
 .register-page__error-text {
-  color: #e5484d;
+  color: var(--color-form-error);
   font-size: 24rpx;
   line-height: 32rpx;
 }
 
 /* 字符限制提示文字 */
 .register-page__limit-text {
-  color: #d97706;
+  color: var(--color-warning);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -618,17 +618,17 @@ function goPrivacy() {
   height: 98rpx;
   padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 42rpx;
 }
 
 /* 验证码输入框错误态：红色边框 */
 .register-page__code-input--error {
-  box-shadow: inset 0 0 0 1px #e5484d;
+  box-shadow: inset 0 0 0 1px var(--color-form-error);
 }
 
 .register-page__code-btn {
@@ -637,7 +637,7 @@ function goPrivacy() {
   padding: 27rpx 24rpx 29rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -649,7 +649,7 @@ function goPrivacy() {
 }
 
 .register-page__code-btn-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -668,8 +668,8 @@ function goPrivacy() {
   width: 32rpx;
   height: 32rpx;
   border-radius: 8rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -678,21 +678,21 @@ function goPrivacy() {
 }
 
 .register-page__checkbox--checked {
-  background: #2f6c00;
-  box-shadow: inset 0 0 0 1px #2f6c00;
+  background: var(--color-brand);
+  box-shadow: inset 0 0 0 1px var(--color-brand);
 }
 
 /* 选中态对勾（CSS 绘制） */
 .register-page__checkmark {
   width: 10rpx;
   height: 16rpx;
-  border-right: 1.5px solid #ffffff;
-  border-bottom: 1.5px solid #ffffff;
+  border-right: 1.5px solid var(--color-text-inverse);
+  border-bottom: 1.5px solid var(--color-text-inverse);
   transform: rotate(45deg) translate(-1px, -1px);
 }
 
 .register-page__agree-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
   font-weight: 400;
@@ -700,7 +700,7 @@ function goPrivacy() {
 
 /* 《隐私政策》可点击链接：与同行文本样式一致，点击触发跳转 */
 .register-page__agree-link {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
   font-weight: 400;
@@ -711,7 +711,7 @@ function goPrivacy() {
   height: 96rpx;
   padding: 24rpx 0;
   box-sizing: border-box;
-  background: #9fe870;
+  background: var(--color-brand-bg);
   border-radius: 48rpx;
   display: flex;
   justify-content: center;
@@ -719,7 +719,7 @@ function goPrivacy() {
 }
 
 .register-page__submit-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -733,14 +733,14 @@ function goPrivacy() {
 }
 
 .register-page__footer-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
 }
 
 .register-page__footer-link {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;

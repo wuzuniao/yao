@@ -973,19 +973,19 @@ async function handleUpdateWechat() {
   padding: 24rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
 }
 
 /* 通知方式未启用：卡片整体置灰（仅改变颜色，不影响点击修改等功能） */
 .notification-page__card--disabled {
-  background: #f2f3f1;
+  background: var(--color-card-disabled-bg);
 
   .notification-page__card-title {
-    color: #9a9c99;
+    color: var(--color-text-disabled);
   }
 
   .notification-page__card-subtitle {
-    color: #b3b5b2;
+    color: var(--color-text-disabled-subtle);
   }
 
   .notification-page__card-icon,
@@ -1019,14 +1019,14 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__card-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
 }
 
 .notification-page__card-subtitle {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
   font-weight: 400;
@@ -1066,13 +1066,13 @@ async function handleUpdateWechat() {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 40rpx;
   font-weight: 600;
 }
 
 .notification-page__card-badge--wechat {
-  background: #07c160; // 微信绿，便于用户识别
+  background: var(--color-wechat); // 微信绿，便于用户识别
 }
 
 /* 渠道操作区（重新授权 + 删除） */
@@ -1089,7 +1089,7 @@ async function handleUpdateWechat() {
   padding: 0 24rpx;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #07c160;
+  background: var(--color-wechat);
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -1097,7 +1097,7 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__card-reauth-text {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 26rpx;
   font-weight: 500;
 }
@@ -1107,8 +1107,8 @@ async function handleUpdateWechat() {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 32rpx;
@@ -1125,8 +1125,8 @@ async function handleUpdateWechat() {
   padding: 24rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
 }
 
 /* CSS 绘制加号图标（避免引入额外二进制资源） */
@@ -1143,7 +1143,7 @@ async function handleUpdateWechat() {
   left: 0;
   width: 28rpx;
   height: 4rpx;
-  background: #2f6c00;
+  background: var(--color-brand);
   transform: translateY(-50%);
 }
 
@@ -1153,12 +1153,12 @@ async function handleUpdateWechat() {
   top: 0;
   width: 4rpx;
   height: 28rpx;
-  background: #2f6c00;
+  background: var(--color-brand);
   transform: translateX(-50%);
 }
 
 .notification-page__add-text {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1169,8 +1169,8 @@ async function handleUpdateWechat() {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e8ebe6, 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 32rpx;
@@ -1193,7 +1193,7 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__form-heading {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 600;
@@ -1207,14 +1207,14 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__label {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
 }
 
 .notification-page__placeholder {
-  color: #868685;
+  color: var(--color-text-tertiary);
   font-size: 32rpx;
 }
 
@@ -1224,22 +1224,22 @@ async function handleUpdateWechat() {
   /* 解决微信小程序原生 input 组件文本超出下边框问题（含聚焦态） */
   padding: 0 24rpx;
   box-sizing: border-box;
-  background: #f9f9f9;
+  background: var(--color-card-bg-alt);
   border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px #e8ebe6;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 82rpx;
 }
 
 /* 输入框错误态：红色边框 */
 .notification-page__input--error {
-  box-shadow: inset 0 0 0 1px #e5484d;
+  box-shadow: inset 0 0 0 1px var(--color-form-error);
 }
 
 /* 错误提示文字 */
 .notification-page__error-text {
-  color: #e5484d;
+  color: var(--color-form-error);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -1247,7 +1247,7 @@ async function handleUpdateWechat() {
 
 /* 字符限制提示文字 */
 .notification-page__limit-text {
-  color: #d97706;
+  color: var(--color-warning);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -1273,8 +1273,8 @@ async function handleUpdateWechat() {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #e8ebe6;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1282,8 +1282,8 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__radio--checked {
-  background: #2f6c00;
-  box-shadow: inset 0 0 0 1px #2f6c00;
+  background: var(--color-brand);
+  box-shadow: inset 0 0 0 1px var(--color-brand);
 }
 
 /* 单选框选中态圆点（CSS 绘制） */
@@ -1291,11 +1291,11 @@ async function handleUpdateWechat() {
   width: 16rpx;
   height: 16rpx;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--color-card-bg);
 }
 
 .notification-page__radio-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -1308,7 +1308,7 @@ async function handleUpdateWechat() {
   padding: 24rpx 0;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #2f6c00;
+  background: var(--color-brand);
   box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: center;
@@ -1317,12 +1317,12 @@ async function handleUpdateWechat() {
 
 /* 保存按钮置灰态（邮件类型未填写完整时） */
 .notification-page__save--disabled {
-  background: #c1cab5;
+  background: var(--color-border-input);
   box-shadow: none;
 }
 
 .notification-page__save-text {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1346,15 +1346,15 @@ async function handleUpdateWechat() {
   padding: 24rpx 0;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .notification-page__cancel-text {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -1379,7 +1379,7 @@ async function handleUpdateWechat() {
   padding: 48rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1387,14 +1387,14 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__countdown-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 48rpx;
   font-weight: 600;
 }
 
 .notification-page__countdown-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;

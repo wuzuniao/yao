@@ -25,17 +25,47 @@ page {
   --color-text-primary: #0e0f0c;    /* 主文本：标题、卡片正文 */
   --color-text-secondary: #454745;  /* 次要文本：描述、辅助说明 */
   --color-text-tertiary: #868685;   /* 占位/弱化文本：placeholder、箭头 */
+  --color-text-muted: #7a7b79;      /* 弱化文本变体：时间戳、徽标小字 */
+  --color-text-faded: #888888;      /* 灰色文字：计数、次要数值 */
+  --color-text-disabled: #9a9c99;   /* 禁用态标题文字 */
+  --color-text-disabled-subtle: #b3b5b2; /* 禁用态副标题文字 */
+  --color-label: #41493a;           /* 表单标签、胶囊徽标文字 */
+  --color-label-muted: #5e5f5a;     /* 弱化标签文字：联系页标签 */
+  --color-link: #0066cc;            /* 链接文字 */
+  --color-error-text: #e8553a;      /* 错误提示文字（列表态） */
+  --color-placeholder-focus: #c0c0c0; /* placeholder 聚焦色 */
+  --color-text-inverse: #ffffff;    /* 反色文字：品牌色/危险色等彩色背景上的白色文字与图标 */
 
   /* ----- 品牌色 ----- */
   --color-brand: #2f6c00;           /* 主品牌绿：主按钮、强调态 */
   --color-brand-bg: #9fe870;        /* 品牌浅绿：次级按钮、激活徽章背景 */
+  --color-brand-dark: #2e6900;      /* 品牌深绿：徽标深色文字 */
+  --color-brand-darker: #225100;    /* 品牌更深绿：选中日文字 */
+  --color-brand-bg-light: #e8f5e0;  /* 品牌极浅绿：徽标浅色背景 */
+  --color-brand-border-light: #c7e4b0; /* 品牌浅绿描边 */
+  --color-success: #2ead4b;         /* 成功绿：完成状态标识 */
+  --color-wechat: #07c160;          /* 微信品牌绿 */
   --color-danger: #d03238;          /* 危险红：退出登录、删除等危险操作 */
+  --color-form-error: #e5484d;      /* 表单错误：输入框错误边框、错误提示文字 */
+  --color-warning: #d97706;         /* 警告：字符限制提示等 */
 
   /* ----- 卡片 / 容器 ----- */
   --color-card-bg: #ffffff;
   --color-card-bg-alt: #f9f9f9;     /* 输入框、次级容器背景 */
   --color-border: #e8ebe6;          /* 卡片内描边、分隔线 */
   --color-border-input: #c1cab5;    /* 输入框外描边 */
+  --color-border-card: #e2e2e2;     /* 卡片阴影描边（box-shadow 用） */
+  --color-separator: #f3f3f4;       /* 分组分隔线背景 */
+  --color-selected-bg: #e2f6d5;     /* 选中态背景 */
+  --color-surface-form: #fafafa;    /* 表单区域背景 */
+  --color-surface-hover: #f5f5f5;   /* 悬停/选项背景 */
+  --color-unread-bg: #f1f8e8;       /* 未读卡片背景 */
+  --color-card-disabled-bg: #f2f3f1; /* 禁用卡片背景 */
+  --color-btn-cancel-bg: #f0f0f0;   /* 取消按钮背景 */
+  --color-btn-disabled-bg: #8a8a8a; /* 禁用按钮背景 */
+  --color-dot-inactive: #dadada;    /* 未激活圆点背景 */
+  --color-stripe-default: #e1e0da;  /* 卡片条纹默认色 */
+  --color-stripe-paused: #4a4a4a;   /* 卡片条纹暂停色 */
 
   /* ----- 阴影（box-shadow 偏移与模糊半径保留 px，视觉效果不应缩放）----- */
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);

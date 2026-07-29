@@ -99,7 +99,7 @@ useShare({ title: '联系我们' })
 .contact-page__card {
   padding: 48rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -127,14 +127,14 @@ useShare({ title: '联系我们' })
 }
 
 .contact-page__item-label {
-  color: #5e5f5a;
+  color: var(--color-label-muted);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
 }
 
 .contact-page__item-value {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
@@ -148,7 +148,7 @@ useShare({ title: '联系我们' })
 .contact-page__qr-bg {
   width: 280rpx;
   height: 280rpx;
-  background: #f3f3f4;
+  background: var(--color-separator);
   border-radius: 16rpx;
   display: flex;
   flex-direction: row;

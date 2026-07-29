@@ -428,7 +428,7 @@ function goPrivacy() {
   margin-top: 64rpx;
   padding: 48rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -437,7 +437,7 @@ function goPrivacy() {
 }
 
 .login-page__title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 64rpx;
   line-height: 72rpx;
   font-weight: 600;
@@ -461,7 +461,7 @@ function goPrivacy() {
 }
 
 .login-page__label {
-  color: #41493a;
+  color: var(--color-label);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -472,22 +472,22 @@ function goPrivacy() {
   height: 98rpx;
   padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 42rpx;
 }
 
 /* 输入框错误态：红色边框（覆盖默认 #c1cab5） */
 .login-page__input--error {
-  box-shadow: inset 0 0 0 1px #e5484d;
+  box-shadow: inset 0 0 0 1px var(--color-form-error);
 }
 
 /* 错误提示文字 */
 .login-page__error-text {
-  color: #e5484d;
+  color: var(--color-form-error);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
@@ -495,14 +495,14 @@ function goPrivacy() {
 
 /* 字符限制提示文字 */
 .login-page__limit-text {
-  color: #d97706;
+  color: var(--color-warning);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
 }
 
 .login-page__placeholder {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
 }
 
@@ -512,17 +512,17 @@ function goPrivacy() {
   display: flex;
   align-items: stretch;
   margin-top: 8rpx;
-  border: 1px solid #c1cab5;
+  border: 1px solid var(--color-border-input);
   border-radius: 16rpx;
-  background: #fff;
+  background: var(--color-card-bg);
 }
 
 .login-page__password-row:focus-within {
-  border-color: #454745;
+  border-color: var(--color-text-secondary);
 }
 
 .login-page__password-row--error {
-  border-color: #e5484d;
+  border-color: var(--color-form-error);
 }
 
 .login-page__input--password {
@@ -555,7 +555,7 @@ function goPrivacy() {
 }
 
 .login-page__forgot {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
 }
@@ -578,8 +578,8 @@ function goPrivacy() {
   width: 32rpx;
   height: 32rpx;
   border-radius: 8rpx;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  background: var(--color-card-bg);
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -587,29 +587,29 @@ function goPrivacy() {
 }
 
 .login-page__checkbox--checked {
-  background: #2f6c00;
-  box-shadow: inset 0 0 0 1px #2f6c00;
+  background: var(--color-brand);
+  box-shadow: inset 0 0 0 1px var(--color-brand);
 }
 
 /* 选中态对勾（CSS 绘制） */
 .login-page__checkmark {
   width: 10rpx;
   height: 16rpx;
-  border-right: 1.5px solid #ffffff;
-  border-bottom: 1.5px solid #ffffff;
+  border-right: 1.5px solid var(--color-text-inverse);
+  border-bottom: 1.5px solid var(--color-text-inverse);
   transform: rotate(45deg) translate(-1px, -1px);
 }
 
 .login-page__remember-text {
   margin-left: 16rpx;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
 }
 
 /* 《隐私政策》可点击链接：与同行文本样式一致，点击触发跳转 */
 .login-page__agree-link {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 32rpx;
 }
@@ -619,7 +619,7 @@ function goPrivacy() {
   height: 96rpx;
   padding: 24rpx 0;
   box-sizing: border-box;
-  background: #9fe870;
+  background: var(--color-brand-bg);
   border-radius: 48rpx;
   display: flex;
   justify-content: center;
@@ -627,7 +627,7 @@ function goPrivacy() {
 }
 
 .login-page__submit-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -641,14 +641,14 @@ function goPrivacy() {
 }
 
 .login-page__footer-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;
 }
 
 .login-page__footer-link {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -661,7 +661,7 @@ function goPrivacy() {
 }
 
 .login-page__switch-text {
-  color: #2f6c00;
+  color: var(--color-brand);
   font-size: 36rpx;
   line-height: 52rpx;
   font-weight: 600;
@@ -675,7 +675,7 @@ function goPrivacy() {
   margin-top: 64rpx;
   padding: 48rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;

@@ -145,7 +145,7 @@ function copySmtpLink() {
 .help-page__card {
   padding: 32rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -159,14 +159,14 @@ function copySmtpLink() {
 }
 
 .help-page__card-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 700;
 }
 
 .help-page__card-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 52rpx;
   font-weight: 400;
@@ -174,7 +174,7 @@ function copySmtpLink() {
 }
 
 .help-page__card-link {
-  color: #0066cc;
+  color: var(--color-link);
   text-decoration: underline;
 }
 

@@ -481,7 +481,7 @@ function handleSkip() {
 /* H5：使用 box-shadow 呼吸动画实现高亮边框（SVG mask 负责精确蒙版） */
 /* #ifdef H5 */
 .beginner-guide__highlight {
-  box-shadow: 0 0 0 2px #9fe870, 0 0 20px rgba(159, 232, 112, 0.6);
+  box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 20px rgba(159, 232, 112, 0.6);
   animation: guide-pulse 1.8s ease-in-out infinite;
 }
 /* #endif */
@@ -490,17 +490,17 @@ function handleSkip() {
    避免微信小程序伪元素不尊重 pointer-events:none 而误拦目标点击） */
 /* #ifndef H5 */
 .beginner-guide__highlight {
-  box-shadow: 0 0 0 2px #9fe870, 0 0 12px rgba(159, 232, 112, 0.4);
+  box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 12px rgba(159, 232, 112, 0.4);
   animation: guide-pulse 1.8s ease-in-out infinite;
 }
 /* #endif */
 
 @keyframes guide-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 2px #9fe870, 0 0 12px rgba(159, 232, 112, 0.4);
+    box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 12px rgba(159, 232, 112, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 4px #9fe870, 0 0 28px rgba(159, 232, 112, 0.8);
+    box-shadow: 0 0 0 4px var(--color-brand-bg), 0 0 28px rgba(159, 232, 112, 0.8);
   }
 }
 
@@ -510,7 +510,7 @@ function handleSkip() {
   padding: 28rpx 32rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
@@ -528,15 +528,15 @@ function handleSkip() {
   display: inline-block;
   padding: 4rpx 16rpx;
   border-radius: 9999rpx;
-  background: #e8f5e0;
-  color: #2f6c00;
+  background: var(--color-brand-bg-light);
+  color: var(--color-brand);
   font-size: 24rpx;
   line-height: 36rpx;
   font-weight: 600;
 }
 
 .beginner-guide__skip {
-  color: #868685;
+  color: var(--color-text-tertiary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -544,14 +544,14 @@ function handleSkip() {
 }
 
 .beginner-guide__card-title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 50rpx;
   font-weight: 600;
 }
 
 .beginner-guide__card-desc {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 42rpx;
   font-weight: 400;

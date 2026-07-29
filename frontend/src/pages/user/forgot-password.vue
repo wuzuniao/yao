@@ -369,7 +369,7 @@ function goLogin() {
   width: 684rpx;
   padding: 48rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 48rpx;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   display: flex;
@@ -385,7 +385,7 @@ function goLogin() {
 }
 
 .forgot-password-page__title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 64rpx;
   line-height: 72rpx;
   font-weight: 600;
@@ -406,7 +406,7 @@ function goLogin() {
 }
 
 .forgot-password-page__label {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -416,16 +416,16 @@ function goLogin() {
   height: 98rpx;
   padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 42rpx;
 }
 
 .forgot-password-page__input--error {
-  box-shadow: inset 0 0 0 1px #e5484d;
+  box-shadow: inset 0 0 0 1px var(--color-form-error);
 }
 
 /* 密码行：统一边框容器，内含输入框与眼睛图标（用 border 而非 box-shadow，避免原生 input 白色背景覆盖 inset shadow） */
@@ -433,17 +433,17 @@ function goLogin() {
   position: relative;
   display: flex;
   align-items: stretch;
-  border: 1px solid #c1cab5;
+  border: 1px solid var(--color-border-input);
   border-radius: 24rpx;
-  background: #fff;
+  background: var(--color-card-bg);
 }
 
 .forgot-password-page__password-row:focus-within {
-  border-color: #454745;
+  border-color: var(--color-text-secondary);
 }
 
 .forgot-password-page__password-row--error {
-  border-color: #e5484d;
+  border-color: var(--color-form-error);
 }
 
 .forgot-password-page__input--password {
@@ -466,21 +466,21 @@ function goLogin() {
 }
 
 .forgot-password-page__error-text {
-  color: #e5484d;
+  color: var(--color-form-error);
   font-size: 24rpx;
   line-height: 32rpx;
 }
 
 /* 字符限制提示文字 */
 .forgot-password-page__limit-text {
-  color: #d97706;
+  color: var(--color-warning);
   font-size: 24rpx;
   line-height: 32rpx;
   margin-top: 8rpx;
 }
 
 .forgot-password-page__placeholder {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
 }
 
@@ -496,16 +496,16 @@ function goLogin() {
   height: 98rpx;
   padding: 28rpx 24rpx 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
+  background: var(--color-card-bg);
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
-  color: #0e0f0c;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 42rpx;
 }
 
 .forgot-password-page__code-input--error {
-  box-shadow: inset 0 0 0 1px #e5484d;
+  box-shadow: inset 0 0 0 1px var(--color-form-error);
 }
 
 .forgot-password-page__code-btn {
@@ -514,7 +514,7 @@ function goLogin() {
   padding: 27rpx 24rpx 29rpx;
   box-sizing: border-box;
   border-radius: 24rpx;
-  box-shadow: inset 0 0 0 1px #c1cab5;
+  box-shadow: inset 0 0 0 1px var(--color-border-input);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -526,7 +526,7 @@ function goLogin() {
 }
 
 .forgot-password-page__code-btn-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -537,7 +537,7 @@ function goLogin() {
   height: 96rpx;
   padding: 24rpx 0;
   box-sizing: border-box;
-  background: #9fe870;
+  background: var(--color-brand-bg);
   border-radius: 48rpx;
   display: flex;
   justify-content: center;
@@ -545,7 +545,7 @@ function goLogin() {
 }
 
 .forgot-password-page__submit-text {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 500;
@@ -559,7 +559,7 @@ function goLogin() {
 }
 
 .forgot-password-page__footer-text {
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 48rpx;
   font-weight: 400;

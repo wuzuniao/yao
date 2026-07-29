@@ -152,9 +152,9 @@ onUnmounted(() => {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   /* 与首页任务卡一致的描边/阴影 */
-  box-shadow: inset 0 0 0 1px #e2e2e2, 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -168,8 +168,8 @@ onUnmounted(() => {
   padding: 4rpx 16rpx;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #9fe870;
-  color: #2e6900;
+  background: var(--color-brand-bg);
+  color: var(--color-brand-dark);
   font-size: 24rpx;
   line-height: 40rpx;
   font-weight: 600;
@@ -184,7 +184,7 @@ onUnmounted(() => {
 }
 
 .announcement-card__title {
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 36rpx;
   line-height: 52rpx;
   font-weight: 600;
@@ -199,7 +199,7 @@ onUnmounted(() => {
 /* 创建时间小字：标题下方次要信息，弱化色彩 */
 .announcement-card__meta {
   margin-top: 8rpx;
-  color: #7a7b79;
+  color: var(--color-text-muted);
   font-size: 24rpx;
   line-height: 36rpx;
   font-weight: 400;
@@ -207,7 +207,7 @@ onUnmounted(() => {
 
 .announcement-card__content {
   margin-top: 16rpx;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 28rpx;
   line-height: 44rpx;
   font-weight: 400;
@@ -247,7 +247,7 @@ onUnmounted(() => {
   padding: 48rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
-  background: #ffffff;
+  background: var(--color-card-bg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
@@ -262,8 +262,8 @@ onUnmounted(() => {
   padding: 4rpx 16rpx;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: #9fe870;
-  color: #2e6900;
+  background: var(--color-brand-bg);
+  color: var(--color-brand-dark);
   font-size: 24rpx;
   line-height: 40rpx;
   font-weight: 600;
@@ -279,7 +279,7 @@ onUnmounted(() => {
 
 .announcement-fullscreen__title {
   display: block;
-  color: #0e0f0c;
+  color: var(--color-text-primary);
   font-size: 48rpx;
   line-height: 64rpx;
   font-weight: 600;
@@ -293,7 +293,7 @@ onUnmounted(() => {
 .announcement-fullscreen__meta {
   display: block;
   margin-top: 12rpx;
-  color: #7a7b79;
+  color: var(--color-text-muted);
   font-size: 26rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -302,7 +302,7 @@ onUnmounted(() => {
 .announcement-fullscreen__content {
   display: block;
   margin-top: 24rpx;
-  color: #454745;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
   line-height: 52rpx;
   font-weight: 400;
