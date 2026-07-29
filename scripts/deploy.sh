@@ -525,6 +525,11 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   backend:
     build:
@@ -548,6 +553,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   nginx:
     image: __REGISTRY____NGINX_IMAGE__
@@ -563,6 +573,11 @@ services:
       - backend
     networks:
       - yao-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
 
 networks:
   yao-net:
