@@ -10,8 +10,9 @@ def setup_logger(name: str = "app") -> logging.Logger:
     if logger.handlers:
         return logger
 
+    # 格式包含：时间、模块、级别、行号（遵循 AGENTS.md §6.1 日志规范）
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s"
     )
 
     console_handler = logging.StreamHandler(sys.stdout)

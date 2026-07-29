@@ -30,7 +30,7 @@ async def create_checkin(
 ):
     """
     创建打卡记录（user_id 来自 JWT）
-    - 同一天同一计划同一时间点只能打卡一次
+    - 允许重复打卡（同一计划同一时间点可多次打卡，由 CheckinService.create_checkin 校验计划/时间点归属）
     """
     service = CheckinService(db)
     try:

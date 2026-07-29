@@ -1,5 +1,4 @@
 from datetime import datetime, date, time as dt_time, timedelta
-from typing import Optional
 
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,7 +101,7 @@ class CheckinService:
         )
         return list(result.scalars().all())
 
-    async def get_latest_checkin(self, user_id: int, plan_id: int) -> Optional[CheckinRecord]:
+    async def get_latest_checkin(self, user_id: int, plan_id: int) -> CheckinRecord | None:
         """查询用户某计划的最近一次打卡记录（用于多提醒时间间隔判断）"""
         result = await self.db.execute(
             select(CheckinRecord).where(

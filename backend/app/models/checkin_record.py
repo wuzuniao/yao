@@ -1,6 +1,5 @@
 from sqlalchemy import Column, BigInteger, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.sql import func
 
 from ..core.database import Base
 

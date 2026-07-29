@@ -2,7 +2,7 @@ import asyncio
 import json
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import httpx
 from sqlalchemy import select, delete, update
@@ -19,8 +19,8 @@ from ..models.notification_log import NotificationLog
 from ..schemas.notification_channel import CHANNEL_TYPE_ZNX, CHANNEL_TYPE_WECHAT
 from ..utils.crypto import encrypt
 from ..utils.timezone import now_shanghai
-from ..utils.logger import logger
 from .email_service import Email
+from .notification_channel_service import NotificationChannelService
 
 
 # 邮箱验证码暂存：email:purpose -> (code, expire_timestamp, fail_count)
@@ -160,36 +160,11 @@ class User:
         )
         self.db.add(db_user)
         await self.db.flush()
-        # 5. 自动为新用户创建站内信通知渠道（channel_value=用户ID）
-        await self._ensure_znx_channel(db_user.id)
+        # 5. 自动为新用户创建站内信通知渠道（channel_value=用户ID，复用 NotificationChannelService）
+        await NotificationChannelService(self.db).ensure_znx_channel(db_user.id)
         await self.db.commit()
         await self.db.refresh(db_user)
         return db_user
-
-    async def _ensure_znx_channel(self, user_id: int) -> NotificationChannel:
-        """
-        为用户创建站内信通知渠道（注册时自动调用）
-        - channel_type='站内信'，channel_value=用户ID（字符串形式）
-        - 若已存在则直接返回现有记录
-        """
-        result = await self.db.execute(
-            select(NotificationChannel).where(
-                NotificationChannel.user_id == user_id,
-                NotificationChannel.channel_type == CHANNEL_TYPE_ZNX,
-            )
-        )
-        existing = result.scalar_one_or_none()
-        if existing:
-            return existing
-        channel = NotificationChannel(
-            user_id=user_id,
-            channel_type=CHANNEL_TYPE_ZNX,
-            channel_value=str(user_id),
-            enabled=True,
-        )
-        self.db.add(channel)
-        await self.db.flush()
-        return channel
 
     async def login(self, username: str, password: str) -> UserModel:
         """
@@ -562,8 +537,8 @@ class User:
                 session_key=encrypt(session_key),
             )
             self.db.add(miniapp_account)
-            # 自动为新微信登录用户创建站内信通知渠道（channel_value=用户ID）
-            await self._ensure_znx_channel(user.id)
+            # 自动为新微信登录用户创建站内信通知渠道（channel_value=用户ID，复用 NotificationChannelService）
+            await NotificationChannelService(self.db).ensure_znx_channel(user.id)
 
         # 3. 更新最后登录时间
         user.last_login_at = now_shanghai()
@@ -773,8 +748,8 @@ class User:
                 # 微信：额度制渠道，合并 granted/sent 额度
                 main_wx = main_channels_by_type.get(CHANNEL_TYPE_WECHAT)
                 if main_wx:
-                    sub_quota = self._parse_wechat_channel_value(ch.channel_value)
-                    main_quota = self._parse_wechat_channel_value(main_wx.channel_value)
+                    sub_quota = NotificationChannelService.parse_wechat_channel_value(ch.channel_value)
+                    main_quota = NotificationChannelService.parse_wechat_channel_value(main_wx.channel_value)
                     merged_quota = {
                         "granted": sub_quota["granted"] + main_quota["granted"],
                         "sent": sub_quota["sent"] + main_quota["sent"],
@@ -788,18 +763,6 @@ class User:
             else:
                 # 邮件等其他自定义渠道：直接转移归属
                 ch.user_id = main_user_id
-
-    @staticmethod
-    def _parse_wechat_channel_value(channel_value: str) -> dict[str, int]:
-        """解析微信渠道额度（与 NotificationChannelService.parse_wechat_channel_value 对齐）"""
-        try:
-            data = json.loads(channel_value) if channel_value else {}
-        except (json.JSONDecodeError, TypeError):
-            data = {}
-        return {
-            "granted": int(data.get("granted", 0) or 0),
-            "sent": int(data.get("sent", 0) or 0),
-        }
 
     async def bind_email(self, user_id: int, new_email: str, new_code: str) -> UserModel:
         """

@@ -10,6 +10,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 # === 1. 将 backend/ 目录加入 Python 路径 ===
 _BACKEND_DIR = str(Path(__file__).resolve().parent.parent / "backend")
 if _BACKEND_DIR not in sys.path:
@@ -33,3 +35,13 @@ os.environ.setdefault("SMTP_HOST", "smtp.test.com")
 os.environ.setdefault("SMTP_PORT", "465")
 os.environ.setdefault("SMTP_USER", "test@test.com")
 os.environ.setdefault("SMTP_PASSWORD", "test-password")
+
+
+# === 3. 跨测试类型的共享 fixture ===
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """每个测试前清空限流器状态，确保测试间互不影响（限流器为进程内字典，默认跨测试共享）"""
+    from app.core.rate_limit import _rate_store
+    _rate_store.clear()

@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete, func, text
+from sqlalchemy import select, func, text
 
 from ..models.announcement import Announcement
 

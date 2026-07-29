@@ -53,6 +53,7 @@ from ..services.wechat_service import WeChatService, ERRCODE_NO_PERMISSION
 from ..utils.timezone import now_shanghai
 from ..utils.crypto import decrypt
 from ..utils.logger import logger
+from .checkin_service import CheckinService
 from .email_service import Email
 from .user_service import User
 from .plan_service import PlanService
@@ -323,32 +324,12 @@ class NotificationDispatcher:
     @staticmethod
     def _get_match_intervals_minutes(times: list) -> list[tuple[int, int]]:
         """
-        计算匹配区间（分钟数），算法同 checkin_service._get_match_intervals
+        计算匹配区间（分钟数），复用 CheckinService._get_match_intervals
         - 第一次提醒：[0:00, midpoint(t1, t2)]
         - 中间提醒：[midpoint(t_{i-1}, t_i), midpoint(t_i, t_{i+1})]
         - 最后一次提醒：[midpoint(t_{n-1}, t_n), 24:00]
         """
-        intervals: list[tuple[int, int]] = []
-        for i in range(len(times)):
-            t_min = times[i].notification_time.hour * 60 + times[i].notification_time.minute
-            if i == 0:
-                start = 0  # 0:00
-            else:
-                prev_min = (
-                    times[i - 1].notification_time.hour * 60
-                    + times[i - 1].notification_time.minute
-                )
-                start = (prev_min + t_min) // 2
-            if i == len(times) - 1:
-                end = 1440  # 24:00
-            else:
-                next_min = (
-                    times[i + 1].notification_time.hour * 60
-                    + times[i + 1].notification_time.minute
-                )
-                end = (t_min + next_min) // 2
-            intervals.append((start, end))
-        return intervals
+        return CheckinService._get_match_intervals(times)
 
     async def _count_checkins_in_interval(
         self, user_id: int, plan_id: int, notify_date, start_min: int, end_min: int

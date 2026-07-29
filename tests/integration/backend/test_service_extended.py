@@ -29,6 +29,7 @@ from app.services.email_service import Email
 from app.services.notification_channel_service import NotificationChannelService
 from app.services.notification_log_service import NotificationLogService
 from app.services.user_service import User, _verification_codes
+from app.utils.crypto import decrypt
 from app.utils.timezone import now_shanghai, today_shanghai
 
 
@@ -45,7 +46,7 @@ def clear_verification_codes():
 def _inject_code(email: str, purpose: str, code: str = "123456") -> str:
     """手动注入验证码到暂存字典，返回注入的验证码"""
     key = f"{email}:{purpose}"
-    _verification_codes[key] = (code, time.time() + 300)
+    _verification_codes[key] = (code, time.time() + 300, 0)
     return code
 
 
@@ -155,7 +156,8 @@ async def test_wechat_login_existing_user(db_session):
         )
     )
     updated_account = result.scalar_one()
-    assert updated_account.session_key == "new_session_key"
+    # session_key 经 encrypt 加密存储，解密后比对明文验证已更新
+    assert decrypt(updated_account.session_key) == "new_session_key"
 
 
 @pytest.mark.integration

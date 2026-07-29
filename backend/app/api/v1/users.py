@@ -37,6 +37,18 @@ from ...utils.logger import logger
 router = APIRouter()
 
 
+async def _is_wechat_bound(db: AsyncSession, user_id: int) -> bool:
+    """查询指定用户是否已绑定微信小程序账号（前端据此判断能否接收微信通知）"""
+    if db is None or not user_id:
+        return False
+    result = await db.execute(
+        select(UserMiniappAccount.id).where(
+            UserMiniappAccount.user_id == user_id
+        ).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def _user_payload(db: AsyncSession, db_user) -> dict:
     """构造登录/注册等接口的响应数据（含 JWT access_token 与微信绑定状态）"""
     try:
@@ -44,15 +56,7 @@ async def _user_payload(db: AsyncSession, db_user) -> dict:
     except ValueError as e:
         # JWT 配置异常时返回 500，避免静默失败
         raise HTTPException(status_code=500, detail=str(e))
-    # 查询是否绑定微信小程序账号（前端据此判断能否接收微信通知）
-    is_wechat_bound = False
-    if db is not None:
-        result = await db.execute(
-            select(UserMiniappAccount.id).where(
-                UserMiniappAccount.user_id == db_user.id
-            ).limit(1)
-        )
-        is_wechat_bound = result.scalar_one_or_none() is not None
+    is_wechat_bound = await _is_wechat_bound(db, db_user.id)
     return {
         "id": db_user.id,
         "username": db_user.username or "",
@@ -473,13 +477,7 @@ async def get_user_info(
     user = await user_service.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    # 查询是否绑定微信小程序账号（前端据此判断能否接收微信通知）
-    bound_result = await db.execute(
-        select(UserMiniappAccount.id).where(
-            UserMiniappAccount.user_id == user_id
-        ).limit(1)
-    )
-    is_wechat_bound = bound_result.scalar_one_or_none() is not None
+    is_wechat_bound = await _is_wechat_bound(db, user_id)
     return {
         "code": 0,
         "msg": "success",

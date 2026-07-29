@@ -4,8 +4,6 @@ Security 类单元测试
 覆盖密码哈希、密码校验、密码复杂度、用户名校验、验证码校验、邮箱校验、
 SMTP 校验、输入净化、正整数校验、JWT 生成与校验、输出过滤
 """
-import time
-
 import pytest
 
 from app.core.security import Security

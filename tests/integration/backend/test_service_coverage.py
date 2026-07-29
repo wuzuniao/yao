@@ -2,7 +2,7 @@
 服务层测试补充：覆盖 service 层异常分支与边界条件
 --------------------------------------------------------------------------
 覆盖目标：
-- user_service.py: verify_code 无记录/过期、_ensure_znx_channel 已存在、各方法用户不存在、bind_email 账号合并、change_email 邮箱已注册
+- user_service.py: verify_code 无记录/过期、ensure_znx_channel 已存在（复用 NotificationChannelService）、各方法用户不存在、bind_email 账号合并、change_email 邮箱已注册
 - plan_service.py: create/update_plan 无渠道/无效渠道/HH:MM:SS 格式、auto_close_expired_plans
 - checkin_service.py: create_checkin commit 失败、get_latest_checkin、list_by_month 12月分支
 - notification_log_service.py: _auto_mark_read 计划已删除/idx None、commit 失败分支
@@ -19,7 +19,6 @@ from app.core.security import Security
 from app.models.checkin_record import CheckinRecord
 from app.models.notification_channel import NotificationChannel
 from app.models.notification_log import NotificationLog
-from app.models.plan import CheckinPlan, PlanNotificationTime, PlanNotificationChannel
 from app.models.user import User as UserModel
 from app.models.user_miniapp_account import UserMiniappAccount
 from app.services.user_service import User, _verification_codes
@@ -47,7 +46,7 @@ class TestUserServiceCoverage:
     async def test_verify_code_expired(self, db_session):
         """verify_code_for_purpose: 过期验证码应返回 False 并清理记录"""
         key = "expired@example.com:register"
-        _verification_codes[key] = ("123456", time.time() - 1)
+        _verification_codes[key] = ("123456", time.time() - 1, 0)
         user = User(db_session)
         assert user.verify_code_for_purpose("expired@example.com", "123456", "register") is False
         assert key not in _verification_codes
@@ -55,9 +54,9 @@ class TestUserServiceCoverage:
 
     @pytest.mark.asyncio
     async def test_ensure_znx_channel_existing(self, db_session, test_user):
-        """_ensure_znx_channel: 已存在站内信渠道应直接返回现有记录"""
-        user = User(db_session)
-        channel = await user._ensure_znx_channel(test_user.id)
+        """ensure_znx_channel: 已存在站内信渠道应直接返回现有记录（复用 NotificationChannelService）"""
+        service = NotificationChannelService(db_session)
+        channel = await service.ensure_znx_channel(test_user.id)
         assert channel is not None
         assert channel.channel_type == CHANNEL_TYPE_ZNX
 
@@ -92,8 +91,8 @@ class TestUserServiceCoverage:
         )
         db_session.add(other)
         await db_session.commit()
-        _verification_codes["test@example.com:change_old"] = ("111111", time.time() + 300)
-        _verification_codes["new@example.com:change_new"] = ("222222", time.time() + 300)
+        _verification_codes["test@example.com:change_old"] = ("111111", time.time() + 300, 0)
+        _verification_codes["new@example.com:change_new"] = ("222222", time.time() + 300, 0)
         user = User(db_session)
         with pytest.raises(ValueError, match="该邮箱已被注册"):
             await user.change_email(test_user.id, "111111", "new@example.com", "222222")
@@ -158,7 +157,7 @@ class TestUserServiceCoverage:
             openid="test_openid", session_key="test_session",
         )
         db_session.add(miniapp)
-        _verification_codes["main@example.com:change_new"] = ("654321", time.time() + 300)
+        _verification_codes["main@example.com:change_new"] = ("654321", time.time() + 300, 0)
         user = User(db_session)
         result = await user.bind_email(sub_user.id, "main@example.com", "654321")
         # 验证合并结果：主账号字段被从账号填充

@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/ 目录（config.py 位于 backend/app/core/），用于按绝对路径定位 .env 文件
 _BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -49,9 +49,10 @@ class Settings(BaseSettings):
             origin.strip() for origin in self.CORS_ALLOW_ORIGINS.split(",") if origin.strip()
         ))
 
-    class Config:
-        env_file = str(_BASE_DIR / ".env")
-        extra = "allow"
+    model_config = SettingsConfigDict(
+        env_file=str(_BASE_DIR / ".env"),
+        extra="allow",
+    )
 
 
 settings = Settings()

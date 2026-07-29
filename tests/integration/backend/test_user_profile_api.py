@@ -185,13 +185,15 @@ class TestAccountDeletion:
         assert body["code"] == 0
         assert body["data"]["status"] == 0
 
-    async def test_cancel_deletion_success(self, auth_client):
+    async def test_cancel_deletion_success(self, auth_client, test_user):
         """取消删除账号成功，status 恢复为 1"""
-        # 1. 先预约删除
+        # 1. 先预约删除（schedule_deletion 同时设置 token_invalid_before 使旧 token 失效）
         resp = await auth_client.post(f"{API_PREFIX}/schedule-deletion", json={})
         assert resp.status_code == 200
         assert resp.json()["data"]["status"] == 0
-        # 2. 取消删除
+        # 2. 重新生成 token（模拟用户重新登录，新 token 的 iat >= token_invalid_before）
+        auth_client.headers["Authorization"] = f"Bearer {Security.generate_token(test_user.id)}"
+        # 3. 取消删除（status=0 的待删除用户在 24h 宽限期内可操作）
         resp = await auth_client.post(f"{API_PREFIX}/cancel-deletion", json={})
         assert resp.status_code == 200
         body = resp.json()

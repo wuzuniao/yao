@@ -63,8 +63,7 @@ async def get_unread_count(
     - 返回前先执行自动标记已读，确保数量为清理后的真实未读数量
     """
     service = NotificationLogService(db)
-    await service._auto_mark_read_if_checked(user_id)
-    count = await service.count_unread(user_id)
+    count = await service.count_unread_with_auto_mark(user_id)
     return {"code": 0, "msg": "success", "data": {"unread_count": count}}
 
 

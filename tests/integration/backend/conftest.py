@@ -142,3 +142,18 @@ async def auth_client(client, auth_token):
     """带认证头的测试客户端"""
     client.headers["Authorization"] = f"Bearer {auth_token}"
     return client
+
+
+@pytest.fixture
+async def bypass_auth(client):
+    """
+    绕过认证 DB 校验，直接返回 user_id=999999（不存在的用户）
+    - 用于测试 service 层"用户不存在"分支，使请求绕过 auth 层的 DB 查询直达 service 层
+    - 依赖 client fixture（已覆盖 get_db），仅额外覆盖 get_current_user_id
+    """
+    from app.core.deps import get_current_user_id
+    from app.main import app
+
+    app.dependency_overrides[get_current_user_id] = lambda: 999999
+    yield client
+    app.dependency_overrides.pop(get_current_user_id, None)

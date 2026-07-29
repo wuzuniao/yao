@@ -15,16 +15,16 @@
             "notification_channels.py": "通知渠道API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询通知渠道列表、POST /email 创建邮件渠道（密码AES-256-GCM加密存储）、PUT /email 更新邮件渠道（password空字符串保留原密码）、DELETE / 删除渠道（站内信禁删）、POST /wechat/grant 微信订阅授权回调（用户每同意一次授权即+1下发额度并启用微信渠道，返回 {enabled,granted,sent,remaining}）。响应中邮件渠道password字段始终返回空值；微信渠道额外返回 wechat_quota{granted,sent} 与 remaining 剩余可下发次数",
             "plans.py": "计划API接口（均 JWT 保护，user_id 由 token 解析）：GET /list 查询用户计划列表（按status+priority+created_at排序）、POST 创建计划（含通知时间点/关联渠道/priority优先级）、PUT /{plan_id} 更新计划、DELETE /{plan_id} 删除计划",
             "checkins.py": "打卡记录API接口（均 JWT 保护，user_id 由 token 解析）：POST /checkins 创建打卡记录（允许重复打卡，解析时间后去除时区确保 naive Shanghai datetime）、GET /checkins/today 查询今日所有打卡、GET /checkins/today/{plan_id} 查询某计划今日打卡（返回checked_time_ids数组）、GET /checkins/month?year=&month= 查询某月有打卡记录的日期列表、GET /checkins/day?date= 查询某天打卡详情（含计划提醒时间及打卡状态）",
-            "notification_logs.py": "站内信API接口（均 JWT 保护，user_id 由 token 解析）：GET /notification-logs/list 分页查询站内信列表（返回所有站内信，先自动标记已读再返回精简字段 id/plan_name/plan_remark/send_time/is_unread+unread_count）、PUT /notification-logs/read 标记单条已读（status 2→0，校验归属）、PUT /notification-logs/read-all 全部标记已读（批量更新 status=0，返回 updated_count）、GET /notification-logs/unread-count 查询未读数量（用于通知图标切换），返回数量前先执行 _auto_mark_read_if_checked 自动标记已读（扫描未读站内信，匹配区间内已有打卡记录的更新为 status=0）",
+            "notification_logs.py": "站内信API接口（均 JWT 保护，user_id 由 token 解析）：GET /notification-logs/list 分页查询站内信列表（返回所有站内信，先自动标记已读再返回精简字段 id/plan_name/plan_remark/send_time/is_unread+unread_count）、PUT /notification-logs/read 标记单条已读（status 2→0，校验归属）、PUT /notification-logs/read-all 全部标记已读（批量更新 status=0，返回 updated_count）、GET /notification-logs/unread-count 查询未读数量（用于通知图标切换），调用 count_unread_with_auto_mark 公共方法（内部先执行 _auto_mark_read_if_checked 自动标记已读再返回未读数，避免 API 层直接调用私有方法）",
             "announcements.py": "公告API接口（均 get_current_admin 管理员守卫保护，/recent 为普通用户 JWT 守卫）：GET /announcements 查询全部公告（按 created_at 倒序，排除 id=1 公共模板）、GET /announcements/recent 查询最近7天公告（按 created_at 倒序，排除 id=1 公共模板）、GET /announcements/template 查询公共公告模板（id=1）、POST /announcements 发布公告（标题+内容）、PUT /announcements/{announcement_id} 更新公告（id=1 不存在时自动创建）、DELETE /announcements/{announcement_id} 删除公告；统一返回 {code,msg,data}"
           }
         },
         "core": {
           "描述": "核心配置与工具",
-          "config.py": "统一读取.env配置，自动切换开发/生产环境，含 ENCRYPTION_SECRET_KEY 加密密钥、JWT_SECRET_KEY/JWT_EXPIRE_DAYS 认证密钥配置、CORS_ALLOW_ORIGINS 跨域白名单（逗号分隔，通过 cors_origins_list 属性解析为列表）、微信订阅消息配置（WX_SUBSCRIBE_TEMPLATE_ID 模板ID/WX_SUBSCRIBE_PAGE 跳转页/WX_SUBSCRIBE_ORG_NAME 机构名称，均来自环境变量）",
+          "config.py": "统一读取.env配置（Pydantic v2 SettingsConfigDict），自动切换开发/生产环境，含 ENCRYPTION_SECRET_KEY 加密密钥、JWT_SECRET_KEY/JWT_EXPIRE_DAYS 认证密钥配置、CORS_ALLOW_ORIGINS 跨域白名单（逗号分隔，通过 cors_origins_list 属性解析为列表）、微信订阅消息配置（WX_SUBSCRIBE_TEMPLATE_ID 模板ID/WX_SUBSCRIBE_PAGE 跳转页/WX_SUBSCRIBE_ORG_NAME 机构名称，均来自环境变量）",
           "database.py": "数据库连接引擎（SQLAlchemy异步），connect_args 设置 session time_zone='+08:00' 确保上海时区",
           "security.py": "Security 安全验证类，集中管理所有后端安全相关验证逻辑。包含：密码哈希/校验（bcrypt）、密码复杂度验证、用户名格式验证、验证码格式验证、邮箱格式验证、SMTP参数验证、通用输入实体化（sanitize_string：去除控制字符+首尾空白+长度校验）、正整数ID验证（validate_positive_int）、头像URL协议白名单校验（validate_avatar_url：禁止 javascript:/data:/vbscript:/file: 等危险协议，防 XSS）、输出数据过滤（filter_output：移除password_hash/session_key等敏感字段）、JWT 令牌生成/校验（generate_token(user_id, role=0)：HS256签名+sub/role/iat/exp 载荷（role: 0-普通用户，7-管理员）+7天过期；verify_token：解签+过期/无效异常区分）。所有 Schema 的 field_validator 均调用此类，不自行实现验证逻辑",
-          "deps.py": "FastAPI 依赖注入：get_current_user_id 与 get_current_admin 依赖，从 Authorization 头解析 Bearer token，调用 Security.verify_token 校验。安全校验：(1) JWT 签名与过期校验；(2) 数据库查询校验用户存在性、status==1（防止账号删除后旧 token 仍可用）；(3) token_invalid_before 校验（改密码/重置密码/退出登录/删除账号后，旧 token 立即失效）；(4) get_current_admin 额外校验 role==7，非管理员返回 403。公告接口通过 Depends(get_current_admin) 保护，其余受保护接口通过 Depends(get_current_user_id)",
+          "deps.py": "FastAPI 依赖注入：get_current_user_id 与 get_current_admin 依赖，从 Authorization 头解析 Bearer token，调用 Security.verify_token 校验。安全校验：(1) JWT 签名与过期校验；(2) 数据库查询校验用户存在性、status in (0,1)（0-待删除用户在24h宽限期内仍可操作如取消删除，其他状态禁止）；(3) token_invalid_before 校验（改密码/重置密码/退出登录/删除账号后，旧 token 立即失效）；(4) get_current_admin 额外校验 role==7，非管理员返回 403。公告接口通过 Depends(get_current_admin) 保护，其余受保护接口通过 Depends(get_current_user_id)",
           "rate_limit.py": "进程内字典限流器（滑动窗口算法），按 客户端IP+接口路径 维度计数，窗口内超过阈值返回 429。预定义策略：limit_login(5次/分钟)、limit_register(3次/分钟)、limit_send_code(3次/分钟)、limit_reset_password(3次/分钟)。适用于单进程部署，多进程需迁移至 Redis"
         },
         "models": {
@@ -57,7 +57,7 @@
           "notification_channel_service.py": "通知渠道业务服务（NotificationChannelService 类：list_by_user/get_by_id/ensure_znx_channel/create_email_channel（密码AES-256-GCM加密存储）/update_email_channel（password空保留原密码）/delete_channel（站内信禁删）/parse_email_channel_value/get_or_create_wechat_channel（微信渠道默认启用）/grant_wechat（授权+1额度并返回剩余）/parse_wechat_channel_value（解析 {granted,sent}））",
           "plan_service.py": "计划业务服务（PlanService 类：list_by_user（CASE表达式排序：进行中>暂停>已结束，再按priority升序+created_at降序）/get_by_id/create_plan（含priority参数）/update_plan（含priority参数）/delete_plan（级联删除）/auto_close_expired_plans（自动关闭过期计划：status=1且end_date<today更新为0））",
           "checkin_service.py": "打卡记录业务服务（CheckinService 类：create_checkin（校验计划/时间点归属，允许重复打卡）/list_today_by_user/list_today_by_plan（均使用日期范围比较避免DATE()时区问题）/get_latest_checkin/list_by_month（查询某月有打卡记录的日期列表）/list_day_detail（查询某天打卡详情含计划提醒时间））",
-          "notification_log_service.py": "通知记录业务服务（NotificationLogService 类：list_znx_by_user（先调用 _auto_mark_read_if_checked 自动标记已读，再 JOIN notification_channels 过滤站内信+LEFT JOIN checkin_plans 取计划名称/备注，分页返回精简字段 id/plan_name/plan_remark/send_time/is_unread+未读计数）/_auto_mark_read_if_checked（扫描未读站内信，复用 CheckinService._get_match_intervals 计算匹配区间，若区间内有打卡记录则自动标记已读；plan_time_id 为 NULL/计划已删除/无打卡记录则保持未读）/count_unread（未读站内信数量）/mark_as_read（status 2→0，校验归属，已读不重复标记）/mark_all_as_read（全部标记已读，批量更新 status=0））",
+          "notification_log_service.py": "通知记录业务服务（NotificationLogService 类：list_znx_by_user（先调用 _auto_mark_read_if_checked 自动标记已读，再 JOIN notification_channels 过滤站内信+LEFT JOIN checkin_plans 取计划名称/备注，分页返回精简字段 id/plan_name/plan_remark/send_time/is_unread+未读计数）/_auto_mark_read_if_checked（扫描未读站内信，复用 CheckinService._get_match_intervals 计算匹配区间，若区间内有打卡记录则自动标记已读；plan_time_id 为 NULL/计划已删除/无打卡记录则保持未读）/count_unread（未读站内信数量）/count_unread_with_auto_mark（先自动标记已读再返回未读数，供 unread-count 接口复用，避免 API 层直接调用私有方法）/mark_as_read（status 2→0，校验归属，已读不重复标记）/mark_all_as_read（全部标记已读，批量更新 status=0））",
           "announcement_service.py": "公告业务服务（AnnouncementService 类：list_all 查询全部公告倒序并排除 id=1 模板/list_recent 查询最近N天公告倒序并排除 id=1 模板/get_template 查询 id=1 公共模板/publish 发布公告/update 更新公告，id=1 模板不存在时自动创建/delete 删除公告，供 API 层调用）",
           "scheduler_service.py": "定时任务调度服务（SchedulerService 定时计划类 + NotificationDispatcher 通知派发器）。SchedulerService 集中管理3个后台循环：账号清理(30秒,委托User)/计划关闭(30分钟,委托PlanService)/通知派发(60秒,实例化NotificationDispatcher)。main.py lifespan 调用 start_all/stop_all。NotificationDispatcher.dispatch_for_now 每分钟执行：准时触发(当前HH:MM命中提醒时间且对应匹配区间内无打卡记录则发)+两档催办(档位1超10分钟/档位2为1小时与下一次提醒中点择先到达者,末次固定+1小时,均按匹配区间判定)；档位2正向查询今日+昨日有效计划处理跨天情况；防重键(plan_time_id,trigger_type,notify_date,channel_id)查notification_logs；站内信直接写log(status=2未读)，邮件读取channel_value作SMTP发件+users.email收件+解密密码+记录发送结果；微信渠道经 WeChatService 调用订阅消息接口下发（一次性订阅额度制：granted-sent>0 才发，成功 sent+1，43101 无权限则将 granted 对齐 sent 停止后续发送），openid 按 user_id+appid 从 user_miniapp_accounts 查询"
         },
@@ -191,7 +191,7 @@
     },
     "tests": {
       "描述": "测试套件目录（pytest + pytest-asyncio + pytest-cov），包含单元测试、集成测试和端到端测试",
-      "conftest.py": "根级测试配置：设置 backend/ 到 Python 路径、配置测试环境变量（DATABASE_URL 指向 wuzuniao_yao_test 测试库、JWT_SECRET_KEY、ENCRYPTION_SECRET_KEY）",
+      "conftest.py": "根级测试配置：设置 backend/ 到 Python 路径、配置测试环境变量（DATABASE_URL 指向 wuzuniao_yao_test 测试库、JWT_SECRET_KEY、ENCRYPTION_SECRET_KEY）、reset_rate_limiter 自动 fixture（每测试前清空限流器进程内字典，确保测试间互不影响）",
       "create_test_db.py": "创建测试数据库的脚本（wuzuniao_yao_test 业务测试库 + wuzuniao_yonghu_test 用户测试库）",
       ".coveragerc": "覆盖率配置：排除 scheduler_service.py 和 logger.py，排除 pragma: no cover 等行",
       "unit": {
@@ -208,7 +208,7 @@
       "integration": {
         "描述": "集成测试（使用测试数据库 wuzuniao_yao_test，验证 API 接口和模块交互）",
         "backend": {
-          "conftest.py": "集成测试 fixtures：NullPool 测试引擎、用户库 schema 重映射（wuzuniao_yonghu→wuzuniao_yonghu_test）、db_session（每测试后 TRUNCATE 清理）、client（ASGITransport 不触发 lifespan）、test_user（自动创建用户+站内信渠道）、auth_client（带 JWT 认证头）",
+          "conftest.py": "集成测试 fixtures：NullPool 测试引擎、用户库 schema 重映射（wuzuniao_yonghu→wuzuniao_yonghu_test）、db_session（每测试后 TRUNCATE 清理）、client（ASGITransport 不触发 lifespan）、test_user（自动创建用户+站内信渠道）、auth_client（带 JWT 认证头）、bypass_auth（覆盖 get_current_user_id 返回 999999，绕过认证 DB 校验直达 service 层，用于测试用户不存在分支）",
           "test_auth_api.py": "认证 API 集成测试（18个）：注册流程（发送验证码→注册）、登录（用户名/邮箱）、密码找回（发送重置码→重置密码）、参数校验（422）",
           "test_user_profile_api.py": "用户资料管理 API 集成测试（42个）：个人信息查询、签名/头像/用户名修改、密码修改与设置、邮箱绑定与修改、账号删除计划与取消、未认证请求（401）、参数校验（422）",
           "test_plan_api.py": "计划管理 API 集成测试（20个）：计划 CRUD、通知时间点与关联渠道维护、权限校验、参数校验",

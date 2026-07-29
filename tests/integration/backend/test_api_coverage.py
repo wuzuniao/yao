@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 import pytest
 
-from app.core.security import Security
 from app.models.plan import CheckinPlan, PlanNotificationTime
 
 
@@ -65,11 +64,9 @@ class TestUsersApiCoverage:
         assert resp.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_send_change_email_old_code_value_error(self, client):
-        """send_change_email_old_code: 用户不存在应返回 400"""
-        token = Security.generate_token(999999)
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.post("/api/v1/users/send-change-email-old-code", json={})
+    async def test_send_change_email_old_code_value_error(self, bypass_auth):
+        """send_change_email_old_code: 用户不存在应返回 400（bypass_auth 绕过认证 DB 校验直达 service 层）"""
+        resp = await bypass_auth.post("/api/v1/users/send-change-email-old-code", json={})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
@@ -98,43 +95,33 @@ class TestUsersApiCoverage:
         assert resp.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_update_signature_user_not_found(self, client):
-        """update_signature: 用户不存在应返回 400"""
-        token = Security.generate_token(999999)
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.put("/api/v1/users/update-signature", json={"signature": "新签名"})
+    async def test_update_signature_user_not_found(self, bypass_auth):
+        """update_signature: 用户不存在应返回 400（bypass_auth 绕过认证 DB 校验直达 service 层）"""
+        resp = await bypass_auth.put("/api/v1/users/update-signature", json={"signature": "新签名"})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_update_avatar_user_not_found(self, client):
-        """update_avatar: 用户不存在应返回 400"""
-        token = Security.generate_token(999999)
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.put("/api/v1/users/update-avatar", json={"avatar_url": "new"})
+    async def test_update_avatar_user_not_found(self, bypass_auth):
+        """update_avatar: 用户不存在应返回 400（bypass_auth 绕过认证 DB 校验直达 service 层）"""
+        resp = await bypass_auth.put("/api/v1/users/update-avatar", json={"avatar_url": "new"})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_schedule_deletion_user_not_found(self, client):
-        """schedule_deletion: 用户不存在应返回 400"""
-        token = Security.generate_token(999999)
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.post("/api/v1/users/schedule-deletion", json={})
+    async def test_schedule_deletion_user_not_found(self, bypass_auth):
+        """schedule_deletion: 用户不存在应返回 400（bypass_auth 绕过认证 DB 校验直达 service 层）"""
+        resp = await bypass_auth.post("/api/v1/users/schedule-deletion", json={})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_cancel_deletion_user_not_found(self, client):
-        """cancel_deletion: 用户不存在应返回 400"""
-        token = Security.generate_token(999999)
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.post("/api/v1/users/cancel-deletion", json={})
+    async def test_cancel_deletion_user_not_found(self, bypass_auth):
+        """cancel_deletion: 用户不存在应返回 400（bypass_auth 绕过认证 DB 校验直达 service 层）"""
+        resp = await bypass_auth.post("/api/v1/users/cancel-deletion", json={})
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_get_user_info_not_found(self, client):
-        """get_user_info: 用户不存在应返回 404"""
-        token = Security.generate_token(999999)
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.get("/api/v1/users/info")
+    async def test_get_user_info_not_found(self, bypass_auth):
+        """get_user_info: 用户不存在应返回 404（bypass_auth 绕过认证 DB 校验直达 service 层）"""
+        resp = await bypass_auth.get("/api/v1/users/info")
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
@@ -172,6 +159,7 @@ class TestUsersApiCoverage:
         mock_user.email = None
         mock_user.password_hash = None
         mock_user.status = 1
+        mock_user.role = 0
         with patch("app.services.user_service.User.wechat_login", new=AsyncMock(return_value=mock_user)):
             resp = await client.post("/api/v1/users/wechat-login", json={"code": "testcode"})
         assert resp.status_code == 200

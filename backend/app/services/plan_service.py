@@ -1,6 +1,6 @@
 from datetime import time
 
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -34,7 +34,6 @@ class PlanService:
           进行中最前，暂停其次，已结束最后；同状态按 priority 数字越小越靠前；同状态同优先级新创建在前
         """
         # status 排序：用 CASE 把 1 → 0、2 → 1、0 → 2，使进行中<暂停<已结束
-        from sqlalchemy import case
         status_order = case(
             (CheckinPlan.status == 1, 0),
             (CheckinPlan.status == 2, 1),
@@ -78,17 +77,7 @@ class PlanService:
         - priority：0-7，数字越小优先级越高
         """
         # 1. 校验通知渠道归属
-        if not channel_ids:
-            raise ValueError("至少选择一个通知方式")
-        result = await self.db.execute(
-            select(NotificationChannel).where(
-                NotificationChannel.user_id == user_id,
-                NotificationChannel.id.in_(channel_ids),
-            )
-        )
-        owned_channels = list(result.scalars().all())
-        if len(owned_channels) != len(set(channel_ids)):
-            raise ValueError("包含无效或非本用户的通知渠道")
+        await self._validate_channel_ownership(user_id, channel_ids)
 
         # 2. 创建计划主记录
         plan = CheckinPlan(
@@ -104,26 +93,10 @@ class PlanService:
         await self.db.flush()
 
         # 3. 写入通知时间点
-        for t in notification_times:
-            # 兼容 HH:MM 和 HH:MM:SS 格式
-            parts = t.split(":")
-            if len(parts) == 2:
-                h, m = int(parts[0]), int(parts[1])
-                t_obj = time(hour=h, minute=m, second=0)
-            else:
-                h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
-                t_obj = time(hour=h, minute=m, second=s)
-            self.db.add(PlanNotificationTime(
-                plan_id=plan.id,
-                notification_time=t_obj,
-            ))
+        self._write_notification_times(plan.id, notification_times)
 
         # 4. 写入计划-渠道关联
-        for cid in channel_ids:
-            self.db.add(PlanNotificationChannel(
-                plan_id=plan.id,
-                channel_id=cid,
-            ))
+        self._write_plan_channels(plan.id, channel_ids)
 
         await self.db.commit()
         await self.db.refresh(plan)
@@ -186,17 +159,7 @@ class PlanService:
             raise ValueError("无权操作该计划")
 
         # 校验通知渠道归属
-        if not channel_ids:
-            raise ValueError("至少选择一个通知方式")
-        result = await self.db.execute(
-            select(NotificationChannel).where(
-                NotificationChannel.user_id == user_id,
-                NotificationChannel.id.in_(channel_ids),
-            )
-        )
-        owned_channels = list(result.scalars().all())
-        if len(owned_channels) != len(set(channel_ids)):
-            raise ValueError("包含无效或非本用户的通知渠道")
+        await self._validate_channel_ownership(user_id, channel_ids)
 
         # 更新主记录
         plan.name = name
@@ -210,32 +173,63 @@ class PlanService:
         await self.db.execute(
             delete(PlanNotificationTime).where(PlanNotificationTime.plan_id == plan_id)
         )
-        for t in notification_times:
-            parts = t.split(":")
-            if len(parts) == 2:
-                h, m = int(parts[0]), int(parts[1])
-                t_obj = time(hour=h, minute=m, second=0)
-            else:
-                h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
-                t_obj = time(hour=h, minute=m, second=s)
-            self.db.add(PlanNotificationTime(
-                plan_id=plan.id,
-                notification_time=t_obj,
-            ))
+        self._write_notification_times(plan.id, notification_times)
 
         # 删除旧的渠道关联，写入新的
         await self.db.execute(
             delete(PlanNotificationChannel).where(PlanNotificationChannel.plan_id == plan_id)
         )
-        for cid in channel_ids:
-            self.db.add(PlanNotificationChannel(
-                plan_id=plan.id,
-                channel_id=cid,
-            ))
+        self._write_plan_channels(plan.id, channel_ids)
 
         await self.db.commit()
         await self.db.refresh(plan)
         return plan
+
+    # ==================== 内部辅助方法（供 create_plan/update_plan 复用） ====================
+
+    async def _validate_channel_ownership(self, user_id: int, channel_ids: list[int]) -> None:
+        """
+        校验通知渠道归属：channel_ids 非空且均属于该用户
+        - 空列表 → 至少选择一个通知方式
+        - 数量不一致 → 包含无效或非本用户的通知渠道
+        """
+        if not channel_ids:
+            raise ValueError("至少选择一个通知方式")
+        result = await self.db.execute(
+            select(NotificationChannel).where(
+                NotificationChannel.user_id == user_id,
+                NotificationChannel.id.in_(channel_ids),
+            )
+        )
+        owned_channels = list(result.scalars().all())
+        if len(owned_channels) != len(set(channel_ids)):
+            raise ValueError("包含无效或非本用户的通知渠道")
+
+    @staticmethod
+    def _parse_time_str(t: str) -> time:
+        """将 HH:MM 或 HH:MM:SS 字符串解析为 datetime.time 对象"""
+        parts = t.split(":")
+        if len(parts) == 2:
+            h, m = int(parts[0]), int(parts[1])
+            return time(hour=h, minute=m, second=0)
+        h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
+        return time(hour=h, minute=m, second=s)
+
+    def _write_notification_times(self, plan_id: int, notification_times: list[str]) -> None:
+        """为指定计划批量写入通知时间点（HH:MM 或 HH:MM:SS）"""
+        for t in notification_times:
+            self.db.add(PlanNotificationTime(
+                plan_id=plan_id,
+                notification_time=self._parse_time_str(t),
+            ))
+
+    def _write_plan_channels(self, plan_id: int, channel_ids: list[int]) -> None:
+        """为指定计划批量写入计划-渠道关联记录"""
+        for cid in channel_ids:
+            self.db.add(PlanNotificationChannel(
+                plan_id=plan_id,
+                channel_id=cid,
+            ))
 
     async def auto_close_expired_plans(self) -> int:
         """

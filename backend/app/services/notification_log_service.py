@@ -211,6 +211,16 @@ class NotificationLogService:
         )
         return int(result.scalar() or 0)
 
+    async def count_unread_with_auto_mark(self, user_id: int) -> int:
+        """
+        统计用户未读站内信数量（先自动标记已读，再返回清理后的真实数量）
+        - 供通知图标实时切换接口（unread-count）使用：先扫描未读站内信，匹配区间内
+          已有打卡记录的更新为已读，再返回剩余未读数
+        - 与 list_znx_by_user 共用 _auto_mark_read_if_checked 自动标记逻辑
+        """
+        await self._auto_mark_read_if_checked(user_id)
+        return await self.count_unread(user_id)
+
     async def mark_as_read(self, log_id: int, user_id: int) -> NotificationLog:
         """
         标记站内信为已读

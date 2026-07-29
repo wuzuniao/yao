@@ -24,7 +24,6 @@ from app.schemas.user import (
     LoginUser,
     RegisterUser,
     ResetPassword,
-    SendChangeEmailNewCode,
     UpdateAvatar,
     UpdateSignature,
     UpdateUsername,

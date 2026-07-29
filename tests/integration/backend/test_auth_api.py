@@ -32,7 +32,7 @@ def _inject_code(email: str, purpose: str, code: str = "123456") -> str:
     - 返回注入的验证码，便于后续断言使用
     """
     key = f"{email}:{purpose}"
-    _verification_codes[key] = (code, time.time() + 300)
+    _verification_codes[key] = (code, time.time() + 300, 0)
     return code
 
 

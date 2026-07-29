@@ -11,7 +11,7 @@ from ..schemas.notification_channel import (
     CHANNEL_TYPE_ZNX,
     EmailChannelValue,
 )
-from ..utils.crypto import encrypt, decrypt
+from ..utils.crypto import encrypt
 from ..utils.logger import logger
 from ..utils.timezone import now_shanghai
 

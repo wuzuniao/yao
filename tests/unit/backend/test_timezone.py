@@ -27,7 +27,7 @@ class TestTimezone:
     def test_now_shanghai_close_to_utc_plus_8(self):
         # now_shanghai 应比 UTC 时间快 8 小时左右
         result = now_shanghai()
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
         diff = result - utc_now
         # 允许几秒误差
         assert timedelta(hours=7, minutes=59) < diff < timedelta(hours=8, minutes=1)
@@ -40,6 +40,6 @@ class TestTimezone:
     @pytest.mark.unit
     def test_today_shanghai_is_today(self):
         result = today_shanghai()
-        utc_today = datetime.utcnow().date()
+        utc_today = datetime.now(timezone.utc).date()
         # 上海日期应该等于或晚一天于 UTC 日期（取决于当前时间）
         assert result == utc_today or result == utc_today + timedelta(days=1)

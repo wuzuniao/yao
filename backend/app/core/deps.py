@@ -7,7 +7,7 @@ FastAPI 依赖：JWT 认证依赖
 安全校验：
 1. JWT 签名与过期校验（Security.verify_token）
 2. 用户存在性校验（数据库查询，防止账号被删除后 token 仍可用）
-3. 用户状态校验（status=1 正常，0 待删除的账号禁止操作）
+3. 用户状态校验（status=1 正常，0 待删除允许操作如取消删除，其他状态禁止）
 4. token 失效校验（token_invalid_before：改密码/重置密码/退出登录后，旧 token 立即失效）
 
 用法：
@@ -72,7 +72,7 @@ async def _authenticate_and_validate(
     row = result.first()
     if not row:
         raise HTTPException(status_code=401, detail="用户不存在，请重新登录")
-    if row.status != 1:
+    if row.status not in (0, 1):
         raise HTTPException(status_code=401, detail="账号已停用，请联系管理员")
 
     # 校验 token 是否在 token_invalid_before 之前签发
