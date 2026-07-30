@@ -6,7 +6,7 @@
       <!-- 用户资料卡 + 公告管理（靠近，减少间距） -->
       <view class="settings-page__near-group">
         <!-- 用户资料卡片 -->
-        <view class="settings-page__profile-card guide-target-profile-card" :style="profileCardActiveStyle" @click="goProfileOrLogin">
+        <view class="settings-page__profile-card guide-target-profile-card" @click="goProfileOrLogin">
           <view class="settings-page__profile-card-glow"></view>
           <view class="settings-page__profile-info">
             <text class="settings-page__profile-name">{{ displayName }}</text>
@@ -27,7 +27,7 @@
 
       <!-- 分组 1：制定计划 + 通知方式（删除冷静期内整体置灰禁点击，独占整行） -->
       <view class="settings-page__group1" :class="{ 'settings-page__group1--disabled': isDeletionScheduled }">
-        <view class="settings-page__link-card settings-page__link-card--plan guide-target-plan-method" :style="planMethodActiveStyle" @click="!isDeletionScheduled && goPlan()">
+        <view class="settings-page__link-card settings-page__link-card--plan guide-target-plan-method" @click="!isDeletionScheduled && goPlan()">
           <view class="settings-page__link-left">
             <text class="settings-page__link-title">制定计划</text>
             <!-- 仅当存在进行中的计划时显示"进行中"状态徽章 -->
@@ -43,7 +43,7 @@
           </view>
         </view>
 
-        <view class="settings-page__link-card guide-target-notification-method" :style="notificationMethodActiveStyle" @click="!isDeletionScheduled && goNotification()">
+        <view class="settings-page__link-card guide-target-notification-method" @click="!isDeletionScheduled && goNotification()">
           <view class="settings-page__link-left">
             <text class="settings-page__link-title">通知方式</text>
           </view>
@@ -113,9 +113,9 @@ const guideStore = useGuideStore()
 
 // 新手引导：上报用户资料卡片、通知方式、制定计划入口位置
 // 解构 requery 方法，供管理员按钮出现导致布局变化时手动重新查询
-const { activeStyle: profileCardActiveStyle, requery: requeryProfile } = useGuideTarget('profile-card', '.guide-target-profile-card')
-const { activeStyle: notificationMethodActiveStyle, requery: requeryNotification } = useGuideTarget('notification-method', '.guide-target-notification-method')
-const { activeStyle: planMethodActiveStyle, requery: requeryPlan } = useGuideTarget('plan-method', '.guide-target-plan-method')
+const { requery: requeryProfile } = useGuideTarget('profile-card', '.guide-target-profile-card')
+const { requery: requeryNotification } = useGuideTarget('notification-method', '.guide-target-notification-method')
+const { requery: requeryPlan } = useGuideTarget('plan-method', '.guide-target-plan-method')
 
 // 账号是否处于删除冷静期（status=0）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)

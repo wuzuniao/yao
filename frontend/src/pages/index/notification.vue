@@ -187,7 +187,7 @@
       </view>
 
       <!-- 添加新方式入口卡（点击后切换为"新建通知方式"表单卡） -->
-      <view class="notification-page__add guide-target-add-notification" :style="addNotificationActiveStyle" v-if="!showForm" @click="handleAdd">
+      <view class="notification-page__add guide-target-add-notification" v-if="!showForm" @click="handleAdd">
         <view class="notification-page__add-plus">
           <view class="notification-page__add-plus-h"></view>
           <view class="notification-page__add-plus-v"></view>
@@ -197,14 +197,14 @@
 
       <!-- 新建通知方式表单卡（默认隐藏，点击"添加新的通知方式"后显示，淡入过渡） -->
       <view v-if="showForm">
-        <view class="notification-page__form notification-page__form--fade-in guide-target-notification-form-card" :style="formCardActiveStyle">
+        <view class="notification-page__form notification-page__form--fade-in guide-target-notification-form-card">
           <text class="notification-page__form-heading">新建通知方式</text>
 
           <!-- 通知类型（单选框：邮件/微信） -->
           <view class="notification-page__field">
             <text class="notification-page__label">通知类型</text>
             <view class="notification-page__radio-row">
-              <view class="notification-page__radio-item guide-target-email-type-radio" :style="emailTypeActiveStyle" @click="selectType('邮件')">
+              <view class="notification-page__radio-item guide-target-email-type-radio" @click="selectType('邮件')">
                 <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === '邮件' }">
                   <view v-if="formType === '邮件'" class="notification-page__radio-dot"></view>
                 </view>
@@ -317,7 +317,6 @@
           <!-- 保存按钮：邮件类型填写完整可点击；微信类型点击即发起授权 -->
           <view
             class="notification-page__save guide-target-wechat-auth-button guide-target-email-save-button"
-            :style="[wechatAuthActiveStyle, emailSaveActiveStyle]"
             :class="{ 'notification-page__save--disabled': !canSave }"
             @click="handleSave"
           >
@@ -384,12 +383,12 @@ const guideStore = useGuideStore()
 const guideScrollLock = computed(() => guideStore.isActive && guideStore.currentPage === 'notification')
 
 // 新手引导：上报「添加新的通知方式」、「授权订阅提醒」按钮与新建通知方式表单卡位置
-const { activeStyle: addNotificationActiveStyle } = useGuideTarget('add-notification', '.guide-target-add-notification')
-const { activeStyle: wechatAuthActiveStyle } = useGuideTarget('wechat-auth-button', '.guide-target-wechat-auth-button')
-const { activeStyle: formCardActiveStyle } = useGuideTarget('notification-form-card', '.guide-target-notification-form-card')
+useGuideTarget('add-notification', '.guide-target-add-notification')
+useGuideTarget('wechat-auth-button', '.guide-target-wechat-auth-button')
+useGuideTarget('notification-form-card', '.guide-target-notification-form-card')
 // 新手引导：上报邮件类型单选框与保存按钮位置（非微信小程序端第 4 步目标）
-const { activeStyle: emailTypeActiveStyle } = useGuideTarget('email-type-radio', '.guide-target-email-type-radio')
-const { activeStyle: emailSaveActiveStyle } = useGuideTarget('email-save-button', '.guide-target-email-save-button')
+useGuideTarget('email-type-radio', '.guide-target-email-type-radio')
+useGuideTarget('email-save-button', '.guide-target-email-save-button')
 
 // 微信订阅消息授权（仅在微信小程序端生效）
 const { requestSubscribe, isSubscribeSilentRejected } = useWechatSubscribe()

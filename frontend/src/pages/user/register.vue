@@ -146,7 +146,7 @@
           </view>
 
           <!-- 注册按钮 -->
-          <view class="register-page__submit guide-target-register-submit" :style="registerSubmitActiveStyle" @click="handleRegister">
+          <view class="register-page__submit guide-target-register-submit" @click="handleRegister">
             <text class="register-page__submit-text">注册</text>
           </view>
         </view>
@@ -196,7 +196,7 @@ useShare({ title: '注册账号' })
 const guideStore = useGuideStore()
 
 // 新手引导：上报「注册」按钮位置（非微信小程序端第 3 步目标）
-const { activeStyle: registerSubmitActiveStyle } = useGuideTarget('register-submit', '.guide-target-register-submit')
+useGuideTarget('register-submit', '.guide-target-register-submit')
 
 const form = reactive({
   username: '',

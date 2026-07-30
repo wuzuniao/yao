@@ -10,16 +10,30 @@
           'index-page__main-canvas--empty': isLoggedIn && !hasActivePlans
         }"
       >
-        <!-- 未登录：介绍卡片（标题“按时吃药”，介绍小程序、功能与登录引导） -->
-        <view v-if="!isLoggedIn" class="index-page__intro-card">
+        <!-- 未登录：欢迎卡片（撑满首屏剩余高度；上方简介突出展示，中下方 logo 词云），点击词云区切换到介绍卡片 -->
+        <view v-if="!isLoggedIn && !showIntroCard" class="index-page__welcome-card">
+          <view class="index-page__welcome-copy">
+            <text class="index-page__welcome-slogan">制定通用打卡计划并按时提醒、记录的跨端APP</text>
+            <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可<text class="index-page__intro-em">自行部署</text>此小程序。</text>
+            <text class="index-page__intro-p">开源地址：<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
+          </view>
+          <!-- 词云区：logo 居中且始终位于最上层，关键词每次进入首页在整块区域随机分布（位于 logo 下方图层）；点击整个区域切换到介绍卡片 -->
+          <view class="index-page__welcome-cloud" @click="showIntroCard = true">
+            <image class="index-page__welcome-logo" :src="brandLogo" mode="aspectFit" />
+            <text
+              v-for="word in cloudWords"
+              :key="word.text"
+              class="index-page__welcome-word"
+              :class="[`index-page__welcome-word--s${word.size}`, `index-page__welcome-word--c${word.color}`]"
+              :style="word.style"
+            >{{ word.text }}</text>
+          </view>
+        </view>
+
+        <!-- 未登录：介绍卡片（标题“按时吃药”，介绍功能与登录引导） -->
+        <view v-else-if="!isLoggedIn" class="index-page__intro-card">
           <text class="index-page__intro-title">按时吃药</text>
           <view class="index-page__intro-scroll">
-            <view class="index-page__intro-section">
-              <text class="index-page__intro-p">制定通用打卡计划并按时提醒、记录的跨端APP。</text>
-              <text class="index-page__intro-highlights">免费 易用 安全 开源</text>
-              <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可<text class="index-page__intro-em">自行部署</text>此小程序。</text>
-              <text class="index-page__intro-p">开源地址：<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
-            </view>
             <view class="index-page__intro-section">
               <text class="index-page__intro-section-title">主要功能</text>
               <text class="index-page__intro-p"><text class="index-page__intro-label">制定打卡计划：</text>设置计划内容、持续周期、每日提醒时间、通知方式等。到达提醒时间后，系统会自动发送通知进行提醒。</text>
@@ -94,7 +108,6 @@
           >
             <view
               class="index-page__checkin-button guide-target-checkin-button"
-              :style="checkinButtonActiveStyle"
               :class="{
                 'index-page__checkin-button--disabled': isButtonDisabled,
                 'index-page__checkin-button--done': isCheckinDone,
@@ -153,7 +166,9 @@
  *    - 主要卡片：展示当前选中任务，不设置点击事件，显示计划名称、备注
  *    - 次要卡片：展示第二个任务，点击后与主要卡片内容互换；3+任务时右侧显示"..."按钮
  *    - "..."按钮：3+任务时显示，点击展开任务列表（同主/次卡片排序规则），可选择任务替换到主要卡片
- *  - 空状态：未登录显示介绍卡片（含功能说明与开启新手引导入口）；已登录无进行中计划显示"新手引导"卡片，
+ *  - 空状态：未登录先显示欢迎卡片（撑满首屏剩余高度；上方简介 slogan 突出展示，
+ *    中下方"免费/易用/安全/开源"词云每次进入首页随机分布在无足鸟 logo 周围/下方），
+ *    点击词云区（含 logo）后单向切换为介绍卡片（含功能说明与开启新手引导入口）；已登录无进行中计划显示"新手引导"卡片，
  *    提供操作指引并支持一键开启引导（从步骤 1 开始，点击设置后自动跳到步骤 4 继续）
  *  - 立即打卡按钮（多状态）：
  *    - 灰色"无打卡任务"：未登录/无任务/不在计划日期范围内/无提醒时间
@@ -182,6 +197,7 @@ import { getRecentAnnouncements } from '../../api/modules/announcement'
 import { listNotificationChannels } from '../../api/modules/notification'
 import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
+import brandLogo from '../../assets/images/touxiang/hong.png'
 import { useShare } from '../../composables/useShare'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 import { useGuideTarget } from '../../composables/useGuideTarget'
@@ -191,7 +207,97 @@ useShare({ title: '首页' })
 const guideStore = useGuideStore()
 
 // 新手引导：上报首页打卡按钮位置
-const { activeStyle: checkinButtonActiveStyle } = useGuideTarget('checkin-button', '.guide-target-checkin-button')
+useGuideTarget('checkin-button', '.guide-target-checkin-button')
+
+// 未登录首屏：false 展示欢迎卡片，点击词云区后置为 true 展示介绍卡片（单向切换，不提供返回）
+const showIntroCard = ref(false)
+
+// ===== 欢迎卡片词云（每次进入首页随机生成位置/字号/颜色/旋转） =====
+const CLOUD_WORD_TEXTS = ['免费', '易用', '安全', '开源']
+// 字号档位（s1-s5）与颜色池（c1-c6，取自 global.scss 设计令牌：
+// 品牌绿/品牌深绿/链接蓝/警告黄/成功绿/次要文本色）。
+// 字号采用等差数列：s1 = CLOUD_SIZE_BASE，其后每档 +CLOUD_SIZE_STEP（档差固定、依次叠加），
+// 渲染值由样式变体类定义，须与下方常量保持一致。
+const CLOUD_SIZE_LEVELS = 5
+const CLOUD_COLOR_COUNT = 6
+const CLOUD_SIZE_BASE = 74   // s1 最小档字号(rpx)，保持不变
+const CLOUD_SIZE_STEP = 18   // 档差(rpx)，逐档叠加（s2=92, s3=110, s4=128, s5=146）
+// 由档位换算 rpx 字号（与 CSS 变体类一致），供词间互斥避让计算包围盒
+function cloudSizeRpx(level) {
+  return CLOUD_SIZE_BASE + (level - 1) * CLOUD_SIZE_STEP
+}
+// 词云关键词数据：{ text, size(1-5 字号档), color(1-6 颜色档), style(随机位置+旋转) }
+const cloudWords = ref([])
+
+// Fisher-Yates 洗牌（返回新数组，不修改原数组）
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+// 随机生成词云：颜色与字号均不重复（四词互不相同），字号从 5 档取 4（必含 s4/s5 之一）；
+// 位置经测量词云容器实际尺寸后在容器内随机落点，并与已放置词做 AABB 互斥避让（词之间不重叠）。
+// 字号/颜色通过变体类控制，便于平板媒体查询覆盖；位置以百分比存储（随容器缩放自适应）。
+function randomizeCloud() {
+  const count = CLOUD_WORD_TEXTS.length
+  // 颜色不重复抽取（6 取 4）；字号不重复抽取（5 取 4，丢弃 1 档后仍含 s4/s5 之一）
+  const colors = shuffle(Array.from({ length: CLOUD_COLOR_COUNT }, (_, i) => i + 1)).slice(0, count)
+  const sizes = shuffle(Array.from({ length: CLOUD_SIZE_LEVELS }, (_, i) => i + 1)).slice(0, count)
+
+  // 测量词云容器像素尺寸（与 upx2px 换算单位一致），未就绪时回退估算值
+  uni.createSelectorQuery()
+    .select('.index-page__welcome-cloud')
+    .boundingClientRect()
+    .exec((res) => {
+      const rect = res && res[0]
+      const W = rect && rect.width > 0 ? rect.width : uni.upx2px(604)
+      const H = rect && rect.height > 0 ? rect.height : uni.upx2px(700)
+      const margin = uni.upx2px(12) // 词间最小间距(px)
+      const placed = []
+      cloudWords.value = CLOUD_WORD_TEXTS.map((text, i) => {
+        const Fpx = uni.upx2px(cloudSizeRpx(sizes[i]))
+        // 2 字宽≈2F、行高1.2→高≈1.2F；旋转 ±12° 放大包围盒，外加 margin
+        const hw = Fpx * 1.1 + margin
+        const hh = Fpx * 0.8 + margin
+        const maxX = Math.max(hw, W - hw)
+        const maxY = Math.max(hh, H - hh)
+        let cx
+        let cy
+        // 拒绝采样：在容器内随机落点，避开已放置词的 AABB，最多 80 次兜底
+        for (let t = 0; t < 80; t++) {
+          const px = hw + Math.random() * (maxX - hw)
+          const py = hh + Math.random() * (maxY - hh)
+          const clash = placed.some(
+            (p) => Math.abs(px - p.cx) < hw + p.hw && Math.abs(py - p.cy) < hh + p.hh
+          )
+          if (!clash) {
+            cx = px
+            cy = py
+            break
+          }
+        }
+        if (cx === undefined) {
+          cx = hw + Math.random() * (maxX - hw)
+          cy = hh + Math.random() * (maxY - hh)
+        }
+        placed.push({ cx, cy, hw, hh })
+        const rotate = Math.round(Math.random() * 24 - 12) // -12° ~ 12° 随机旋转
+        const xPct = (cx / W) * 100
+        const yPct = (cy / H) * 100
+        return {
+          text,
+          size: sizes[i],
+          color: colors[i],
+          style: `left:${xPct.toFixed(1)}%;top:${yPct.toFixed(1)}%;transform:translate(-50%,-50%) rotate(${rotate}deg);`
+        }
+      })
+    })
+}
+randomizeCloud()
 
 // 未登录介绍卡片：点击开源地址复制到剪贴板
 function copyRepoUrl() {
@@ -767,6 +873,10 @@ function handleLongPressEnd() {
 onShow(() => {
   // 新手引导：上报当前页面（引导激活时推进/回退步骤）
   guideStore.onPageEnter('home')
+  // 未登录欢迎卡片：每次进入首页重新随机词云布局
+  if (!userStore.userInfo) {
+    randomizeCloud()
+  }
   // loadActivePlans 内部已加载今日所有打卡记录并按新规则排序，无需再单独加载
   loadActivePlans()
   // 并行加载最近 7 天公告（不阻塞任务卡片）
@@ -872,6 +982,88 @@ onUnmounted(() => {
   padding-bottom: 240rpx;
 }
 
+/* ===== 未登录欢迎卡片（首屏，点击词云区切换为介绍卡片） =====
+   卡片通过 flex:1 撑满 main-canvas 剩余高度（视口 - 顶部留白210rpx - 底部与导航栏间隔240rpx），
+   上方简介文案（slogan 突出展示），中下方词云区（logo 居中 + 随机关键词）填满剩余空间 */
+.index-page__welcome-card {
+  width: 684rpx;
+  flex: 1;
+  padding: 56rpx 40rpx 48rpx;
+  box-sizing: border-box;
+  border-radius: 64rpx;
+  background: var(--color-card-bg);
+  /* 1px 内描边保留避免高分屏消失 */
+  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.index-page__welcome-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 卡片主标题：与介绍卡片"按时吃药"标题保持一致的字号/行高/字重/颜色 */
+.index-page__welcome-slogan {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 56rpx;
+  line-height: 80rpx;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 28rpx;
+}
+
+/* 词云区：flex:1 填满卡片剩余高度（logo 居中于该区域即位于卡片中下方），
+   relative 容器供关键词绝对定位（位置由 JS 每次进入首页在整块区域随机生成），
+   整区可点击翻转卡片 */
+.index-page__welcome-cloud {
+  position: relative;
+  flex: 1;
+  margin-top: 24rpx;
+  min-height: 380rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* logo 始终位于最上层（z-index 高于关键词），词云文字从其下方穿过 */
+.index-page__welcome-logo {
+  position: relative;
+  z-index: 2;
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 9999px;
+  display: block;
+}
+
+/* 关键词基础样式：位置/旋转由行内样式随机生成，字号 s1-s5 / 颜色 c1-c6 由变体类随机分配；
+   z-index 低于 logo，opacity 降低为浅色系背景装饰，词之间允许部分重叠 */
+.index-page__welcome-word {
+  position: absolute;
+  z-index: 1;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0.38;
+}
+
+/* 字号档位（s1 最小 → s5 最大，档差 18rpx 依次叠加；数值须与 JS 的 CLOUD_SIZE_BASE/STEP 一致） */
+.index-page__welcome-word--s1 { font-size: 74rpx; }
+.index-page__welcome-word--s2 { font-size: 92rpx; }
+.index-page__welcome-word--s3 { font-size: 110rpx; }
+.index-page__welcome-word--s4 { font-size: 128rpx; }
+.index-page__welcome-word--s5 { font-size: 146rpx; }
+
+/* 颜色池（取自 global.scss 设计令牌）：品牌绿/品牌深绿/链接蓝/警告黄/成功绿/次要文本色，
+   统一通过 opacity 淡化为浅色系 */
+.index-page__welcome-word--c1 { color: var(--color-brand); }
+.index-page__welcome-word--c2 { color: var(--color-brand-dark); }
+.index-page__welcome-word--c3 { color: var(--color-link); }
+.index-page__welcome-word--c4 { color: var(--color-warning); }
+.index-page__welcome-word--c5 { color: var(--color-success); }
+.index-page__welcome-word--c6 { color: var(--color-text-secondary); }
+
 /* ===== 未登录介绍卡片 ===== */
 .index-page__intro-card {
   width: 684rpx;
@@ -922,6 +1114,8 @@ onUnmounted(() => {
   line-height: 48rpx;
   font-weight: 400;
   margin-bottom: 12rpx;
+  /* 正文段落首行缩进两字符（欢迎卡片与介绍卡片共用） */
+  text-indent: 2em;
 }
 
 .index-page__intro-p:last-child {
@@ -941,23 +1135,7 @@ onUnmounted(() => {
    - strong：整句强调（深色加粗，用于必要前提与核心卖点）
    - warning：警示强调（红色加粗，用于风险提示）
    - label：段落子标题（加粗前缀，呼应 section-title 形成层级）
-   - highlights：核心卖点高亮块（绿色描边胶囊，整句突出）
    - action：行动入口（绿色描边胶囊，引导用户点击） */
-
-.index-page__intro-highlights {
-  display: block;
-  margin: 16rpx 0 12rpx;
-  padding: 12rpx 24rpx;
-  border-radius: 16rpx;
-  background: var(--color-brand-bg-light);
-  /* 1px 内描边保留避免高分屏消失 */
-  box-shadow: inset 0 0 0 1px var(--color-brand-border-light);
-  color: var(--color-brand);
-  font-size: 32rpx;
-  line-height: 44rpx;
-  font-weight: 600;
-  text-align: center;
-}
 
 .index-page__intro-em {
   color: var(--color-brand);
@@ -1032,15 +1210,6 @@ onUnmounted(() => {
 
 .index-page__guide-section:last-child {
   margin-bottom: 0;
-}
-
-.index-page__guide-section-title {
-  display: block;
-  color: var(--color-text-primary);
-  font-size: 36rpx;
-  line-height: 52rpx;
-  font-weight: 600;
-  margin-bottom: 12rpx;
 }
 
 .index-page__guide-line {
@@ -1489,11 +1658,6 @@ onUnmounted(() => {
   .index-page__guide-section {
     margin-bottom: 16px;
   }
-  .index-page__guide-section-title {
-    font-size: 18px;
-    line-height: 26px;
-    margin-bottom: 6px;
-  }
   .index-page__guide-line {
     font-size: 15px;
     line-height: 24px;
@@ -1509,6 +1673,31 @@ onUnmounted(() => {
     font-size: 16px;
     line-height: 24px;
   }
+
+  /* 未登录欢迎卡片：rpx→px 锁定，避免宽屏过度放大（词云位置为百分比，随容器自动缩放） */
+  .index-page__welcome-card {
+    width: 342px;
+    padding: 28px 20px 24px;
+    border-radius: 32px;
+  }
+  .index-page__welcome-slogan {
+    font-size: 28px;
+    line-height: 40px;
+    margin-bottom: 14px;
+  }
+  .index-page__welcome-cloud {
+    margin-top: 12px;
+    min-height: 190px;
+  }
+  .index-page__welcome-logo {
+    width: 100px;
+    height: 100px;
+  }
+  .index-page__welcome-word--s1 { font-size: 37px; }
+  .index-page__welcome-word--s2 { font-size: 46px; }
+  .index-page__welcome-word--s3 { font-size: 55px; }
+  .index-page__welcome-word--s4 { font-size: 64px; }
+  .index-page__welcome-word--s5 { font-size: 73px; }
 
   /* 未登录介绍卡片 */
   .index-page__intro-card {
@@ -1539,14 +1728,6 @@ onUnmounted(() => {
   .index-page__intro-p {
     margin-bottom: 6px;
   }
-  /* 重点强调样式：rpx→px 锁定，避免宽屏过度放大 */
-  .index-page__intro-highlights {
-    margin: 8px 0 6px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 16px;
-    line-height: 22px;
-  }
   .index-page__intro-action {
     margin-top: 12px;
     height: 48px;
@@ -1554,16 +1735,6 @@ onUnmounted(() => {
     border-radius: 24px;
   }
   .index-page__intro-action-text {
-    font-size: 16px;
-    line-height: 24px;
-  }
-  .index-page__intro-login {
-    margin-top: 12px;
-    height: 48px;
-    padding: 12px 0;
-    border-radius: 24px;
-  }
-  .index-page__intro-login-text {
     font-size: 16px;
     line-height: 24px;
   }

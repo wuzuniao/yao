@@ -8,7 +8,7 @@
       <PageHeader title="制定计划" desc="合理规划您的用药与健康提醒，助您养成良好的生活习惯。" />
 
       <!-- 新建计划入口卡（点击后切换为"新建计划详情"表单卡，隐藏所有已有计划） -->
-      <view class="plan-page__new-entry guide-target-new-plan" :style="newPlanActiveStyle" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
+      <view class="plan-page__new-entry guide-target-new-plan" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
         <image class="plan-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
         <text class="plan-page__new-entry-text">新建计划</text>
       </view>
@@ -419,7 +419,7 @@ const userStore = useUserStore()
 const guideStore = useGuideStore()
 
 // 新手引导：上报「新建计划」入口位置
-const { activeStyle: newPlanActiveStyle } = useGuideTarget('new-plan', '.guide-target-new-plan')
+useGuideTarget('new-plan', '.guide-target-new-plan')
 
 // 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
 onShow(() => {

@@ -1,4 +1,4 @@
-import { watch, getCurrentInstance, onUnmounted, computed } from 'vue'
+import { watch, getCurrentInstance, onUnmounted } from 'vue'
 import { useGuideStore } from '../store/modules/guide'
 
 /**
@@ -22,13 +22,12 @@ import { useGuideStore } from '../store/modules/guide'
  *
  * @param {string} targetKey - 目标标识（与 store 中 steps[].target 或 steps[].cardAnchor 对应）
  * @param {string} selector - CSS 选择器（如 '.guide-target-settings-tab'）
- * @returns {{ activeStyle: import('vue').ComputedRef, requery: Function }}
- *   - activeStyle：当前目标激活时的占位样式（预留扩展）
+ * @returns {{ requery: Function }}
  *   - requery：手动触发一次位置重新查询（带重试），供页面布局变化时调用
  *
  * 用法：
  *   import { useGuideTarget } from '../../composables/useGuideTarget'
- *   const { activeStyle, requery } = useGuideTarget('settings-tab', '.guide-target-settings-tab')
+ *   const { requery } = useGuideTarget('settings-tab', '.guide-target-settings-tab')
  */
 export function useGuideTarget(targetKey, selector) {
   const guideStore = useGuideStore()
@@ -136,8 +135,5 @@ export function useGuideTarget(targetKey, selector) {
     guideStore.clearTargetRect(targetKey)
   })
 
-  // 当前目标激活时的占位样式（预留扩展，目前无需为目标元素额外加样式）
-  const activeStyle = computed(() => ({}))
-
-  return { activeStyle, requery }
+  return { requery }
 }

@@ -33,7 +33,6 @@ page {
   --color-label-muted: #5e5f5a;     /* 弱化标签文字：联系页标签 */
   --color-link: #0066cc;            /* 链接文字 */
   --color-error-text: #e8553a;      /* 错误提示文字（列表态） */
-  --color-placeholder-focus: #c0c0c0; /* placeholder 聚焦色 */
   --color-text-inverse: #ffffff;    /* 反色文字：品牌色/危险色等彩色背景上的白色文字与图标 */
 
   /* ----- 品牌色 ----- */
@@ -42,7 +41,6 @@ page {
   --color-brand-dark: #2e6900;      /* 品牌深绿：徽标深色文字 */
   --color-brand-darker: #225100;    /* 品牌更深绿：选中日文字 */
   --color-brand-bg-light: #e8f5e0;  /* 品牌极浅绿：徽标浅色背景 */
-  --color-brand-border-light: #c7e4b0; /* 品牌浅绿描边 */
   --color-success: #2ead4b;         /* 成功绿：完成状态标识 */
   --color-wechat: #07c160;          /* 微信品牌绿 */
   --color-danger: #d03238;          /* 危险红：退出登录、删除等危险操作 */
@@ -69,14 +67,6 @@ page {
 
   /* ----- 阴影（box-shadow 偏移与模糊半径保留 px，视觉效果不应缩放）----- */
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-
-  /* ----- 圆角（1px = 2rpx，9999px 胶囊圆角保留）----- */
-  --radius-card: 24rpx;              /* 普通卡片 */
-  --radius-card-lg: 48rpx;           /* 大卡片（登录/注册/联系等） */
-  --radius-btn: 9999px;             /* 胶囊按钮 */
-
-  /* ----- 间距：通知按钮（top45px + 高40px = 底部85px）+ 15px 间隙 = 100px ----- */
-  --page-padding-top: 200rpx;
 }
 
 /* ==========================================================================
