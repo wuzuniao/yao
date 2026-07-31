@@ -3,7 +3,8 @@
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
 
-    <!-- 微信一键登录区（默认展示，未登录用户优先引导微信登录） -->
+    <!-- 微信一键登录区（仅微信小程序端展示，H5 端无微信一键登录能力） -->
+    <!-- #ifdef MP-WEIXIN -->
     <view v-if="loginMode === 'wechat'" class="login-page__wechat">
       <text class="login-page__title">一键登录</text>
       <view class="login-page__wechat-btn guide-target-wechat-login" @click="handleWechatLogin">
@@ -22,9 +23,10 @@
         <text class="login-page__switch-text">账号密码登录</text>
       </view>
     </view>
+    <!-- #endif -->
 
-    <!-- 主登录卡片（账号密码登录，切换或注册页跳转时展示） -->
-    <view v-else class="login-page__card">
+    <!-- 主登录卡片（账号密码登录，H5 端默认展示；微信端切换或注册页跳转时展示） -->
+    <view v-if="loginMode === 'normal'" class="login-page__card guide-target-login-card">
       <text class="login-page__title">欢迎回来</text>
 
       <view class="login-page__form">
@@ -93,10 +95,12 @@
         </view>
       </view>
 
-      <!-- 切换到微信一键登录引导（放大突出） -->
+      <!-- 切换到微信一键登录引导（仅微信小程序端展示） -->
+      <!-- #ifdef MP-WEIXIN -->
       <view class="login-page__switch" @click="switchMode('wechat')">
         <text class="login-page__switch-text">一键登录</text>
       </view>
+      <!-- #endif -->
     </view>
 
     <!-- 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现；仅"立即注册"可点击） -->
@@ -134,27 +138,38 @@ import BackButton from '../../components/BackButton.vue'
 import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
-import { loginUser, wechatLogin } from '../../api/modules/user'
+import { loginUser } from '../../api/modules/user'
 import { useUserStore } from '../../store/modules/user'
 import { useGuideStore } from '../../store/modules/guide'
-import wxIcon from '../../assets/images/dl_wx.png'
 import PasswordEye from '../../components/PasswordEye.vue'
 import { useShare } from '../../composables/useShare'
 import { useGuideTarget } from '../../composables/useGuideTarget'
+// 微信一键登录相关（仅微信小程序端使用）
+// #ifdef MP-WEIXIN
+import { wechatLogin } from '../../api/modules/user'
+import wxIcon from '../../assets/images/dl_wx.png'
+// #endif
 
 useShare({ title: '登录' })
 
 const guideStore = useGuideStore()
 
-// 新手引导：上报微信一键登录按钮位置（引导第 3 步目标）
-useGuideTarget('wechat-login', '.guide-target-wechat-login')
-// 新手引导：上报「立即注册」链接与普通登录按钮位置（非微信小程序端第 3 步目标）
+// 新手引导：上报「立即注册」链接与登录卡片位置（非微信小程序端第 3 步目标）
+// 高亮整个登录卡片而非仅登录按钮，确保用户可输入用户名密码后再点击登录
 useGuideTarget('register-link', '.guide-target-register-link')
-useGuideTarget('login-submit', '.guide-target-login-submit')
+useGuideTarget('login-card', '.guide-target-login-card')
+// 新手引导：上报微信一键登录按钮位置（仅微信小程序端引导第 3 步目标）
+// #ifdef MP-WEIXIN
+useGuideTarget('wechat-login', '.guide-target-wechat-login')
+// #endif
 
-// 登录方式：'wechat'(默认微信一键登录) | 'normal'(账号密码登录)
+// 登录方式：微信小程序端默认 'wechat'(微信一键登录)，其他端默认 'normal'(账号密码登录)
 // 注册页跳转时 URL 带 ?mode=normal，则初始展示账号密码卡片
-const loginMode = ref('wechat')
+let _defaultLoginMode = 'normal'
+// #ifdef MP-WEIXIN
+_defaultLoginMode = 'wechat'
+// #endif
+const loginMode = ref(_defaultLoginMode)
 
 onLoad((options = {}) => {
   if (options.mode === 'normal') {
@@ -175,10 +190,12 @@ function switchMode(mode) {
 const form = reactive({ username: '', password: '' })
 const showPassword = ref(false)
 const remember = ref(false)
-// 微信登录独立隐私勾选（与账号密码登录的 remember 分离，互不影响）
-const wechatAgree = ref(false)
 const submitting = ref(false)
 const userStore = useUserStore()
+// 微信登录独立隐私勾选（仅微信小程序端使用，与账号密码登录的 remember 分离）
+// #ifdef MP-WEIXIN
+const wechatAgree = ref(false)
+// #endif
 
 // 各字段错误信息（失焦时实时校验并写入，输入时清空）
 const errors = reactive({
@@ -233,10 +250,12 @@ function toggleRemember() {
   remember.value = !remember.value
 }
 
-// 微信登录隐私勾选切换
+// 微信登录隐私勾选切换（仅微信小程序端使用）
+// #ifdef MP-WEIXIN
 function toggleWechatAgree() {
   wechatAgree.value = !wechatAgree.value
 }
+// #endif
 
 // ===== 登录提交：前端校验 → 后端验证 → 写入状态 → 跳转 =====
 async function handleLogin() {
@@ -298,8 +317,9 @@ function handleForgot() {
   })
 }
 
-// ===== 微信一键登录：wx.login 获取 code → 后端换取 openid → 写入状态 → 跳转 =====
+// ===== 微信一键登录（仅微信小程序端）：wx.login 获取 code → 后端换取 openid → 写入状态 → 跳转 =====
 // 使用 callback 风格调用 uni.login + 超时安全网覆盖整个流程（含后端请求）
+// #ifdef MP-WEIXIN
 function handleWechatLogin() {
   if (submitting.value) return
   // 隐私协议勾选校验：未勾选时弹出确认对话框，用户点击"确认"后直接执行登录
@@ -378,6 +398,7 @@ function handleWechatLogin() {
     }
   })
 }
+// #endif
 
 function goRegister() {
   uni.navigateTo({

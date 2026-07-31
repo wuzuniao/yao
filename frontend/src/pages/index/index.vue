@@ -183,7 +183,7 @@
  *    - 打卡记录匹配：按相邻提醒的中点划分匹配区间，覆盖全天0:00-24:00无间隙、无留白
  *    - 用户不在线时（onHide）不进行检查，清除定时器；onShow 时重启并立即同步
  */
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, getCurrentInstance, nextTick } from 'vue'
 import { onShow, onHide } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
@@ -228,6 +228,8 @@ function cloudSizeRpx(level) {
 }
 // 词云关键词数据：{ text, size(1-5 字号档), color(1-6 颜色档), style(随机位置+旋转) }
 const cloudWords = ref([])
+// 组件实例：用于 createSelectorQuery().in() 限定查询范围（H5 端必须指定，否则 parentElement 为 null）
+const instance = getCurrentInstance()
 
 // Fisher-Yates 洗牌（返回新数组，不修改原数组）
 function shuffle(arr) {
@@ -248,56 +250,73 @@ function randomizeCloud() {
   const colors = shuffle(Array.from({ length: CLOUD_COLOR_COUNT }, (_, i) => i + 1)).slice(0, count)
   const sizes = shuffle(Array.from({ length: CLOUD_SIZE_LEVELS }, (_, i) => i + 1)).slice(0, count)
 
+  // 根据容器像素尺寸生成词云数据（W/H 为容器实际像素尺寸，未就绪时由调用方传回退估算值）
+  const generateWords = (W, H) => {
+    const margin = uni.upx2px(12) // 词间最小间距(px)
+    const placed = []
+    cloudWords.value = CLOUD_WORD_TEXTS.map((text, i) => {
+      const Fpx = uni.upx2px(cloudSizeRpx(sizes[i]))
+      // 2 字宽≈2F、行高1.2→高≈1.2F；旋转 ±12° 放大包围盒，外加 margin
+      const hw = Fpx * 1.1 + margin
+      const hh = Fpx * 0.8 + margin
+      const maxX = Math.max(hw, W - hw)
+      const maxY = Math.max(hh, H - hh)
+      let cx
+      let cy
+      // 拒绝采样：在容器内随机落点，避开已放置词的 AABB，最多 80 次兜底
+      for (let t = 0; t < 80; t++) {
+        const px = hw + Math.random() * (maxX - hw)
+        const py = hh + Math.random() * (maxY - hh)
+        const clash = placed.some(
+          (p) => Math.abs(px - p.cx) < hw + p.hw && Math.abs(py - p.cy) < hh + p.hh
+        )
+        if (!clash) {
+          cx = px
+          cy = py
+          break
+        }
+      }
+      if (cx === undefined) {
+        cx = hw + Math.random() * (maxX - hw)
+        cy = hh + Math.random() * (maxY - hh)
+      }
+      placed.push({ cx, cy, hw, hh })
+      const rotate = Math.round(Math.random() * 24 - 12) // -12° ~ 12° 随机旋转
+      const xPct = (cx / W) * 100
+      const yPct = (cy / H) * 100
+      return {
+        text,
+        size: sizes[i],
+        color: colors[i],
+        style: `left:${xPct.toFixed(1)}%;top:${yPct.toFixed(1)}%;transform:translate(-50%,-50%) rotate(${rotate}deg);`
+      }
+    })
+  }
+
   // 测量词云容器像素尺寸（与 upx2px 换算单位一致），未就绪时回退估算值
+  // #ifdef H5
+  // H5 端使用 nextTick + DOM API 获取容器尺寸（createSelectorQuery 在 H5 端有 parentElement 兼容问题）
+  nextTick(() => {
+    const el = document.querySelector('.index-page__welcome-cloud')
+    const W = el && el.offsetWidth > 0 ? el.offsetWidth : uni.upx2px(604)
+    const H = el && el.offsetHeight > 0 ? el.offsetHeight : uni.upx2px(700)
+    generateWords(W, H)
+  })
+  // #endif
+  // #ifndef H5
+  // 微信小程序端使用 createSelectorQuery（需 .in(instance.proxy) 限定组件上下文）
   uni.createSelectorQuery()
+    .in(instance.proxy)
     .select('.index-page__welcome-cloud')
     .boundingClientRect()
     .exec((res) => {
       const rect = res && res[0]
       const W = rect && rect.width > 0 ? rect.width : uni.upx2px(604)
       const H = rect && rect.height > 0 ? rect.height : uni.upx2px(700)
-      const margin = uni.upx2px(12) // 词间最小间距(px)
-      const placed = []
-      cloudWords.value = CLOUD_WORD_TEXTS.map((text, i) => {
-        const Fpx = uni.upx2px(cloudSizeRpx(sizes[i]))
-        // 2 字宽≈2F、行高1.2→高≈1.2F；旋转 ±12° 放大包围盒，外加 margin
-        const hw = Fpx * 1.1 + margin
-        const hh = Fpx * 0.8 + margin
-        const maxX = Math.max(hw, W - hw)
-        const maxY = Math.max(hh, H - hh)
-        let cx
-        let cy
-        // 拒绝采样：在容器内随机落点，避开已放置词的 AABB，最多 80 次兜底
-        for (let t = 0; t < 80; t++) {
-          const px = hw + Math.random() * (maxX - hw)
-          const py = hh + Math.random() * (maxY - hh)
-          const clash = placed.some(
-            (p) => Math.abs(px - p.cx) < hw + p.hw && Math.abs(py - p.cy) < hh + p.hh
-          )
-          if (!clash) {
-            cx = px
-            cy = py
-            break
-          }
-        }
-        if (cx === undefined) {
-          cx = hw + Math.random() * (maxX - hw)
-          cy = hh + Math.random() * (maxY - hh)
-        }
-        placed.push({ cx, cy, hw, hh })
-        const rotate = Math.round(Math.random() * 24 - 12) // -12° ~ 12° 随机旋转
-        const xPct = (cx / W) * 100
-        const yPct = (cy / H) * 100
-        return {
-          text,
-          size: sizes[i],
-          color: colors[i],
-          style: `left:${xPct.toFixed(1)}%;top:${yPct.toFixed(1)}%;transform:translate(-50%,-50%) rotate(${rotate}deg);`
-        }
-      })
+      generateWords(W, H)
     })
+  // #endif
 }
-randomizeCloud()
 
 // 未登录介绍卡片：点击开源地址复制到剪贴板
 function copyRepoUrl() {

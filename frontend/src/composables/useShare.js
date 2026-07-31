@@ -38,14 +38,14 @@ const DEFAULT_TITLE = '无足鸟按时吃药打卡'
 export function useShare(options = {}) {
   const { title = DEFAULT_TITLE, path, imageUrl } = options
 
+  // 分享为微信小程序专有功能，H5 端无分享菜单，整体条件编译隔离
+  // #ifdef MP-WEIXIN
   // 页面加载时显式启用分享菜单（含朋友圈），否则菜单项为灰色不可点击
   onLoad(() => {
-    // #ifdef MP-WEIXIN
     wx.showShareMenu({
       withShareTicket: true,
       menus: ['shareAppMessage', 'shareTimeline']
     })
-    // #endif
   })
 
   // 转发给朋友：返回分享内容
@@ -62,4 +62,5 @@ export function useShare(options = {}) {
     if (imageUrl) result.imageUrl = imageUrl
     return result
   })
+  // #endif
 }

@@ -133,6 +133,7 @@
           </view>
         </view>
 
+        <!-- #ifdef MP-WEIXIN -->
         <!-- 微信订阅消息卡片（含剩余额度与重新授权入口；点击卡片展开启用状态修改表单） -->
         <view v-if="hasWechat">
           <view class="notification-page__card" :class="{ 'notification-page__card--disabled': wechatChannel && !wechatChannel.enabled }" @click="toggleWechatEdit">
@@ -184,6 +185,7 @@
             </view>
           </view>
         </view>
+        <!-- #endif -->
       </view>
 
       <!-- 添加新方式入口卡（点击后切换为"新建通知方式"表单卡） -->
@@ -210,19 +212,23 @@
                 </view>
                 <text class="notification-page__radio-text">邮件</text>
               </view>
+              <!-- #ifdef MP-WEIXIN -->
               <view class="notification-page__radio-item" @click="selectType('微信')">
                 <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === '微信' }">
                   <view v-if="formType === '微信'" class="notification-page__radio-dot"></view>
                 </view>
                 <text class="notification-page__radio-text">微信</text>
               </view>
+              <!-- #endif -->
             </view>
           </view>
 
+          <!-- #ifdef MP-WEIXIN -->
           <!-- 微信订阅授权说明（仅"微信"类型时显示，使用默认文字样式） -->
           <template v-if="formType === '微信'">
             <text>点击下方「授权订阅提醒」并选择允许，打卡时间到达时将通过微信订阅消息提醒您（一次性订阅，每次授权可下发 1 条）。您每日完成打卡时也会自动补充授权额度。</text>
           </template>
+          <!-- #endif -->
 
           <!-- 邮件配置表单（仅"邮件"类型时显示） -->
           <template v-if="formType === '邮件'">
@@ -360,15 +366,18 @@ import { useInputLimit } from '../../composables/useInputLimit'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 import { useUserStore } from '../../store/modules/user'
 import { useGuideStore } from '../../store/modules/guide'
-import { bindWechat } from '../../api/modules/user'
 import {
   listNotificationChannels,
   createEmailChannel,
   updateEmailChannel,
-  updateWechatChannel,
   deleteNotificationChannel
 } from '../../api/modules/notification'
+// 微信订阅消息相关（仅微信小程序端使用）
+// #ifdef MP-WEIXIN
+import { bindWechat } from '../../api/modules/user'
+import { updateWechatChannel } from '../../api/modules/notification'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
+// #endif
 import znxIcon from '../../assets/images/tz_znx.png'
 import yxIcon from '../../assets/images/tz_yx.png'
 import deleteIcon from '../../assets/images/shanchu.png'
@@ -382,16 +391,20 @@ const guideStore = useGuideStore()
 // 引导激活且当前页面为通知方式页时，禁用 page 滚动（配合 page-meta 的 scroll-y）
 const guideScrollLock = computed(() => guideStore.isActive && guideStore.currentPage === 'notification')
 
-// 新手引导：上报「添加新的通知方式」、「授权订阅提醒」按钮与新建通知方式表单卡位置
+// 新手引导：上报「添加新的通知方式」按钮与新建通知方式表单卡位置
 useGuideTarget('add-notification', '.guide-target-add-notification')
+// #ifdef MP-WEIXIN
 useGuideTarget('wechat-auth-button', '.guide-target-wechat-auth-button')
+// #endif
 useGuideTarget('notification-form-card', '.guide-target-notification-form-card')
 // 新手引导：上报邮件类型单选框与保存按钮位置（非微信小程序端第 4 步目标）
 useGuideTarget('email-type-radio', '.guide-target-email-type-radio')
 useGuideTarget('email-save-button', '.guide-target-email-save-button')
 
 // 微信订阅消息授权（仅在微信小程序端生效）
+// #ifdef MP-WEIXIN
 const { requestSubscribe, isSubscribeSilentRejected } = useWechatSubscribe()
+// #endif
 
 // 用户的通知渠道列表（从数据库加载）
 const channels = ref([])
@@ -399,8 +412,12 @@ const channels = ref([])
 const expandedEmailId = ref(null)
 // 卡片切换：默认显示"添加新的通知方式"入口卡，点击后切换为"新建通知方式"表单卡
 const showForm = ref(false)
-// 表单通知类型（'邮件' / '微信'）
-const formType = ref('微信')
+// 表单通知类型：微信小程序端默认 '微信'（订阅消息为推荐提醒方式），其他端默认 '邮件'
+let _defaultFormType = '邮件'
+// #ifdef MP-WEIXIN
+_defaultFormType = '微信'
+// #endif
+const formType = ref(_defaultFormType)
 // 邮箱未绑定倒计时弹窗（3秒后自动跳转绑定邮箱页面）
 const showCountdown = ref(false)
 const countdown = ref(3)
@@ -421,12 +438,15 @@ const editForm = reactive({
   password: '',
   enabled: true
 })
+// 微信启用状态修改表单（仅微信小程序端使用）
+// #ifdef MP-WEIXIN
 // 微信启用状态修改表单是否展开（点击微信卡片切换）
 const wechatEditExpanded = ref(false)
 // 微信启用状态修改表单（仅 enabled 字段）
 const wechatEditForm = reactive({
   enabled: true
 })
+// #endif
 
 // 端口格式错误提示（编辑表单与新建表单各自独立）
 const portError = ref('')
@@ -462,6 +482,8 @@ const pwdLimit = useInputLimit(64)
 const hasZnx = computed(() => channels.value.some(ch => ch.channel_type === '站内信'))
 // 计算属性：所有邮件渠道
 const emailChannels = computed(() => channels.value.filter(ch => ch.channel_type === '邮件'))
+// 计算属性：微信渠道相关（仅微信小程序端使用）
+// #ifdef MP-WEIXIN
 // 计算属性：是否已配置微信渠道
 const hasWechat = computed(() => channels.value.some(ch => ch.channel_type === '微信'))
 // 计算属性：微信渠道对象
@@ -471,6 +493,7 @@ const wechatRemaining = computed(() => {
   const ch = wechatChannel.value
   return ch && typeof ch.remaining === 'number' ? ch.remaining : 0
 })
+// #endif
 
 // 计算属性：保存按钮是否可点击（邮件类型需填写完整；微信类型可点击）
 const canSave = computed(() => {
@@ -569,12 +592,13 @@ function startEmailCountdown() {
 function handleAdd() {
   // 点击"添加新的通知方式"入口卡：切换显示"新建通知方式"表单卡
   showForm.value = true
-  // 默认选中"微信"选项（订阅消息为推荐提醒方式）
+  // 默认通知类型：微信小程序端选"微信"（订阅消息为推荐提醒方式），其他端选"邮件"
+  // #ifdef MP-WEIXIN
   formType.value = '微信'
-  // 非微信小程序端新手引导：添加新方式后直接进入邮件配置引导
-  if (guideStore.isActive && !guideStore.isWechatMP && guideStore.currentStepData?.target === 'add-notification') {
-    formType.value = '邮件'
-  }
+  // #endif
+  // #ifndef MP-WEIXIN
+  formType.value = '邮件'
+  // #endif
   form.smtp_host = ''
   form.smtp_port = ''
   form.email = ''
@@ -593,12 +617,14 @@ function handleAdd() {
   }
 }
 
-// 保存通知：邮件类型走 SMTP 保存；微信类型走授权流程
+// 保存通知：邮件类型走 SMTP 保存；微信类型走授权流程（仅微信小程序端）
 async function handleSave() {
+  // #ifdef MP-WEIXIN
   if (formType.value === '微信') {
     await handleWechatAuthorize()
     return
   }
+  // #endif
   if (!canSave.value) return
   if (!userStore.userInfo) {
     uni.showToast({ title: '请先登录', icon: 'none' })
@@ -743,6 +769,7 @@ async function handleDeleteEmail(channelId) {
   })
 }
 
+// #ifdef MP-WEIXIN
 // 微信订阅授权主流程（发起授权）
 // 抽取为独立函数，供「已绑定微信直接授权」与「先绑定微信再授权」两种入口复用
 // 真机首次授权弹窗即包含「总是保持以上选择，不再询问」选项，无需二次授权引导
@@ -807,12 +834,10 @@ async function bindWechatAccount() {
   }, 10000)
   try {
     let code = null
-    // #ifdef MP-WEIXIN
     const loginRes = await new Promise((resolve, reject) => {
       uni.login({ provider: 'weixin', success: resolve, fail: reject })
     })
     code = loginRes.code
-    // #endif
     if (!code) {
       clearTimeout(timeout)
       uni.hideLoading()
@@ -930,6 +955,7 @@ async function handleUpdateWechat() {
     uni.showToast({ title: e.message || '更新失败', icon: 'none' })
   }
 }
+// #endif
 </script>
 
 <style lang="scss">

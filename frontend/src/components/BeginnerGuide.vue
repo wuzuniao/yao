@@ -1,50 +1,21 @@
 <template>
   <template v-if="visible && ready">
-    <!-- #ifdef H5 -->
-    <!-- SVG 精确蒙版：全屏覆盖，中心挖圆角矩形洞，避免四角漏白 -->
-    <svg
-      v-if="targetRect"
-      class="beginner-guide__svg-mask"
-      :style="svgMaskStyle"
-    >
-      <defs>
-        <mask :id="maskId">
-          <rect x="0" y="0" :width="screenWidth" :height="screenHeight" fill="white" />
-          <rect
-            :x="highlightRect.left"
-            :y="highlightRect.top"
-            :width="highlightRect.width"
-            :height="highlightRect.height"
-            :rx="highlightRadiusValue"
-            :ry="highlightRadiusValue"
-            fill="black"
-          />
-        </mask>
-      </defs>
-      <rect
-        x="0"
-        y="0"
-        :width="screenWidth"
-        :height="screenHeight"
-        fill="rgba(0, 0, 0, 0.6)"
-        :mask="`url(#${maskId})`"
-      />
-    </svg>
-    <!-- #endif -->
+    <!-- 视觉蒙版：单 view + box-shadow 大扩散绘制高亮洞以外的灰色蒙版；
+         view 本身透明，高亮洞内显示目标元素，连续渲染无 SVG mask 抗锯齿黑边 -->
+    <view
+      v-if="highlightRect"
+      class="beginner-guide__mask-hole"
+      :style="maskHoleStyle"
+    ></view>
 
     <!-- #ifndef H5 -->
-    <!-- 微信小程序蒙版：
-         视觉层（单 view + box-shadow 大扩散）一次绘制高亮洞以外的灰色蒙版，无相邻 view 拼接线；
-         点击阻挡层（4 个透明矩形）覆盖高亮洞以外区域，高亮洞内无 view，点击直达目标 -->
+    <!-- 微信小程序点击阻挡层：4 个透明矩形覆盖高亮洞以外区域，高亮洞内无 view，点击直达目标；
+         H5 端蒙版 view pointer-events:none 不阻挡点击，无需点击阻挡层 -->
     <template v-if="highlightRect">
-      <!-- 点击阻挡层：4 个透明矩形（pointer-events 默认 auto），覆盖高亮洞以外的整屏区域；
-           透明背景使相邻 view 拼接处不可见，视觉蒙版由下方 box-shadow 视觉层统一绘制 -->
       <view class="beginner-guide__bar" :style="topBarStyle" @touchmove.stop @click.stop></view>
       <view class="beginner-guide__bar" :style="bottomBarStyle" @touchmove.stop @click.stop></view>
       <view class="beginner-guide__bar" :style="leftBarStyle" @touchmove.stop @click.stop></view>
       <view class="beginner-guide__bar" :style="rightBarStyle" @touchmove.stop @click.stop></view>
-      <!-- 视觉层：单 view，box-shadow 大扩散绘制高亮洞以外的灰色蒙版（pointer-events:none 不阻挡点击） -->
-      <view class="beginner-guide__mask-hole" :style="maskHoleStyle"></view>
     </template>
     <!-- #endif -->
 
@@ -85,9 +56,9 @@
  * 新手引导遮罩组件（BeginnerGuide.vue）
  * --------------------------------------------------------------------------
  * 功能：跨页面新手引导的视觉呈现层
- *  - 灰色蒙版：覆盖目标元素以外的区域，阻止用户点击非目标按钮
- *    - H5：全屏 SVG mask，中心挖一个与目标元素同尺寸同圆角的洞
- *    - 微信小程序：单 view box-shadow 大扩散绘制洞外蒙版 + 4 透明矩形作点击阻挡层
+ *  - 灰色蒙版：覆盖目标元素以外的区域
+ *    - H5 与微信小程序均使用单 view box-shadow 大扩散绘制洞外蒙版（连续渲染无 SVG mask 抗锯齿黑边）
+ *    - 微信小程序额外用 4 个透明矩形作点击阻挡层（H5 端蒙版 view pointer-events:none 不阻挡点击）
  *  - 高亮边框：围绕目标元素描边，吸引视线（pointer-events:none 不阻挡目标点击）
  *  - 步骤卡片：显示步骤序号、标题、说明文字，附带"跳过"按钮
  *  - 目标位置由 useGuideTarget composable 在各页面/组件内查询并上报到 guide store
@@ -98,12 +69,12 @@
  *  - 所有步骤均在对应页面加载完成、目标元素位置成功上报后才显示蒙版/高亮/卡片；滚动过程中 useGuideTarget 持续刷新位置，高亮与卡片同步跟随
  *
  * 蒙版原理：
- *  - H5：使用 SVG mask 精确挖洞，pointer-events:none 不阻挡目标点击。
- *  - 微信小程序：视觉层用单个 view 的 box-shadow 大扩散一次性绘制高亮洞以外的灰色蒙版，
- *    单层连续渲染，无相邻 view 拼接处，杜绝 1px 拼接线，背景颜色一致；
- *    点击阻挡层用 4 个透明矩形覆盖高亮洞以外的整屏区域（pointer-events:auto），
+ *  - 视觉层：单 view + box-shadow 大扩散一次性绘制高亮洞以外的灰色蒙版，
+ *    单层连续渲染，无拼接线，背景颜色一致；view 本身透明，高亮洞内显示目标元素。
+ *  - H5：蒙版 view pointer-events:none 不阻挡任何点击，无需点击阻挡层。
+ *  - 微信小程序：额外用 4 个透明矩形覆盖高亮洞以外的整屏区域（pointer-events:auto），
  *    高亮洞内不放置任何 view，点击直达目标；透明矩形拼接处不可见，视觉无影响。
- *    呼吸边框直接用 box-shadow 绘制于高亮 view（不使用 ::after 伪元素，
+ *  - 呼吸边框用 box-shadow 绘制于高亮 view（不使用 ::after 伪元素，
  *    避免微信小程序伪元素不尊重 pointer-events:none 而误拦目标点击）。
  *
  * 使用方式：在需要引导的页面引入 <BeginnerGuide /> 即可，组件内部读取 guide store
@@ -201,9 +172,6 @@ const highlightRect = computed(() => {
     bottom: rect.bottom + pad
   }
 })
-
-// SVG mask 唯一标识
-const maskId = 'beginner-guide-mask'
 
 // rpx 转 px（以 750rpx = screenWidth 为基准）
 function rpxToPx(rpx) {
@@ -338,14 +306,6 @@ const maskHoleStyle = computed(() => {
   }
 })
 
-// SVG 蒙版定位样式
-const svgMaskStyle = computed(() => ({
-  top: 0,
-  left: 0,
-  width: screenWidth.value + 'px',
-  height: screenHeight.value + 'px'
-}))
-
 // 步骤卡片定位：
 // - 默认：优先放在目标下方，空间不足时放上方
 // - cardPosition='bottom'：强制卡片位于目标下方
@@ -432,14 +392,6 @@ function handleSkip() {
  * 蒙版与高亮定位使用 px（来自 boundingClientRect 的实际像素值）。
  * 步骤卡片内部样式使用 rpx（随屏缩放），平板断点(≥768px)锁定为 px。
  * ========================================================================== */
-
-.beginner-guide__svg-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 9998;
-  pointer-events: none;
-}
 
 .beginner-guide__mask {
   position: fixed;

@@ -91,10 +91,11 @@ export function request({ url, method = 'GET', data, header, timeout }) {
         reject(new Error(msg))
       },
       fail: (err) => {
-        // 保留微信小程序 errMsg 诊断信息（如 "request:fail url not in domain list"）
+        // 保留请求失败诊断信息（如微信小程序 "request:fail url not in domain list"）
         const errMsg = (err && err.errMsg) || ''
         let msg = '网络请求失败'
-        // 微信小程序开发期常见原因：未在开发者工具勾选「不校验合法域名」
+        // 微信小程序端错误文案（开发期常见原因：未在开发者工具勾选「不校验合法域名」）
+        // #ifdef MP-WEIXIN
         if (errMsg.includes('domain') || errMsg.includes('url not in')) {
           msg = '请求域名未配置：请在微信开发者工具 → 详情 → 本地设置，勾选「不校验合法域名、web-view、TLS 版本以及 HTTPS 证书」'
         } else if (errMsg.includes('timeout')) {
@@ -104,6 +105,17 @@ export function request({ url, method = 'GET', data, header, timeout }) {
         } else if (errMsg) {
           msg = `网络请求失败：${errMsg}`
         }
+        // #endif
+        // H5 端错误文案（浏览器 fetch/XHR 错误）
+        // #ifndef MP-WEIXIN
+        if (errMsg.includes('timeout')) {
+          msg = '请求超时，请检查后端服务是否启动'
+        } else if (errMsg.includes('Network Error') || errMsg.includes('Failed to fetch')) {
+          msg = '无法连接后端服务，请确认后端已启动或网络正常'
+        } else if (errMsg) {
+          msg = `网络请求失败：${errMsg}`
+        }
+        // #endif
         const e = new Error(msg)
         e.errMsg = errMsg
         e.isNetworkError = true

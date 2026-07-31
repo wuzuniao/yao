@@ -242,6 +242,10 @@ const avatarUrl = computed(() => {
 })
 
 function goNotification() {
+  // 新手引导：点击「通知方式」后推进到「制定计划」步骤（通知方式页内不再有引导蒙版，用户自由操作）
+  if (guideStore.isActive && guideStore.currentStepData?.target === 'notification-method') {
+    guideStore.skipToStepByTarget('plan-method')
+  }
   uni.navigateTo({ url: '/pages/index/notification' })
 }
 

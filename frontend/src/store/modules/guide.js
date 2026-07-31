@@ -15,8 +15,8 @@ import { ref, computed } from 'vue'
  *   5. 设置页 → 点击「制定计划」→ 进入计划页新建计划
  *   6. 设置页 → 点击底部「首页」→ 首页高亮打卡按钮并介绍使用方式（最后一步）
  * - 非微信小程序端引导流程（微信登录/订阅不可用）：
- *   · 第 3 步改为：登录页 → 点击「立即注册」→ 注册页提交 → 普通账号密码登录 → 登录成功后回到设置页
- *   · 第 4 步改为：设置页 → 点击「通知方式」→ 添加新方式 → 选择邮件 → 保存邮件通知 → 回到设置页
+ *   · 第 3 步改为：登录页 → 点击「立即注册」→ 注册页高亮整个卡片（允许填写表单）→ 普通登录高亮整个卡片（允许输入账号密码）→ 登录成功后回到设置页
+ *   · 第 4 步改为：设置页 → 点击「通知方式」（提示卡片说明完整流程：进入通知方式页添加邮件并保存）→ 通知方式页内无引导蒙版、用户自由操作 → 返回设置页进入步骤 5
  *   · 其余步骤与微信小程序端一致
  * - 每个页面 onShow 时调用 onPageEnter(pageName) 上报当前页面，store 据此推进/回退步骤
  * - 已登录用户从首页启动引导（startGuideForLoggedIn）：完成步骤 1 后自动跳过登录相关步骤，直接进入步骤 4；
@@ -163,19 +163,17 @@ export const useGuideStore = defineStore('guide', () => {
     },
     {
       page: 'register',
-      target: 'register-submit',
+      target: 'register-card',
       stepNumber: 3,
-      padding: 0,
-      shape: 'pill',
+      padding: 8,
       title: '填写并提交注册',
       description: '填写用户名、密码、邮箱和验证码后，点击「注册」按钮完成注册。'
     },
     {
       page: 'login',
-      target: 'login-submit',
+      target: 'login-card',
       stepNumber: 3,
-      padding: 0,
-      shape: 'pill',
+      padding: 8,
       title: '普通登录',
       description: '输入账号密码后点击「登录」，登录成功后自动回到设置页。'
     },
@@ -185,37 +183,8 @@ export const useGuideStore = defineStore('guide', () => {
       stepNumber: 4,
       padding: 0,
       title: '设置通知方式（可选）',
-      description: '点击「通知方式」可添加邮件提醒；本次为可选项，也可跳过直接进入下一步。',
+      description: '点击「通知方式」进入通知方式页，点击「添加新的通知方式」选择邮件并填写 SMTP 配置后保存。本次为可选项，也可跳过直接进入下一步。',
       optional: true,
-      skipTo: 'plan-method'
-    },
-    {
-      page: 'notification',
-      target: 'add-notification',
-      stepNumber: 4,
-      padding: 0,
-      title: '添加新的通知方式',
-      description: '点击「添加新的通知方式」，选择邮件类型并填写 SMTP 配置。',
-      skipTo: 'plan-method'
-    },
-    {
-      page: 'notification',
-      target: 'email-type-radio',
-      stepNumber: 4,
-      padding: 0,
-      title: '选择邮件通知',
-      description: '在通知类型中选择「邮件」，即可配置邮件 SMTP 提醒。'
-    },
-    {
-      page: 'notification',
-      target: 'email-save-button',
-      stepNumber: 4,
-      padding: 0,
-      shape: 'pill',
-      cardPosition: 'anchor-top',
-      cardAnchor: 'notification-form-card',
-      title: '保存邮件通知',
-      description: '填写 SMTP 服务器、端口、发件邮箱和客户端专用密码后，点击「保存通知」。',
       skipTo: 'plan-method'
     },
     {

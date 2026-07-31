@@ -126,9 +126,34 @@ export function useGuideTarget(targetKey, selector) {
     { immediate: true }
   )
 
+  // 监听当前页面变化：当页面切换回当前步骤所在页面时，重新查询位置
+  // 解决：在 plan 页期间 currentStep 推进到 settings 页的 home-tab，BottomNav 不可见导致
+  // 查询失败；返回 settings 页后 stopWatch 不再触发（currentStepData 未变），位置不上报，
+  // 全屏蒙版持续显示、步骤卡片不显示
+  const stopPageWatch = watch(
+    () => guideStore.currentPage,
+    () => {
+      const step = guideStore.currentStepData
+      if (!guideStore.isActive || !step) return
+      if (step.target !== targetKey && step.cardAnchor !== targetKey) return
+      if (requeryTimer) {
+        clearTimeout(requeryTimer)
+        requeryTimer = null
+      }
+      setTimeout(() => {
+        queryAndReport()
+        requeryTimer = setTimeout(() => {
+          queryAndReport()
+          requeryTimer = null
+        }, 500)
+      }, 150)
+    }
+  )
+
   // 组件卸载时停止监听并清理位置数据
   onUnmounted(() => {
     stopWatch()
+    stopPageWatch()
     if (requeryTimer) {
       clearTimeout(requeryTimer)
     }

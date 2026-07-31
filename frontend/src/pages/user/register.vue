@@ -5,7 +5,7 @@
 
     <view class="register-page__canvas">
       <!-- 白色卡片容器 -->
-      <view class="register-page__card">
+      <view class="register-page__card guide-target-register-card">
         <!-- 标题区 -->
         <view class="register-page__header">
           <text class="register-page__title">注册账号</text>
@@ -195,8 +195,9 @@ useShare({ title: '注册账号' })
 
 const guideStore = useGuideStore()
 
-// 新手引导：上报「注册」按钮位置（非微信小程序端第 3 步目标）
-useGuideTarget('register-submit', '.guide-target-register-submit')
+// 新手引导：上报注册卡片位置（非微信小程序端第 3 步目标）
+// 高亮整个注册卡片而非仅注册按钮，确保用户可填写表单后再点击注册
+useGuideTarget('register-card', '.guide-target-register-card')
 
 const form = reactive({
   username: '',
