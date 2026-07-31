@@ -148,7 +148,7 @@ onUnmounted(() => {
   /* flex:1 自动填满首页空白高度；出现即吸收空白、消失即释放，始终一屏无滚动 */
   flex: 1 1 auto;
   min-height: 0;
-  width: 684rpx;
+  /* 不显式设 width，由 main-canvas 的 align-items: stretch 撑满内容区（左右各 48rpx），与首页任务卡(.index-page__primary-card)保持同宽且严格对齐，避免固定宽度导致偏左 */
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
@@ -344,7 +344,6 @@ onUnmounted(() => {
 /* 平板/折叠屏适配（≥768px）：锁宽与字号，避免 rpx 过度放大 */
 @media screen and (min-width: 768px) {
   .announcement-card {
-    width: 342px;
     padding: 16px;
     border-radius: 32px;
   }

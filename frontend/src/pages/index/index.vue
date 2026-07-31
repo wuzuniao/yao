@@ -963,14 +963,14 @@ onUnmounted(() => {
 }
 
 .index-page__main-canvas {
-  /* padding-top 210rpx：与记录页(.record-page__main)白色卡片距导航栏顶部距离保持一致 */
+  /* padding-top 210rpx：与记录页(.record-page__main)、设置页(.settings-page__main)的卡片距导航栏顶部距离保持一致 */
   /* gap 64rpx：hero 与打卡按钮之间的间隔，小屏断点(max-height:700px)会进一步压缩 */
   padding: 210rpx 48rpx 0;
   box-sizing: border-box;
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* 与记录/设置页一致：默认 stretch 使卡片严格撑满父容器内容区（左右各 48rpx），不显式 center 避免与记录/设置页语义偏离 */
   gap: 64rpx;
 }
 
@@ -1005,7 +1005,6 @@ onUnmounted(() => {
    卡片通过 flex:1 撑满 main-canvas 剩余高度（视口 - 顶部留白210rpx - 底部与导航栏间隔240rpx），
    上方简介文案（slogan 突出展示），中下方词云区（logo 居中 + 随机关键词）填满剩余空间 */
 .index-page__welcome-card {
-  width: 684rpx;
   flex: 1;
   padding: 56rpx 40rpx 48rpx;
   box-sizing: border-box;
@@ -1085,7 +1084,6 @@ onUnmounted(() => {
 
 /* ===== 未登录介绍卡片 ===== */
 .index-page__intro-card {
-  width: 684rpx;
   /* 尺寸跟随内容：不再 flex 撑满整屏，仅包裹标题+正文+登录按钮，消除下方多余白底 */
   padding: 48rpx 32rpx 32rpx;
   box-sizing: border-box;
@@ -1197,7 +1195,6 @@ onUnmounted(() => {
 
 /* ===== 已登录空状态：新手引导卡片（样式参考未登录介绍卡片） ===== */
 .index-page__guide-card {
-  width: 684rpx;
   padding: 48rpx 32rpx 32rpx;
   box-sizing: border-box;
   border-radius: 64rpx;
@@ -1281,14 +1278,12 @@ onUnmounted(() => {
 
 /* ===== 任务卡片区域 ===== */
 .index-page__hero {
-  width: 684rpx;
   padding-top: 32rpx;
   box-sizing: border-box;
 }
 
 .index-page__primary-card {
   position: relative;
-  width: 684rpx;
   /* 移除固定高度，根据实际文字内容自适应高度，确保布局紧凑 */
   padding: 32rpx;
   box-sizing: border-box;
@@ -1367,7 +1362,6 @@ onUnmounted(() => {
 
 .index-page__secondary-card {
   margin-top: -64rpx;
-  width: 684rpx;
   height: 170rpx;
   padding: 64rpx 32rpx 24rpx;
   box-sizing: border-box;
@@ -1506,7 +1500,6 @@ onUnmounted(() => {
 
 /* ===== 立即打卡按钮 ===== */
 .index-page__checkin-shell {
-  width: 684rpx;
   padding: 32rpx 150rpx 0;
   box-sizing: border-box;
   /* margin-top:auto 将打卡按钮推至 main-canvas 底部；
@@ -1519,6 +1512,8 @@ onUnmounted(() => {
 .index-page__checkin-button {
   width: 384rpx;
   height: 384rpx;
+  /* 配合打卡按钮区左右 padding，使圆形按钮在内容区内水平居中 */
+  margin: 0 auto;
   border-radius: 9999px;
   background: var(--color-danger);
   /* box-shadow 偏移/模糊保留 px */
@@ -1625,19 +1620,10 @@ onUnmounted(() => {
  *   - 1024px：平板横屏 / 折叠屏展开
  * ========================================================================== */
 @media screen and (min-width: 768px) {
-  /* 内容容器固定 342px 居中，避免宽屏拉伸 */
-  .index-page__guide-card,
-  .index-page__hero,
-  .index-page__primary-card,
-  .index-page__secondary-card,
-  .index-page__checkin-shell {
-    width: 342px;
-  }
-
   /* 主画布 padding/gap 锁定为 px，避免 rpx 在平板上过度放大导致溢出 */
   .index-page__main-canvas {
-    /* padding-top 105px：与记录页平板 210rpx(=105px)保持一致 */
-    padding-top: 105px;
+    /* padding-top/bottom 与记录页/设置页大屏段逐字同构：显式 px 锁定左右间距，避免 H5 大屏端卡片贴边 */
+    padding: 105px 24px 0;
     gap: 24px;
   }
   /* 未登录：底部间距与记录页平板 240rpx(=120px)保持一致 */
@@ -1662,7 +1648,6 @@ onUnmounted(() => {
 
   /* 已登录空状态：新手引导卡片 */
   .index-page__guide-card {
-    width: 342px;
     padding: 24px 16px 16px;
     border-radius: 32px;
   }
@@ -1695,7 +1680,6 @@ onUnmounted(() => {
 
   /* 未登录欢迎卡片：rpx→px 锁定，避免宽屏过度放大（词云位置为百分比，随容器自动缩放） */
   .index-page__welcome-card {
-    width: 342px;
     padding: 28px 20px 24px;
     border-radius: 32px;
   }
@@ -1720,7 +1704,6 @@ onUnmounted(() => {
 
   /* 未登录介绍卡片 */
   .index-page__intro-card {
-    width: 342px;
     padding: 24px 16px 16px;
     border-radius: 32px;
   }
@@ -1867,10 +1850,9 @@ onUnmounted(() => {
 }
 
 @media screen and (min-width: 1024px) {
-  /* 折叠屏展开/平板横屏：进一步限制内容最大宽度，居中显示避免过度留白拉伸 */
+  /* 折叠屏展开/平板横屏：与记录/设置页大屏段同构，不显式清零左右 padding，
+     使首页白色卡片在超宽屏下仍由基础样式(48rpx)推开左右边界，避免 H5 大屏端贴边 */
   .index-page__main-canvas {
-    padding-left: 0;
-    padding-right: 0;
   }
 }
 </style>
