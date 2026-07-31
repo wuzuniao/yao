@@ -32,7 +32,7 @@
               @focus="onFocus('name')"
               @blur="onBlur"
             />
-            <text v-if="nameLimit.limitReached" class="plan-page__limit-text">{{ nameLimit.limitHint }}</text>
+            <text v-if="nameLimit.limitReached && nameLimit.limitHint && nameLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ nameLimit.limitHint }}</text>
           </view>
 
           <!-- 备注说明 -->
@@ -49,7 +49,7 @@
               @focus="onFocus('remark')"
               @blur="onBlur"
             />
-            <text v-if="remarkLimit.limitReached" class="plan-page__limit-text">{{ remarkLimit.limitHint }}</text>
+            <text v-if="remarkLimit.limitReached && remarkLimit.limitHint && remarkLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ remarkLimit.limitHint }}</text>
           </view>
 
           <!-- 计划持续起始日期（起止日期双控件，禁止手动输入） -->
@@ -234,7 +234,7 @@
                 :maxlength="editNameLimit.max"
                 @input="e => editingForm.name = editNameLimit.handleInput(e)"
               />
-              <text v-if="editNameLimit.limitReached" class="plan-page__limit-text">{{ editNameLimit.limitHint }}</text>
+              <text v-if="editNameLimit.limitReached && editNameLimit.limitHint && editNameLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ editNameLimit.limitHint }}</text>
             </view>
 
             <!-- 备注说明 -->
@@ -248,7 +248,7 @@
                 :maxlength="editRemarkLimit.max"
                 @input="e => editingForm.remark = editRemarkLimit.handleInput(e)"
               />
-              <text v-if="editRemarkLimit.limitReached" class="plan-page__limit-text">{{ editRemarkLimit.limitHint }}</text>
+              <text v-if="editRemarkLimit.limitReached && editRemarkLimit.limitHint && editRemarkLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ editRemarkLimit.limitHint }}</text>
             </view>
 
             <!-- 计划持续起始日期 -->

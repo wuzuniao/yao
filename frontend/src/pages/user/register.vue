@@ -30,7 +30,7 @@
               @blur="handleBlur('username')"
             />
             <text v-if="errors.username" class="register-page__error-text">{{ errors.username }}</text>
-            <text v-if="usernameLimit.limitReached" class="register-page__limit-text">{{ usernameLimit.limitHint }}</text>
+            <text v-if="usernameLimit.limitReached && usernameLimit.limitHint && usernameLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ usernameLimit.limitHint }}</text>
           </view>
 
           <!-- 密码 -->
@@ -58,7 +58,7 @@
               </view>
             </view>
             <text v-if="errors.password" class="register-page__error-text">{{ errors.password }}</text>
-            <text v-if="passwordLimit.limitReached" class="register-page__limit-text">{{ passwordLimit.limitHint }}</text>
+            <text v-if="passwordLimit.limitReached && passwordLimit.limitHint && passwordLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ passwordLimit.limitHint }}</text>
           </view>
 
           <!-- 确认密码 -->
@@ -86,7 +86,7 @@
               </view>
             </view>
             <text v-if="errors.confirmPassword" class="register-page__error-text">{{ errors.confirmPassword }}</text>
-            <text v-if="confirmPwdLimit.limitReached" class="register-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
+            <text v-if="confirmPwdLimit.limitReached && confirmPwdLimit.limitHint && confirmPwdLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
 
           <!-- 电子邮箱 -->
@@ -105,7 +105,7 @@
               @blur="handleBlur('email')"
             />
             <text v-if="errors.email" class="register-page__error-text">{{ errors.email }}</text>
-            <text v-if="emailLimit.limitReached" class="register-page__limit-text">{{ emailLimit.limitHint }}</text>
+            <text v-if="emailLimit.limitReached && emailLimit.limitHint && emailLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ emailLimit.limitHint }}</text>
           </view>
 
           <!-- 验证码 -->
@@ -133,7 +133,7 @@
               </view>
             </view>
             <text v-if="errors.code" class="register-page__error-text">{{ errors.code }}</text>
-            <text v-if="codeLimit.limitReached" class="register-page__limit-text">{{ codeLimit.limitHint }}</text>
+            <text v-if="codeLimit.limitReached && codeLimit.limitHint && codeLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ codeLimit.limitHint }}</text>
           </view>
 
           <!-- 协议勾选 -->
@@ -572,6 +572,7 @@ function goPrivacy() {
   flex: 1;
   border: none;
   box-shadow: none;
+  background-color: transparent;
   border-radius: 24rpx 0 0 24rpx;
   padding-right: 24rpx;
 }

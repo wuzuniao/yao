@@ -48,7 +48,7 @@
               @focus="onFocus('title')"
               @blur="onBlur"
             />
-            <text v-if="titleLimit.limitReached" class="announcement-page__limit-text">{{ titleLimit.limitHint }}</text>
+            <text v-if="titleLimit.limitReached && titleLimit.limitHint && titleLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ titleLimit.limitHint }}</text>
           </view>
 
           <!-- 公告内容 -->
@@ -65,7 +65,7 @@
               @focus="onFocus('content')"
               @blur="onBlur"
             />
-            <text v-if="contentLimit.limitReached" class="announcement-page__limit-text">{{ contentLimit.limitHint }}</text>
+            <text v-if="contentLimit.limitReached && contentLimit.limitHint && contentLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ contentLimit.limitHint }}</text>
           </view>
 
           <!-- 取消 / 提交 -->
@@ -99,7 +99,7 @@
               @focus="onFocus('title')"
               @blur="onBlur"
             />
-            <text v-if="templateTitleLimit.limitReached" class="announcement-page__limit-text">{{ templateTitleLimit.limitHint }}</text>
+            <text v-if="templateTitleLimit.limitReached && templateTitleLimit.limitHint && templateTitleLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ templateTitleLimit.limitHint }}</text>
           </view>
 
           <!-- 公告内容 -->
@@ -116,7 +116,7 @@
               @focus="onFocus('content')"
               @blur="onBlur"
             />
-            <text v-if="templateContentLimit.limitReached" class="announcement-page__limit-text">{{ templateContentLimit.limitHint }}</text>
+            <text v-if="templateContentLimit.limitReached && templateContentLimit.limitHint && templateContentLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ templateContentLimit.limitHint }}</text>
           </view>
 
           <!-- 取消 / 更新 -->
@@ -169,7 +169,7 @@
                 :maxlength="editTitleLimit.max"
                 @input="e => editingForm.title = editTitleLimit.handleInput(e)"
               />
-              <text v-if="editTitleLimit.limitReached" class="announcement-page__limit-text">{{ editTitleLimit.limitHint }}</text>
+              <text v-if="editTitleLimit.limitReached && editTitleLimit.limitHint && editTitleLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ editTitleLimit.limitHint }}</text>
             </view>
 
             <view class="announcement-page__field">
@@ -182,7 +182,7 @@
                 :maxlength="editContentLimit.max"
                 @input="e => editingForm.content = editContentLimit.handleInput(e)"
               />
-              <text v-if="editContentLimit.limitReached" class="announcement-page__limit-text">{{ editContentLimit.limitHint }}</text>
+              <text v-if="editContentLimit.limitReached && editContentLimit.limitHint && editContentLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ editContentLimit.limitHint }}</text>
             </view>
 
             <!-- 取消 / 更新 -->

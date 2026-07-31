@@ -29,7 +29,7 @@
               @blur="usernameError = validateUsername(usernameForm.value)"
             />
             <text v-if="usernameError" class="profile-page__error-text">{{ usernameError }}</text>
-            <text v-if="usernameLimit.limitReached" class="profile-page__limit-text">{{ usernameLimit.limitHint }}</text>
+            <text v-if="usernameLimit.limitReached && usernameLimit.limitHint && usernameLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ usernameLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('username')">
@@ -86,7 +86,7 @@
             @input="e => signatureForm.value = signatureLimit.handleInput(e)"
           />
           <text v-if="signatureError" class="profile-page__error-text">{{ signatureError }}</text>
-          <text v-if="signatureLimit.limitReached" class="profile-page__limit-text">{{ signatureLimit.limitHint }}</text>
+          <text v-if="signatureLimit.limitReached && signatureLimit.limitHint && signatureLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ signatureLimit.limitHint }}</text>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('signature')">
               <text class="profile-page__btn-text">取消</text>
@@ -127,7 +127,7 @@
               </view>
             </view>
             <text v-if="passwordErrors.oldPassword" class="profile-page__error-text">{{ passwordErrors.oldPassword }}</text>
-            <text v-if="oldPwdLimit.limitReached" class="profile-page__limit-text">{{ oldPwdLimit.limitHint }}</text>
+            <text v-if="oldPwdLimit.limitReached && oldPwdLimit.limitHint && oldPwdLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ oldPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
             <text class="profile-page__form-label">新密码</text>
@@ -151,7 +151,7 @@
               </view>
             </view>
             <text v-if="passwordErrors.newPassword" class="profile-page__error-text">{{ passwordErrors.newPassword }}</text>
-            <text v-if="newPwdLimit.limitReached" class="profile-page__limit-text">{{ newPwdLimit.limitHint }}</text>
+            <text v-if="newPwdLimit.limitReached && newPwdLimit.limitHint && newPwdLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ newPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
             <text class="profile-page__form-label">确认密码</text>
@@ -175,7 +175,7 @@
               </view>
             </view>
             <text v-if="passwordErrors.confirmPassword" class="profile-page__error-text">{{ passwordErrors.confirmPassword }}</text>
-            <text v-if="confirmPwdLimit.limitReached" class="profile-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
+            <text v-if="confirmPwdLimit.limitReached && confirmPwdLimit.limitHint && confirmPwdLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('password')">
@@ -217,7 +217,7 @@
                 </view>
               </view>
               <text v-if="emailErrors.oldCode" class="profile-page__error-text">{{ emailErrors.oldCode }}</text>
-              <text v-if="oldCodeLimit.limitReached" class="profile-page__limit-text">{{ oldCodeLimit.limitHint }}</text>
+              <text v-if="oldCodeLimit.limitReached && oldCodeLimit.limitHint && oldCodeLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ oldCodeLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('email')">
@@ -243,7 +243,7 @@
                 @blur="emailErrors.newEmail = validateEmail(emailForm.newEmail)"
               />
               <text v-if="emailErrors.newEmail" class="profile-page__error-text">{{ emailErrors.newEmail }}</text>
-              <text v-if="newEmailLimit.limitReached" class="profile-page__limit-text">{{ newEmailLimit.limitHint }}</text>
+              <text v-if="newEmailLimit.limitReached && newEmailLimit.limitHint && newEmailLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ newEmailLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-field">
               <text class="profile-page__form-label">新邮箱验证码</text>
@@ -266,7 +266,7 @@
                 </view>
               </view>
               <text v-if="emailErrors.newCode" class="profile-page__error-text">{{ emailErrors.newCode }}</text>
-              <text v-if="newCodeLimit.limitReached" class="profile-page__limit-text">{{ newCodeLimit.limitHint }}</text>
+              <text v-if="newCodeLimit.limitReached && newCodeLimit.limitHint && newCodeLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ newCodeLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="hasEmail ? handleResetEmailStep() : toggleSection('email')">
@@ -963,6 +963,7 @@ function handleLogout() {
 .profile-page__input--password {
   flex: 1;
   border: none;
+  background-color: transparent;
   border-radius: 16rpx 0 0 16rpx;
   padding-right: 24rpx;
 }

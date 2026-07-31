@@ -46,7 +46,7 @@
             @blur="handleBlur('username')"
           />
           <text v-if="errors.username" class="login-page__error-text">{{ errors.username }}</text>
-          <text v-if="usernameLimit.limitReached" class="login-page__limit-text">{{ usernameLimit.limitHint }}</text>
+          <text v-if="usernameLimit.limitReached && usernameLimit.limitHint && usernameLimit.limitHint.includes('已达')" class="login-page__limit-text">{{ usernameLimit.limitHint }}</text>
         </view>
 
         <!-- 密码 -->
@@ -74,7 +74,7 @@
             </view>
           </view>
           <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
-          <text v-if="passwordLimit.limitReached" class="login-page__limit-text">{{ passwordLimit.limitHint }}</text>
+          <text v-if="passwordLimit.limitReached && passwordLimit.limitHint && passwordLimit.limitHint.includes('已达')" class="login-page__limit-text">{{ passwordLimit.limitHint }}</text>
           <view class="login-page__forgot-row">
             <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
           </view>
@@ -550,6 +550,7 @@ function goPrivacy() {
   flex: 1;
   border: none;
   box-shadow: none;
+  background-color: transparent;
   border-radius: 16rpx 0 0 16rpx;
   padding-right: 24rpx;
   margin-top: 0;

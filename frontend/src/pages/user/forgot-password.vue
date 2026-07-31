@@ -27,7 +27,7 @@
             @blur="handleBlur('email')"
           />
           <text v-if="errors.email" class="forgot-password-page__error-text">{{ errors.email }}</text>
-          <text v-if="emailLimit.limitReached" class="forgot-password-page__limit-text">{{ emailLimit.limitHint }}</text>
+          <text v-if="emailLimit.limitReached && emailLimit.limitHint && emailLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ emailLimit.limitHint }}</text>
         </view>
 
         <!-- 验证码 -->
@@ -55,7 +55,7 @@
             </view>
           </view>
           <text v-if="errors.code" class="forgot-password-page__error-text">{{ errors.code }}</text>
-          <text v-if="codeLimit.limitReached" class="forgot-password-page__limit-text">{{ codeLimit.limitHint }}</text>
+          <text v-if="codeLimit.limitReached && codeLimit.limitHint && codeLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ codeLimit.limitHint }}</text>
         </view>
 
         <!-- 找回按钮 -->
@@ -91,7 +91,7 @@
             </view>
           </view>
           <text v-if="errors.newPassword" class="forgot-password-page__error-text">{{ errors.newPassword }}</text>
-          <text v-if="newPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ newPwdLimit.limitHint }}</text>
+          <text v-if="newPwdLimit.limitReached && newPwdLimit.limitHint && newPwdLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ newPwdLimit.limitHint }}</text>
         </view>
 
         <!-- 确认密码 -->
@@ -119,7 +119,7 @@
             </view>
           </view>
           <text v-if="errors.confirmPassword" class="forgot-password-page__error-text">{{ errors.confirmPassword }}</text>
-          <text v-if="confirmPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
+          <text v-if="confirmPwdLimit.limitReached && confirmPwdLimit.limitHint && confirmPwdLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
         </view>
 
         <!-- 找回按钮 -->
@@ -450,6 +450,7 @@ function goLogin() {
   flex: 1;
   border: none;
   box-shadow: none;
+  background-color: transparent;
   border-radius: 24rpx 0 0 24rpx;
   padding-right: 24rpx;
 }

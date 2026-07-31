@@ -24,7 +24,7 @@
  *     https://developers.weixin.qq.com/miniprogram/dev/component/input.html
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 
 /**
  * 创建单个输入框的限制器
@@ -98,5 +98,5 @@ export function useInputLimit(maxLength, allowedPattern) {
     wasAtLimit.value = (value || '').length >= maxLength
   }
 
-  return { max, filter, handleInput, limitReached, limitHint, checkLimit }
+  return reactive({ max, filter, handleInput, limitReached, limitHint, checkLimit })
 }

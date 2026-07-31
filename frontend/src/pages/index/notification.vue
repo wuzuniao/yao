@@ -57,7 +57,7 @@
                 @blur="editHostError = validateHost(editForm.smtp_host)"
               />
               <text v-if="editHostError" class="notification-page__error-text">{{ editHostError }}</text>
-              <text v-if="editHostLimit.limitReached" class="notification-page__limit-text">{{ editHostLimit.limitHint }}</text>
+              <text v-if="editHostLimit.limitReached && editHostLimit.limitHint && editHostLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editHostLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">SMTP服务器端口</text>
@@ -74,7 +74,7 @@
                 @blur="editPortError = editPortHasNonDigit ? '请输入有效的数字' : validatePort(editForm.smtp_port)"
               />
               <text v-if="editPortError" class="notification-page__error-text">{{ editPortError }}</text>
-              <text v-if="editPortLimit.limitReached" class="notification-page__limit-text">{{ editPortLimit.limitHint }}</text>
+              <text v-if="editPortLimit.limitReached && editPortLimit.limitHint && editPortLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editPortLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">发件邮箱地址</text>
@@ -89,7 +89,7 @@
                 @blur="editEmailError = validateEmail(editForm.email)"
               />
               <text v-if="editEmailError" class="notification-page__error-text">{{ editEmailError }}</text>
-              <text v-if="editEmailLimit.limitReached" class="notification-page__limit-text">{{ editEmailLimit.limitHint }}</text>
+              <text v-if="editEmailLimit.limitReached && editEmailLimit.limitHint && editEmailLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editEmailLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">客户端专用密码</text>
@@ -102,7 +102,7 @@
                 :maxlength="editPwdLimit.max"
                 @input="e => editForm.password = editPwdLimit.handleInput(e)"
               />
-              <text v-if="editPwdLimit.limitReached" class="notification-page__limit-text">{{ editPwdLimit.limitHint }}</text>
+              <text v-if="editPwdLimit.limitReached && editPwdLimit.limitHint && editPwdLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editPwdLimit.limitHint }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定） -->
             <view class="notification-page__field">
@@ -247,7 +247,7 @@
                 @blur="() => { onBlur(); hostError = validateHost(form.smtp_host) }"
               />
               <text v-if="hostError" class="notification-page__error-text">{{ hostError }}</text>
-              <text v-if="hostLimit.limitReached" class="notification-page__limit-text">{{ hostLimit.limitHint }}</text>
+              <text v-if="hostLimit.limitReached && hostLimit.limitHint && hostLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ hostLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">SMTP服务器端口</text>
@@ -265,7 +265,7 @@
                 @blur="() => { onBlur(); portError = portHasNonDigit ? '请输入有效的数字' : validatePort(form.smtp_port) }"
               />
               <text v-if="portError" class="notification-page__error-text">{{ portError }}</text>
-              <text v-if="portLimit.limitReached" class="notification-page__limit-text">{{ portLimit.limitHint }}</text>
+              <text v-if="portLimit.limitReached && portLimit.limitHint && portLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ portLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">发件邮箱地址</text>
@@ -282,7 +282,7 @@
                 @blur="() => { onBlur(); emailError = validateEmail(form.email) }"
               />
               <text v-if="emailError" class="notification-page__error-text">{{ emailError }}</text>
-              <text v-if="emailLimit.limitReached" class="notification-page__limit-text">{{ emailLimit.limitHint }}</text>
+              <text v-if="emailLimit.limitReached && emailLimit.limitHint && emailLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ emailLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
               <text class="notification-page__label">客户端专用密码</text>
@@ -298,7 +298,7 @@
                 @focus="onFocus('password')"
                 @blur="onBlur"
               />
-              <text v-if="pwdLimit.limitReached" class="notification-page__limit-text">{{ pwdLimit.limitHint }}</text>
+              <text v-if="pwdLimit.limitReached && pwdLimit.limitHint && pwdLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ pwdLimit.limitHint }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定，默认是） -->
             <view class="notification-page__field">
