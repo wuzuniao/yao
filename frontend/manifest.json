@@ -48,13 +48,7 @@
         },
         "publicPath" : "/",
         "devServer" : {
-            "port" : 5173,
-            "proxy" : {
-                "/api" : {
-                    "target" : "http://localhost:8000",
-                    "changeOrigin" : true
-                }
-            }
+            "port" : 5173
         },
         "title" : "无足鸟按时吃药打卡"
     },
