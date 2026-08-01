@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/Python-3.14+-3776AB.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-latest-009688.svg)](https://fastapi.tiangolo.com/)
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](https://cn.vuejs.org/)
-[![MariaDB](https://img.shields.io/badge/MariaDB-12.3-003545.svg)](https://mariadb.org/)
+[![MariaDB](https://img.shields.io/badge/MariaDB-10.11_(LTS)-003545.svg)](https://mariadb.org/)
 
 ---
 
@@ -26,7 +26,7 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| 前端 | uni-app（Vue 3） | 微信小程序跨端 |
+| 前端 | uni-app（Vue 3） | 微信小程序 / H5 / App 跨端 |
 | 前端 | Pinia / SCSS | 状态管理 / BEM 样式 |
 | 后端 | FastAPI（异步） | RESTful API |
 | 后端 | SQLAlchemy / Pydantic | ORM（asyncmy 驱动）/ 数据校验 |
@@ -76,7 +76,7 @@ yao/
 |------|----------|------|
 | Python | 3.14+ | 后端运行环境 |
 | Node.js | 18+ | 前端构建 |
-| MariaDB | 12.3+ (LTS) | 开发环境可直装 |
+| MariaDB | 10.11+ (LTS) | 开发环境可直装 |
 | 微信开发者工具 | 最新 | 小程序调试 |
 
 ### 1. 克隆项目
@@ -111,11 +111,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd frontend
 npm install
 
-cp .env.template .env    # Windows 用 copy；设置 VITE_API_BASE_URL=http://localhost:8000
+# 前端配置在 frontend/config/env.js（常量模块，非 .env）；开发环境 API_BASE_URL 默认指向 http://localhost:8000
 
 npm run dev:mp-weixin    # 开发模式（微信小程序）
 # 用微信开发者工具打开 frontend/dist/dev/mp-weixin 调试
-npm run build:mp-weixin  # 生产构建
+npm run build:mp-weixin  # 生产构建（微信小程序）
+
+npm run dev:h5           # H5 开发模式
+npm run build:h5         # H5 生产构建（生产部署由 scripts/deploy.sh 自动执行）
 ```
 
 ---
@@ -179,16 +182,19 @@ pytest --cov=app --cov-report=term-missing   # 覆盖率
 
 ## 部署
 
-生产环境为 Rocky Linux + Docker 容器化，由 `scripts/deploy.sh` 一键完成（具体镜像版本由该脚本控制）：
+生产环境为 Rocky Linux + Docker 容器化，由 `scripts/deploy.sh` 一键完成（MariaDB + FastAPI + H5 前端 + Nginx，具体镜像版本由该脚本控制）：
 
 - `yao-mariadb`：数据库（仅本机可访问）
 - `yao-backend`：FastAPI 后端
-- `yao-nginx`：HTTPS 反向代理
+- `yao-nginx`：HTTPS 反向代理 + H5 静态托管（`/` 提供 H5 首页，`/api/v1`、`/health` 转发后端）
+
+脚本自动用 Node 容器执行 `npm run build:h5` 构建前端并挂载到 nginx；后端 `/api/v1` 路径保持不变。脚本不依赖硬编码路径，可移植到任意克隆位置。
 
 ```bash
-# 上传脚本与证书到服务器后执行
-bash deploy.sh
-# 或指定证书路径： CERT_ZIP_PATH=/path/to/cert.zip bash deploy.sh
+# 克隆仓库后，在项目根目录执行（脚本位于 scripts/ 下）
+bash scripts/deploy.sh
+# 或指定证书路径： CERT_ZIP_PATH=/path/to/cert.zip bash scripts/deploy.sh
+# 国内 npm 较慢可指定镜像： NPM_REGISTRY=https://registry.npmmirror.com bash scripts/deploy.sh
 ```
 
 常用运维（在部署目录下）：
@@ -197,6 +203,13 @@ bash deploy.sh
 docker compose ps                   # 查看容器状态
 docker compose logs -f backend      # 后端日志
 docker compose restart backend      # 重启后端
+```
+
+仅更新 H5 前端时，重新构建产物即可（nginx 以 volume 挂载 dist，无需重启容器）：
+
+```bash
+docker run --rm -v "$PWD/frontend:/app:z" -w /app node:20-slim \
+  sh -c "npm ci --registry=https://registry.npmmirror.com --legacy-peer-deps && npm run build:h5"
 ```
 
 ---
@@ -216,7 +229,7 @@ docker compose restart backend      # 重启后端
 站内信（默认，应用内查看）、微信订阅消息（一次性订阅，需用户授权）、邮件（用户自配 SMTP）。同一计划可关联多个渠道，到点同时发送。
 
 ### 如何自行部署？
-后端 Docker 化部署（`scripts/deploy.sh` 一键完成 MariaDB + FastAPI + Nginx）；前端用 HBuilderX 发行到各端，或 CLI 构建（`npm run build:mp-weixin`）。详见上方"部署"章节。
+后端 Docker 化部署（`scripts/deploy.sh` 一键完成 MariaDB + FastAPI + H5 + Nginx）；H5 由脚本自动构建，小程序/App 用 HBuilderX 发行或 CLI 构建（`npm run build:mp-weixin` / `npm run build:h5`）。详见上方"部署"章节。
 
 ### 开源协议？
 GNU GPLv3，开源地址 https://github.com/wuzuniao/yao 。

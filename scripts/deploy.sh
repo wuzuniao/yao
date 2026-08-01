@@ -2,27 +2,45 @@
 # ============================================================
 # Yao 后端一键部署脚本
 # 适用环境：Rocky Linux 9.4 x86_64
-# 功能：以容器形式部署 MariaDB + Python(FastAPI) + Nginx(HTTPS)
+# 功能：以容器形式部署 MariaDB + Python(FastAPI) + H5 前端 + Nginx(HTTPS)
 # 项目仓库：https://github.com/wuzuniao/yao.git
 #
 # 使用方式：
-#   1. 将本脚本和证书文件 yao.wuzuniao.com_nginx.zip 上传到服务器
-#   2. 以 root 执行：bash deploy.sh
-#   3. 也可指定证书路径：CERT_ZIP_PATH=/path/to/yao.wuzuniao.com_nginx.zip bash deploy.sh
+#   1. 克隆仓库到服务器（本脚本位于仓库 scripts/ 目录下）
+#   2. 将证书文件 yao.wuzuniao.com_nginx.zip 上传到服务器
+#   3. 在项目根目录以 root 执行：bash scripts/deploy.sh
+#   4. 也可指定证书路径：CERT_ZIP_PATH=/path/to/yao.wuzuniao.com_nginx.zip bash scripts/deploy.sh
 # ============================================================
 set -e
+
+# 脚本位于 git 仓库内（scripts/deploy.sh），clone_repo 的 git pull 会更新脚本自身；
+# 先复制到临时文件执行，避免运行中文件被改写导致执行异常，结束后自动清理临时文件。
+# 同时记录原始脚本目录（re-exec 后 BASH_SOURCE 会指向临时文件），用于推导项目根目录。
+if [[ -z "${_DEPLOY_REEXEC:-}" ]]; then
+  _deploy_orig_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _deploy_tmp="$(mktemp /tmp/.deploy.XXXXXX.sh)"
+  cp "${BASH_SOURCE[0]}" "$_deploy_tmp" && chmod +x "$_deploy_tmp"
+  _DEPLOY_REEXEC=1 _DEPLOY_ORIG_DIR="$_deploy_orig_dir" exec bash "$_deploy_tmp" "$@"
+fi
+_deploy_self="${BASH_SOURCE[0]}"
+trap 'rm -f "$_deploy_self"' EXIT
 
 # ============== 可配置参数（按需修改） ==============
 PYTHON_VERSION="3.11"            # Python 容器版本
 MARIADB_VERSION="10.11"          # MariaDB LTS 版本
 NGINX_IMAGE="nginx:stable"       # Nginx 镜像
+NODE_VERSION="20"                # Node 版本（H5 前端构建用）
 
 # Docker 镜像加速（Docker Hub 国内访问不稳定）
 # 留空则自动配置 daemon.json 镜像加速器；填写则直接作为镜像前缀使用
 # 例如：DOCKER_REGISTRY="docker.m.daocloud.io/library/"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-}"
 
-INSTALL_DIR="/opt/yao"           # 项目克隆目录（会挂载到后端容器）
+# 项目根目录 = 脚本所在 scripts/ 的上一级，可被环境变量 INSTALL_DIR 覆盖。
+# 脚本已不依赖硬编码路径，可移植到任意克隆位置；re-exec 后 BASH_SOURCE 指向
+# 临时文件，故用 _DEPLOY_ORIG_DIR 还原原始脚本目录后再推导。
+SCRIPT_DIR="${_DEPLOY_ORIG_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+INSTALL_DIR="${INSTALL_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"  # 项目克隆目录（会挂载到后端容器）
 DEPLOY_DIR="${INSTALL_DIR}/deploy"  # 部署配置目录
 REPO_URL="https://github.com/wuzuniao/yao.git"
 BRANCH="master"
@@ -35,7 +53,7 @@ GITHUB_MIRRORS=(
   "https://mirror.ghproxy.com"
 )
 # 若项目代码已手动上传到服务器，设置 LOCAL_PROJECT_DIR 指向其路径即可跳过克隆
-# 例如：LOCAL_PROJECT_DIR=/tmp/yao bash deploy.sh
+# 例如：LOCAL_PROJECT_DIR=/tmp/yao bash scripts/deploy.sh
 LOCAL_PROJECT_DIR="${LOCAL_PROJECT_DIR:-}"
 
 DOMAIN="yao.wuzuniao.com"
@@ -47,7 +65,7 @@ DB_USER="yao_backend"             # 后端数据库连接用户
 DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-}"  # 运行时自动生成
 DB_PASSWORD="${DB_PASSWORD:-}"            # 运行时自动生成
 # 若 MariaDB 数据目录存在旧数据导致 root 密码不匹配，设为 1 可清空数据目录重新初始化
-# 警告：RESET_DB=1 会删除 /opt/yao/deploy/data/mariadb 下的全部数据！
+# 警告：RESET_DB=1 会删除 deploy/data/mariadb（即 $DEPLOY_DIR/data/mariadb）下的全部数据！
 RESET_DB="${RESET_DB:-0}"
 
 # ============== 颜色与日志 ==============
@@ -199,6 +217,7 @@ pull_images() {
     "${DOCKER_REGISTRY}mariadb:${MARIADB_VERSION}"
     "${DOCKER_REGISTRY}python:${PYTHON_VERSION}-slim"
     "${DOCKER_REGISTRY}nginx:stable"
+    "${DOCKER_REGISTRY}node:${NODE_VERSION}-slim"
   )
 
   for img in "${images[@]}"; do
@@ -215,9 +234,9 @@ pull_images() {
     if [[ "$ok" != true ]]; then
       log_error "镜像 $img 拉取失败（已重试 3 次）"
       log_warn "请手动配置可用镜像源后重试："
-      echo "  方式一：设置镜像前缀  DOCKER_REGISTRY=docker.m.daocloud.io/library/ bash /opt/deploy.sh"
-      echo "  方式二：自定义加速器  DOCKER_MIRRORS=https://your-mirror.com bash /opt/deploy.sh"
-      echo "  方式三：使用代理      export https_proxy=http://127.0.0.1:7890 && bash /opt/deploy.sh"
+      echo "  方式一：设置镜像前缀  DOCKER_REGISTRY=docker.m.daocloud.io/library/ bash scripts/deploy.sh"
+      echo "  方式二：自定义加速器  DOCKER_MIRRORS=https://your-mirror.com bash scripts/deploy.sh"
+      echo "  方式三：使用代理      export https_proxy=http://127.0.0.1:7890 && bash scripts/deploy.sh"
       exit 1
     fi
   done
@@ -308,17 +327,17 @@ clone_repo() {
   echo "    # 上传并解压到服务器："
   echo "    unzip yao.zip -d /opt/"
   echo "    mv /opt/yao-master /opt/yao"
-  echo "    # 然后重新运行：bash /opt/deploy.sh"
+  echo "    # 然后重新运行：bash scripts/deploy.sh"
   echo ""
   echo "  方式二：通过 scp/rsync 直接上传项目目录"
   echo "    scp -r yao/ root@SERVER:/opt/yao"
-  echo "    # 然后重新运行：bash /opt/deploy.sh"
+  echo "    # 然后重新运行：bash scripts/deploy.sh"
   echo ""
   echo "  方式三：指定自定义镜像或代理"
-  echo "    GITHUB_MIRROR=https://your-mirror.com bash /opt/deploy.sh"
+  echo "    GITHUB_MIRROR=https://your-mirror.com bash scripts/deploy.sh"
   echo "    # 或设置 http 代理："
   echo "    export https_proxy=http://127.0.0.1:7890"
-  echo "    bash /opt/deploy.sh"
+  echo "    bash scripts/deploy.sh"
   echo ""
   exit 1
 }
@@ -375,7 +394,7 @@ setup_certs() {
   if [[ -z "$zip_path" || ! -f "$zip_path" ]]; then
     log_warn "未找到证书文件 $CERT_ZIP_NAME"
     log_warn "请将该文件放到以下任一位置后重新运行：$DEPLOY_DIR / /root / /tmp / /opt"
-    log_warn "或通过环境变量指定：CERT_ZIP_PATH=/path/to/$CERT_ZIP_NAME bash deploy.sh"
+    log_warn "或通过环境变量指定：CERT_ZIP_PATH=/path/to/$CERT_ZIP_NAME bash scripts/deploy.sh"
     log_warn "本次部署将生成临时自签名证书以供测试使用"
 
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -456,12 +475,15 @@ EOF
   log_ok "Dockerfile 已生成：$DEPLOY_DIR/Dockerfile.backend"
 }
 
-# ============== 8. 生成 Nginx 配置（HTTPS 反向代理） ==============
+# ============== 8. 生成 Nginx 配置（HTTPS + H5 静态 + 后端反代） ==============
 generate_nginx_conf() {
   log_step "生成 Nginx 配置"
 
   mkdir -p "$DEPLOY_DIR/nginx"
-  cat > "$DEPLOY_DIR/nginx/default.conf" <<'EOF'
+  # 写入临时文件再替换占位符，最后用 cp 覆盖目标文件（保留 inode）
+  # —— 避免 sed -i 更换 inode，导致运行中 nginx 容器的 bind mount 仍读到旧内容
+  local _nginx_tmp="$DEPLOY_DIR/nginx/.default.conf.tmp.$$"
+  cat > "$_nginx_tmp" <<'EOF'
 # HTTP -> HTTPS 重定向
 server {
     listen 80;
@@ -469,7 +491,7 @@ server {
     return 301 https://$host$request_uri;
 }
 
-# HTTPS 反向代理到后端 FastAPI
+# HTTPS：H5 前端静态资源 + 后端 API/健康检查反向代理
 server {
     listen 443 ssl;
     http2 on;
@@ -485,7 +507,12 @@ server {
 
     client_max_body_size 20m;
 
-    location / {
+    # H5 前端静态资源根目录（由 docker-compose 挂载 dist/build/h5）
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 后端 API（路径保持不变：/api/v1/...）
+    location /api/ {
         proxy_pass http://backend:8000;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
@@ -493,10 +520,36 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_redirect off;
     }
+
+    # 后端健康检查（路径保持不变：/health）
+    location = /health {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+    }
+
+    # /pages/ 下为 uni-app H5 合法页面路由（history 模式），回退 index.html 交由前端路由处理
+    location ^~ /pages/ {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 其余路径：静态资源优先命中，不存在的路径 302 跳转首页
+    location / {
+        try_files $uri $uri/ @not_found;
+    }
+
+    location @not_found {
+        return 302 /;
+    }
 }
 EOF
 
-  sed -i "s/__DOMAIN__/$DOMAIN/g" "$DEPLOY_DIR/nginx/default.conf"
+  sed -i "s/__DOMAIN__/$DOMAIN/g" "$_nginx_tmp"
+  cp "$_nginx_tmp" "$DEPLOY_DIR/nginx/default.conf"
+  rm -f "$_nginx_tmp"
   log_ok "Nginx 配置已生成：$DEPLOY_DIR/nginx/default.conf"
 }
 
@@ -569,6 +622,7 @@ services:
     volumes:
       - __DEPLOY_DIR__/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro,z
       - __DEPLOY_DIR__/certs:/etc/nginx/certs:ro,z
+      - __INSTALL_DIR__/frontend/dist/build/h5:/usr/share/nginx/html:ro,z
     depends_on:
       - backend
     networks:
@@ -707,15 +761,15 @@ verify_mariadb_credentials() {
   echo ""
   log_warn "解决方案（任选其一）："
   echo "  方式一（推荐，清空旧数据库重新初始化）："
-  echo "    RESET_DB=1 bash /opt/deploy.sh"
+  echo "    RESET_DB=1 bash scripts/deploy.sh"
   echo ""
   echo "  方式二（手动清理后重跑）："
   echo "    docker compose -f $DEPLOY_DIR/docker-compose.yml down"
   echo "    rm -rf $data_dir/*"
-  echo "    bash /opt/deploy.sh"
+  echo "    bash scripts/deploy.sh"
   echo ""
   echo "  方式三（若记得旧 root 密码，复用旧密码继续）："
-  echo "    DB_ROOT_PASSWORD='旧密码' bash /opt/deploy.sh"
+  echo "    DB_ROOT_PASSWORD='旧密码' bash scripts/deploy.sh"
   echo ""
   exit 1
 }
@@ -778,20 +832,26 @@ generate_backend_env() {
 
   local env_file="$INSTALL_DIR/backend/.env"
 
-  # 保留已有的 SMTP / 微信配置（若 .env 已存在）
-  local smtp_user="" smtp_pass="" wx_appid="" wx_secret=""
+  # 保留已有的 SMTP / 微信 / 加密密钥配置（若 .env 已存在）
+  local smtp_user="" smtp_pass="" wx_appid="" wx_secret="" enc_key=""
   if [[ -f "$env_file" ]]; then
-    smtp_user=$(grep -E "^SMTP_USER="     "$env_file" 2>/dev/null | cut -d= -f2- || true)
-    smtp_pass=$(grep -E "^SMTP_PASSWORD=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
-    wx_appid=$(grep -E "^WX_APPID="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
-    wx_secret=$(grep -E "^WX_APP_SECRET=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    smtp_user=$(grep -E "^SMTP_USER="           "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    smtp_pass=$(grep -E "^SMTP_PASSWORD="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    wx_appid=$(grep -E "^WX_APPID="             "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    wx_secret=$(grep -E "^WX_APP_SECRET="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    enc_key=$(grep -E "^ENCRYPTION_SECRET_KEY=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
     cp "$env_file" "${env_file}.bak.$(date +%s)"
-    log_info "已备份原 .env，并保留 SMTP / 微信配置"
+    log_info "已备份原 .env，并保留 SMTP / 微信 / 加密密钥配置"
   fi
 
-  # 生成 AES-256-GCM 加密密钥
-  local enc_key
-  enc_key=$(openssl rand -base64 32)
+  # AES-256-GCM 加密密钥：复用已有密钥，仅在缺失时新生成
+  # （避免重复部署轮换密钥，导致历史加密数据无法解密）
+  local enc_key_fresh=false
+  if [[ -z "$enc_key" ]]; then
+    enc_key=$(openssl rand -base64 32)
+    enc_key_fresh=true
+    log_info "未检测到已有加密密钥，已新生成 ENCRYPTION_SECRET_KEY"
+  fi
 
   # DATABASE_URL 使用后端专用用户连接 mariadb 容器（服务名 mariadb）
   local db_url="mysql+asyncmy://${DB_USER}:${DB_PASSWORD}@mariadb:3306/${DB_NAME_MAIN}?charset=utf8mb4"
@@ -824,14 +884,50 @@ EOF
   log_info "DATABASE_URL 用户：$DB_USER  →  连接 mariadb:3306/$DB_NAME_MAIN"
 }
 
-# ============== 16. 构建并启动后端与 Nginx ==============
+# ============== 16. 构建 H5 前端 ==============
+build_frontend() {
+  log_step "构建 H5 前端"
+
+  local frontend_dir="$INSTALL_DIR/frontend"
+  local h5_dist="$frontend_dir/dist/build/h5"
+
+  if [[ ! -f "$frontend_dir/package.json" ]]; then
+    log_warn "未找到 $frontend_dir/package.json，跳过 H5 前端构建"
+    return 0
+  fi
+
+  local node_image="${DOCKER_REGISTRY}node:${NODE_VERSION}-slim"
+  # 国内 npm 访问慢时可通过环境变量指定镜像，例如：NPM_REGISTRY=https://registry.npmmirror.com
+  local npm_registry="${NPM_REGISTRY:-}"
+  local npm_ci_args="ci --no-audit --no-fund --legacy-peer-deps"
+  [[ -n "$npm_registry" ]] && npm_ci_args="$npm_ci_args --registry=$npm_registry"
+
+  log_info "使用 $node_image 构建 H5（npm $npm_ci_args && npm run build:h5）..."
+
+  # 在 Node 容器内构建，产物通过卷挂载写回宿主机 frontend/dist/build/h5
+  docker run --rm \
+    -v "$frontend_dir:/app:z" \
+    -w /app \
+    "$node_image" \
+    sh -c "npm $npm_ci_args && npm run build:h5"
+
+  if [[ ! -f "$h5_dist/index.html" ]]; then
+    log_error "H5 构建失败：未找到 $h5_dist/index.html"
+    log_warn "可手动在 $frontend_dir 执行：npm ci && npm run build:h5 后重试"
+    exit 1
+  fi
+
+  log_ok "H5 前端构建完成：$h5_dist"
+}
+
+# ============== 17. 构建并启动后端与 Nginx ==============
 start_backend_nginx() {
   log_step "构建并启动后端与 Nginx 容器"
   dc up -d --build backend nginx
   log_ok "后端与 Nginx 容器已启动"
 }
 
-# ============== 17. 验证部署 ==============
+# ============== 18. 验证部署 ==============
 verify_deployment() {
   log_step "验证部署"
 
@@ -857,16 +953,29 @@ verify_deployment() {
     log_warn "Nginx 配置检查失败，请查看日志：docker logs yao-nginx"
   fi
 
+  # H5 前端可访问性检查
+  log_info "验证 H5 前端 ..."
+  if docker exec yao-nginx test -f /usr/share/nginx/html/index.html 2>/dev/null; then
+    log_ok "H5 静态资源已挂载（/usr/share/nginx/html/index.html 存在）"
+  else
+    log_warn "未在 nginx 容器中找到 H5 首页，请检查前端构建与卷挂载"
+  fi
+  if curl -sk -o /dev/null -w '%{http_code}' -H "Host: $DOMAIN" "https://127.0.0.1/" 2>/dev/null | grep -q 200; then
+    log_ok "H5 首页可访问（HTTPS 200）"
+  else
+    log_warn "H5 首页访问异常，请查看 docker logs yao-nginx"
+  fi
+
   echo ""
   log_info "容器运行状态："
   docker ps --filter "name=yao-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 }
 
-# ============== 18. 输出部署摘要 ==============
+# ============== 19. 输出部署摘要 ==============
 print_summary() {
   echo ""
   echo -e "${GREEN}================================================${NC}"
-  echo -e "${GREEN}  Yao 后端部署完成${NC}"
+  echo -e "${GREEN}  Yao 部署完成（后端 + H5 前端）${NC}"
   echo -e "${GREEN}================================================${NC}"
   cat <<EOF
 
@@ -884,10 +993,11 @@ print_summary() {
   容器服务：
     MariaDB  →  yao-mariadb  (内部 3306，仅本机可访问)
     Backend  →  yao-backend  (内部 8000)
-    Nginx    →  yao-nginx    (对外 80/443)
+    H5 前端  →  Nginx 静态托管（构建产物 frontend/dist/build/h5）
+    Nginx    →  yao-nginx    (对外 80/443，反代 /api/、/health 至后端)
 
   访问地址：
-    HTTPS：          https://$DOMAIN
+    H5 前端：        https://$DOMAIN/
     健康检查：        https://$DOMAIN/health
     API 入口：        https://$DOMAIN/api/v1
 
@@ -903,6 +1013,7 @@ print_summary() {
     2. root 密码保存在 $DEPLOY_DIR/.env，后端用户密码保存在 $INSTALL_DIR/backend/.env
     3. 更新代码：cd $INSTALL_DIR && git pull，然后 docker compose -f $DEPLOY_DIR/docker-compose.yml restart backend
     4. 如遇 SELinux 导致的挂载问题，可执行 setenforce 0 临时关闭后重试
+    5. 更新 H5 前端代码后，重新执行 bash scripts/deploy.sh 即可重建前端并生效（脚本幂等）
 
 EOF
 }
@@ -938,6 +1049,7 @@ main() {
   create_db_user
   generate_backend_env
 
+  build_frontend
   start_backend_nginx
   verify_deployment
   print_summary
