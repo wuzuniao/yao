@@ -20,10 +20,22 @@
  */
 
 // 后端 API 基础地址
+// App 端（Android/iOS）恒定使用生产 HTTPS 域名，原因：
+//   1. HBuilderX「运行到手机」时 NODE_ENV 为 development，若沿用 localhost，
+//      真机上 localhost 指向手机自身，所有接口必然失败。
+//   2. Android 9+ 与 iOS ATS 默认禁止明文 HTTP，局域网 IP 亦需额外放行配置。
+// 如需 App 端连本地后端联调，把下方 APP-PLUS 分支临时改为局域网 IP，
+// 并在 manifest.json 的 app-plus.distribute.android 开启 usesCleartextTraffic。
+// #ifdef APP-PLUS
+export const API_BASE_URL = 'https://yao.wuzuniao.com'
+// #endif
+
+// #ifndef APP-PLUS
 export const API_BASE_URL =
   process.env.NODE_ENV === 'production'
     ? 'https://yao.wuzuniao.com'
     : 'http://localhost:8000'
+// #endif
 
 // 微信订阅消息模板 ID（一次性订阅，打卡提醒模板）
 // 仅微信小程序端使用，其他端不会引用

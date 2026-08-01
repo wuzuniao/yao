@@ -90,7 +90,7 @@
       "布局选型理由": "工程刻意采用「无 src 层」的 HBuilderX 标准布局，而非常见的 CLI 布局（源码在 frontend/src/）。原因：项目目标是以 HBuilderX 发行 App / iOS / 多端小程序，而 HBuilderX 的「运行/发行」菜单要求 manifest.json/pages.json/main.js/App.vue/static 位于项目根目录，CLI 布局（含 src 层）与之不兼容。uni CLI 默认输入目录写死为 <项目根>/src，已通过 frontend/scripts/run-uni.js 设置 UNI_INPUT_DIR 指向项目根来兜底，使 CLI 构建（npm run dev:mp-weixin / build:mp-weixin）与本布局共用同一结构。两种构建路径对比：HBuilderX 发行多端 App/iOS 最顺（原生支持），CLI 构建需 10 行 wrapper 兜底但已就绪；若后续要做 CI/CD 自动出包，CLI 路径（scripts/run-uni.js）已可直接使用，无需再调整结构。源码内部导入全部为相对路径（../../components/xxx），因此平移自 src 布局无需修改任何导入语句。",
       "config": {
         "描述": "全端环境配置目录（2026-08-01 新增，替代 .env 机制）",
-        "env.js": "全端环境配置常量模块：导出 API_BASE_URL（按 process.env.NODE_ENV 区分，生产 https://yao.wuzuniao.com / 开发 http://localhost:8000）与 WX_SUBSCRIBE_TEMPLATE_ID（微信订阅消息模板ID）。因 HBuilderX 内置编译器不加载 .env 文件（import.meta.env.VITE_* 取值为 undefined 会导致接口地址静默回退、模板ID变空串），故改用本常量模块，使 HBuilderX 与 CLI 两种构建方式行为一致。本文件提交 Git，不得写入密码/密钥等敏感信息"
+        "env.js": "全端环境配置常量模块：导出 API_BASE_URL 与 WX_SUBSCRIBE_TEMPLATE_ID（微信订阅消息模板ID）。API_BASE_URL 分两个条件编译分支——#ifdef APP-PLUS 恒为生产域名 https://yao.wuzuniao.com（真机上 localhost 指向手机自身、且 Android 9+/iOS ATS 默认禁明文 HTTP，故不随 NODE_ENV 变化）；#ifndef APP-PLUS（小程序/H5）仍按 process.env.NODE_ENV 区分生产/开发 http://localhost:8000。因 HBuilderX 内置编译器不加载 .env 文件（import.meta.env.VITE_* 取值为 undefined 会导致接口地址静默回退、模板ID变空串），故改用本常量模块，使 HBuilderX 与 CLI 两种构建方式行为一致。本文件提交 Git，不得写入密码/密钥等敏感信息"
       },
       "scripts": {
         "描述": "前端构建辅助脚本目录（2026-08-01 新增）",
@@ -179,7 +179,23 @@
         },
       "static": {
         "描述": "HBuilderX 标准静态资源目录（原样拷贝到产物，不参与构建处理）",
-        "favicon.ico": "H5 端站点图标"
+        "favicon.ico": "H5 端站点图标",
+        "app-icons": {
+          "描述": "App（Android/iOS）应用图标目录，由 manifest.json 的 app-plus.distribute.icons 引用。【待放置】需由人工提供 PNG 图标，不可由 AI 生成二进制资源。源图要求：1024x1024 正方形、不透明背景、无圆角（系统自动裁切）。现有 assets/images/touxiang/hong.png 仅 88x88，分辨率不足，不可直接使用，需以其为设计稿重新导出各尺寸",
+          "android-hdpi-72.png": "Android hdpi 图标 72x72（待放置）",
+          "android-xhdpi-96.png": "Android xhdpi 图标 96x96（待放置）",
+          "android-xxhdpi-144.png": "Android xxhdpi 图标 144x144（待放置）",
+          "android-xxxhdpi-192.png": "Android xxxhdpi 图标 192x192（待放置）",
+          "ios-appstore-1024.png": "iOS App Store 图标 1024x1024（待放置）",
+          "ios-iphone-app-120.png": "iOS iPhone 应用图标 @2x 120x120（待放置）",
+          "ios-iphone-app-180.png": "iOS iPhone 应用图标 @3x 180x180（待放置）",
+          "ios-iphone-notification-40.png": "iOS 通知图标 @2x 40x40（待放置）",
+          "ios-iphone-notification-60.png": "iOS 通知图标 @3x 60x60（待放置）",
+          "ios-iphone-settings-58.png": "iOS 设置图标 @2x 58x58（待放置）",
+          "ios-iphone-settings-87.png": "iOS 设置图标 @3x 87x87（待放置）",
+          "ios-iphone-spotlight-80.png": "iOS Spotlight 图标 @2x 80x80（待放置）",
+          "ios-iphone-spotlight-120.png": "iOS Spotlight 图标 @3x 120x120（待放置）"
+        }
       },
       "public": {
         "描述": "H5 端 SEO 静态资源目录，由 vite.config.js 在 H5 模式下设 publicDir='public' 复制到 H5 产物根目录（标准路径供爬虫识别）；小程序构建不设 publicDir，故不进入小程序产物",

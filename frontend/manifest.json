@@ -15,12 +15,49 @@
             "autoclose" : true,
             "delay" : 0
         },
+        "safearea" : {
+            "bottom" : {
+                "offset" : "auto"
+            }
+        },
         "modules" : {},
         "distribute" : {
             "android" : {
-                "permissions" : []
+                "packagename" : "com.wuzuniao.yao",
+                "minSdkVersion" : 21,
+                "targetSdkVersion" : 34,
+                "abiFilters" : [ "armeabi-v7a", "arm64-v8a" ],
+                "permissions" : [
+                    "<uses-permission android:name=\"android.permission.INTERNET\"/>",
+                    "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
+                    "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\"/>"
+                ]
             },
-            "ios" : {}
+            "ios" : {
+                "dSYMs" : false,
+                "idfa" : false
+            },
+            "icons" : {
+                "android" : {
+                    "hdpi" : "static/app-icons/android-hdpi-72.png",
+                    "xhdpi" : "static/app-icons/android-xhdpi-96.png",
+                    "xxhdpi" : "static/app-icons/android-xxhdpi-144.png",
+                    "xxxhdpi" : "static/app-icons/android-xxxhdpi-192.png"
+                },
+                "ios" : {
+                    "appstore" : "static/app-icons/ios-appstore-1024.png",
+                    "iphone" : {
+                        "app@2x" : "static/app-icons/ios-iphone-app-120.png",
+                        "app@3x" : "static/app-icons/ios-iphone-app-180.png",
+                        "notification@2x" : "static/app-icons/ios-iphone-notification-40.png",
+                        "notification@3x" : "static/app-icons/ios-iphone-notification-60.png",
+                        "settings@2x" : "static/app-icons/ios-iphone-settings-58.png",
+                        "settings@3x" : "static/app-icons/ios-iphone-settings-87.png",
+                        "spotlight@2x" : "static/app-icons/ios-iphone-spotlight-80.png",
+                        "spotlight@3x" : "static/app-icons/ios-iphone-spotlight-120.png"
+                    }
+                }
+            }
         }
     },
     "quickapp" : {},

@@ -183,6 +183,11 @@
 - **CLI**：`npm run dev:mp-weixin`（开发）/ `npm run build:mp-weixin`（构建），输出 `frontend/dist/dev|build/mp-weixin`（已 gitignore）。
   - npm scripts 经 `frontend/scripts/run-uni.js` 包装，用于设置 `UNI_INPUT_DIR` 指向项目根目录（uni CLI 默认输入目录为 `<项目根>/src`，与 HBuilderX 布局冲突）。
 - **微信开发者工具导入目录**：`frontend/dist/build/mp-weixin`（CLI 构建）或 `frontend/unpackage/dist/dev/mp-weixin`（HBuilderX 运行）。切勿混用两者的产物。
+- **App（Android/iOS）打包**：HBuilderX 打开 `frontend/` → 菜单「发行 → 原生App-云打包」，输出 `frontend/unpackage/release/`（已 gitignore）。CLI 侧 `npm run dev:app` / `npm run build:app` 仅生成 App 资源包（`frontend/dist/{dev,build}/app`），**不产出 apk/ipa**，最终出包仍须经 HBuilderX 云打包或离线 SDK。
+  - Android 包名固定 `com.wuzuniao.yao`（`manifest.json` 的 `app-plus.distribute.android.packagename`）。
+  - App 端接口地址在 `config/env.js` 的 `#ifdef APP-PLUS` 分支中恒为生产 HTTPS 域名，**不随 `NODE_ENV` 变化**（真机 `localhost` 指向手机自身，且 Android 9+/iOS ATS 默认禁明文 HTTP）。
+  - App 端**不提供微信登录与微信订阅消息**（属小程序专有能力，已由 `#ifdef MP-WEIXIN` 隔离），仅账号密码登录 + 邮件/站内信提醒。
+- **跨端改动铁律**：新增 App 逻辑一律用 `#ifdef APP-PLUS` 包裹，禁止改动既有 `#ifdef MP-WEIXIN` / `#ifdef H5` 块；`manifest.json` 只增补 `app-plus` 段，`mp-weixin`、`h5` 段不得改动。
 - **后端启动命令**：`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`（开发），生产使用容器启动。
 
 ## 9. 成功标准与质量门禁
