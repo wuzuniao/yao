@@ -4,35 +4,35 @@
       "path": "pages/index/index",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "首页"
+        "navigationBarTitleText": "无足鸟按时吃药打卡 - 按时提醒与打卡记录首页"
       }
     },
     {
       "path": "pages/index/record",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "记录"
+        "navigationBarTitleText": "打卡记录 - 日历查看与按月统计"
       }
     },
     {
       "path": "pages/index/settings",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "设置"
+        "navigationBarTitleText": "设置 - 账号与通知方式管理"
       }
     },
     {
       "path": "pages/index/notification",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "通知方式"
+        "navigationBarTitleText": "通知方式 - 站内信微信邮件提醒设置"
       }
     },
     {
       "path": "pages/index/plan",
       "style": {
         "navigationStyle": "custom",
-        "navigationBarTitleText": "制定计划"
+        "navigationBarTitleText": "制定计划 - 创建打卡提醒计划"
       }
     }
   ],
@@ -44,63 +44,63 @@
           "path": "profile",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "个人信息"
+            "navigationBarTitleText": "个人信息 - 账号资料与安全管理"
           }
         },
         {
           "path": "login",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "登录"
+            "navigationBarTitleText": "登录 - 微信一键登录与账号登录"
           }
         },
         {
           "path": "register",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "注册"
+            "navigationBarTitleText": "注册 - 邮箱注册无足鸟账号"
           }
         },
         {
           "path": "contact",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "联系我们"
+            "navigationBarTitleText": "联系我们 - 客服邮箱与社区支持"
           }
         },
         {
           "path": "help",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "帮助中心"
+            "navigationBarTitleText": "帮助中心 - 常见问题与使用指南"
           }
         },
         {
           "path": "messages",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "站内信"
+            "navigationBarTitleText": "站内信 - 打卡提醒消息中心"
           }
         },
         {
           "path": "privacy",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "隐私政策"
+            "navigationBarTitleText": "隐私政策 - 数据加密与隐私保护"
           }
         },
         {
           "path": "forgot-password",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "找回密码"
+            "navigationBarTitleText": "找回密码 - 邮箱验证重置密码"
           }
         },
         {
           "path": "announcement",
           "style": {
             "navigationStyle": "custom",
-            "navigationBarTitleText": "公告管理"
+            "navigationBarTitleText": "公告管理 - 发布与管理系统公告"
           }
         }
       ]
@@ -108,7 +108,7 @@
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "无足鸟按时吃药打卡",
+    "navigationBarTitleText": "无足鸟按时吃药打卡 - 通用打卡计划与按时提醒工具",
     "navigationBarBackgroundColor": "#F8F8F8",
     "backgroundColor": "#e8ebe6"
   }

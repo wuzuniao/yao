@@ -181,15 +181,20 @@
         "描述": "HBuilderX 标准静态资源目录（原样拷贝到产物，不参与构建处理）",
         "favicon.ico": "H5 端站点图标"
       },
+      "public": {
+        "描述": "H5 端 SEO 静态资源目录，由 vite.config.js 在 H5 模式下设 publicDir='public' 复制到 H5 产物根目录（标准路径供爬虫识别）；小程序构建不设 publicDir，故不进入小程序产物",
+        "robots.txt": "爬虫抓取规则：允许全部抓取，并声明 sitemap.xml 位置",
+        "sitemap.xml": "站点地图：覆盖 H5 全部 14 个可路由页面（按 pages.json 路由路径），含 lastmod/changefreq/priority 与中文 hreflang 备用链接"
+      },
       "App.vue": "应用根组件",
       "main.js": "应用入口文件",
       "manifest.json": "uni-app 多端配置文件：包含 mp-weixin（微信小程序：appid/urlCheck/usingComponents/lazyCodeLoading）、app-plus（App，appid __UNI__528E611，用于 HBuilderX 打包 Android/iOS）、h5（H5 端：router.mode=history + router.base=/ + publicPath=/ + devServer.port=5173 + title，title 与 index.html 的 title 标签一致为 SEO 友好标题）等平台配置；vueVersion=3",
-      "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password/announcement)",
+      "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password/announcement)；每个页面的 navigationBarTitleText 已优化为 SEO/GEO 友好描述性标题（如「打卡记录 - 日历查看与按月统计」），H5 端注入 document.title、微信搜一搜可用，不影响小程序 UI（navigationStyle 均为 custom）",
       "uni.scss": "全局可用的SCSS变量",
       "index.html": "H5 端 HTML 入口文件：含 SEO 元信息（title/description/keywords/robots/author/theme-color/canonical）、Open Graph 与 Twitter Card 社交分享标签、SoftwareApplication 类型 JSON-LD 结构化数据（供搜索引擎与 AI 生成式引擎准确理解应用类型、功能与许可）；保留 uni-app SSR 占位符（preload-links/app-context/app-html 注释与 div）与 viewport 刘海屏兼容脚本；script src 指向 /main.js",
       "package.json": "npm依赖配置；scripts 经 scripts/run-uni.js 包装以设置 UNI_INPUT_DIR",
       "package-lock.json": "npm依赖锁定文件",
-      "vite.config.js": "Vite构建工具配置：root 为项目根目录，@ 别名指向项目根目录（HBuilderX 布局，无 src 层）"
+      "vite.config.js": "Vite构建工具配置：root 为项目根目录，@ 别名指向项目根目录（HBuilderX 布局，无 src 层）；仅为 H5 模式（process.env.UNI_PLATFORM==='h5'）设置 publicDir='public'，将 public/ 下 robots.txt/sitemap.xml 复制到 H5 产物根目录；小程序（mp-weixin）模式不设 publicDir，完全不受影响"
     },
     "scripts": {
       "描述": "本地开发辅助脚本",
