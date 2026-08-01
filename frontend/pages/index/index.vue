@@ -1848,11 +1848,4 @@ onUnmounted(() => {
     margin-top: 84px;
   }
 }
-
-@media screen and (min-width: 1024px) {
-  /* 折叠屏展开/平板横屏：与记录/设置页大屏段同构，不显式清零左右 padding，
-     使首页白色卡片在超宽屏下仍由基础样式(48rpx)推开左右边界，避免 H5 大屏端贴边 */
-  .index-page__main-canvas {
-  }
-}
 </style>

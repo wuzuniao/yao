@@ -164,17 +164,26 @@
 
 ## 8. 环境配置
 
-- **统一配置文件 `.env`**：开发与生产环境均使用 `.env` 文件（位于 `backend/` 与 `frontend/` 下），该文件不提交 Git。`.env.template` 为参数模板（提交 Git），新环境部署时复制为 `.env` 并填入实际值。
-- **开发（Windows）参考值**：
-  - 后端 `backend/.env`：`DATABASE_URL=mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4`
-  - 前端 `frontend/.env`：`VITE_API_BASE_URL=http://localhost:8000`
-- **生产（Rocky Linux + Docker 容器）参考值**：
-  - 后端 `backend/.env`：`DATABASE_URL=mysql+asyncmy://root:生产密码@mariadb:3306/wuzuniao_yao?charset=utf8mb4`（若使用 Docker Compose 服务名）或替换为内网 IP。
-  - 前端 `frontend/.env`：生产域名（如 `https://your-api-domain.com`）
+### 8.1 后端（`.env` 机制）
 
-- **启动命令**：
-  - 后端：`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`（开发），生产使用容器启动。
-  - 前端：`npm run dev:mp-weixin`（开发）/ `npm run build:mp-weixin`（构建）
+- **统一配置文件 `.env`**：开发与生产环境均使用 `backend/.env`，该文件不提交 Git。`.env.template` 为参数模板（提交 Git），新环境部署时复制为 `.env` 并填入实际值。
+- 开发（Windows）：`DATABASE_URL=mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4`
+- 生产（Rocky Linux + Docker）：`DATABASE_URL=mysql+asyncmy://root:生产密码@mariadb:3306/wuzuniao_yao?charset=utf8mb4`（若使用 Docker Compose 服务名）或替换为内网 IP。
+
+### 8.2 前端（`config/env.js` 常量模块，2026-08-01 起）
+
+- **不再使用 `.env` 与 `import.meta.env`**。原因：工程已改为 HBuilderX 标准布局以支持发行 App/iOS/多端小程序，而 HBuilderX 内置编译器不加载 `.env` 文件，`import.meta.env.VITE_*` 取值为 `undefined`，会导致接口地址静默回退到 localhost、微信订阅模板 ID 变空串。
+- 前端环境配置集中在 `frontend/config/env.js`，导出 `API_BASE_URL`、`WX_SUBSCRIBE_TEMPLATE_ID` 两个常量，按 `process.env.NODE_ENV` 区分开发/生产分支。**该文件提交 Git，因此严禁写入密码、密钥等敏感信息**（接口域名与订阅模板 ID 属公开信息，可安全提交）。
+- 新增前端环境配置项时，一律加到 `config/env.js`，不要新建 `.env`。
+
+### 8.3 前端工程布局与启动命令
+
+- **前端为 HBuilderX 标准布局**：源码直接位于 `frontend/` 根目录（`pages/`、`components/`、`api/` 等），**没有 `src/` 层**。`manifest.json`、`pages.json`、`main.js`、`App.vue`、`uni.scss`、`static/` 均在 `frontend/` 根目录。
+- **HBuilderX**：直接打开 `frontend/` 目录，用「运行」/「发行」菜单构建 App、iOS、各端小程序；输出目录为 `frontend/unpackage/`（已 gitignore）。
+- **CLI**：`npm run dev:mp-weixin`（开发）/ `npm run build:mp-weixin`（构建），输出 `frontend/dist/dev|build/mp-weixin`（已 gitignore）。
+  - npm scripts 经 `frontend/scripts/run-uni.js` 包装，用于设置 `UNI_INPUT_DIR` 指向项目根目录（uni CLI 默认输入目录为 `<项目根>/src`，与 HBuilderX 布局冲突）。
+- **微信开发者工具导入目录**：`frontend/dist/build/mp-weixin`（CLI 构建）或 `frontend/unpackage/dist/dev/mp-weixin`（HBuilderX 运行）。切勿混用两者的产物。
+- **后端启动命令**：`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`（开发），生产使用容器启动。
 
 ## 9. 成功标准与质量门禁
 

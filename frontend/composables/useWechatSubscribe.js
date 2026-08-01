@@ -10,8 +10,9 @@
  *  - 用户点击「允许」(accept) 后调用后端 grantWechatChannel 累加下发额度
  */
 import { grantWechatChannel } from '../api/modules/notification'
+import { WX_SUBSCRIBE_TEMPLATE_ID } from '../config/env'
 
-const TEMPLATE_ID = import.meta.env.VITE_WX_SUBSCRIBE_TEMPLATE_ID || ''
+const TEMPLATE_ID = WX_SUBSCRIBE_TEMPLATE_ID
 
 export function useWechatSubscribe() {
   /**

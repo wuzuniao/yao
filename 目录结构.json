@@ -85,13 +85,20 @@
       "requirements.txt": "Python依赖清单",
       "run.py": "可选，替代uvicorn命令的启动入口"
     },
-    "frontend": {
-      "描述": "uni-app前端项目目录（HBuilder X打开此目录）",
-      "src": {
-        "描述": "源码目录",
-        "api": {
+      "frontend": {
+      "描述": "uni-app前端项目目录（HBuilderX 标准布局：源码直接位于本目录下，无 src 层；HBuilderX 打开此目录即可运行/发行到 App、iOS、多端小程序；CLI 构建亦共用同一结构）",
+      "布局选型理由": "工程刻意采用「无 src 层」的 HBuilderX 标准布局，而非常见的 CLI 布局（源码在 frontend/src/）。原因：项目目标是以 HBuilderX 发行 App / iOS / 多端小程序，而 HBuilderX 的「运行/发行」菜单要求 manifest.json/pages.json/main.js/App.vue/static 位于项目根目录，CLI 布局（含 src 层）与之不兼容。uni CLI 默认输入目录写死为 <项目根>/src，已通过 frontend/scripts/run-uni.js 设置 UNI_INPUT_DIR 指向项目根来兜底，使 CLI 构建（npm run dev:mp-weixin / build:mp-weixin）与本布局共用同一结构。两种构建路径对比：HBuilderX 发行多端 App/iOS 最顺（原生支持），CLI 构建需 10 行 wrapper 兜底但已就绪；若后续要做 CI/CD 自动出包，CLI 路径（scripts/run-uni.js）已可直接使用，无需再调整结构。源码内部导入全部为相对路径（../../components/xxx），因此平移自 src 布局无需修改任何导入语句。",
+      "config": {
+        "描述": "全端环境配置目录（2026-08-01 新增，替代 .env 机制）",
+        "env.js": "全端环境配置常量模块：导出 API_BASE_URL（按 process.env.NODE_ENV 区分，生产 https://yao.wuzuniao.com / 开发 http://localhost:8000）与 WX_SUBSCRIBE_TEMPLATE_ID（微信订阅消息模板ID）。因 HBuilderX 内置编译器不加载 .env 文件（import.meta.env.VITE_* 取值为 undefined 会导致接口地址静默回退、模板ID变空串），故改用本常量模块，使 HBuilderX 与 CLI 两种构建方式行为一致。本文件提交 Git，不得写入密码/密钥等敏感信息"
+      },
+      "scripts": {
+        "描述": "前端构建辅助脚本目录（2026-08-01 新增）",
+        "run-uni.js": "uni-app CLI 启动包装脚本：因工程改为 HBuilderX 布局（无 src 层）而 uni CLI 默认输入目录为 <项目根>/src，故在调用 uni CLI 前将环境变量 UNI_INPUT_DIR 指向项目根目录，使 CLI 构建与 HBuilderX 共用同一目录结构。用法 node scripts/run-uni.js <dev|build> <platform>，由 package.json scripts 调用；用 Node 设置环境变量以跨平台，无需 cross-env 依赖"
+      },
+      "api": {
           "描述": "API 请求层，统一封装 uni.request 与后端接口调用",
-          "request.js": "统一请求封装：baseURL 拼接、请求拦截器自动附加 Authorization: Bearer <token>（从本地存储读取 accessToken，避免与 Pinia store 循环依赖）、响应 401 自动清除本地登录态并 reLaunch 到登录页（_isHandling401 标志防并发重定向，区分 token 过期与未登录两种提示）、错误解析（FastAPI 校验错误/HTTPException/业务格式）；fail 回调错误文案用条件编译区分端：#ifdef MP-WEIXIN 保留微信小程序诊断信息（域名未配置/超时/拒绝连接等），#ifndef MP-WEIXIN 给出 H5 浏览器错误文案（Network Error/Failed to fetch 等）",
+          "request.js": "统一请求封装：baseURL 取自 config/env.js 的 API_BASE_URL 常量、请求拦截器自动附加 Authorization: Bearer <token>（从本地存储读取 accessToken，避免与 Pinia store 循环依赖）、响应 401 自动清除本地登录态并 reLaunch 到登录页（_isHandling401 标志防并发重定向，区分 token 过期与未登录两种提示）、错误解析（FastAPI 校验错误/HTTPException/业务格式）；fail 回调错误文案用条件编译区分端：#ifdef MP-WEIXIN 保留微信小程序诊断信息（域名未配置/超时/拒绝连接等），#ifndef MP-WEIXIN 给出 H5 浏览器错误文案（Network Error/Failed to fetch 等）",
           "modules": {
             "描述": "按业务模块拆分的请求函数目录",
             "user.js": "用户模块接口：sendRegisterCode/registerUser/loginUser/sendResetCode/resetPassword/wechatLogin（公开接口，成功返回 access_token）/updateSignature/changePassword/changeEmail(修改邮箱)/updateAvatar/scheduleDeletion/cancelDeletion/updateUsername(修改用户名)/setPassword(设置密码)/bindEmail(绑定邮箱)/getUserInfo(查询当前用户信息，均无 user_id 参数，由后端 token 解析)",
@@ -130,7 +137,7 @@
           "usePlaceholder.js": "输入框 placeholder 聚焦交互复用逻辑，导出 { activeField, onFocus, onBlur, phStyle }，用于 login/register/plan/notification 页面",
           "useInputLimit.js": "输入框字符过滤与长度限制工具，导出 useInputLimit(maxLength, allowedPattern?) 组合式函数，返回 { max, filter, handleInput, wasAtLimit, limitReached, limitHint, checkLimit }。实现字符限制与后端字段严格匹配（配合 input 组件 :maxlength）与白名单正则过滤特殊字符；提示仅在达到上限后继续输入时触发（非达到上限时立即触发），通过 limitHint 返回已达 X 字上限。用于 login/register/forgot-password/profile/plan/notification 页面",
           "useShare.js": "微信分享统一配置组合式函数，导出 useShare(options?)，内部注册 onShareAppMessage（转发给朋友）与 onShareTimeline（分享到朋友圈）两个页面生命周期钩子，并在 onLoad 中调用 wx.showShareMenu({menus:['shareAppMessage','shareTimeline']}) 显式启用右上角菜单分享按钮（否则按钮显示为灰色不可点击）。复制链接依赖转发功能启用后自动可用。整个函数体（onLoad+onShareAppMessage+onShareTimeline）用 #ifdef MP-WEIXIN 包裹，H5 端 useShare() 为空操作（H5 无微信分享菜单）。用于全部 13 个页面",
-          "useWechatSubscribe.js": "微信订阅消息授权组合式函数，导出 useWechatSubscribe()，内部封装 uni.requestSubscribeMessage（仅在 MP-WEIXIN 生效，#ifdef 守卫）。requestSubscribe({silent}) 在用户手势中请求一次授权，成功(accept)后调用 grantWechatChannel 后端接口 +1 额度；静默模式(silent:true)用于打卡完成时补充授权额度，失败不提示。模板 ID 来自环境变量 VITE_WX_SUBSCRIBE_TEMPLATE_ID",
+          "useWechatSubscribe.js": "微信订阅消息授权组合式函数，导出 useWechatSubscribe()，内部封装 uni.requestSubscribeMessage（仅在 MP-WEIXIN 生效，#ifdef 守卫）。requestSubscribe({silent}) 在用户手势中请求一次授权，成功(accept)后调用 grantWechatChannel 后端接口 +1 额度；静默模式(silent:true)用于打卡完成时补充授权额度，失败不提示。模板 ID 来自 config/env.js 的 WX_SUBSCRIBE_TEMPLATE_ID 常量",
           "useGuideTarget.js": "新手引导目标元素位置上报组合式函数，导出 useGuideTarget(targetKey, selector)，返回 { requery }。在含引导目标的组件/页面中调用，自动监听 guide store 状态，当引导激活且当前步骤的目标或锚点（steps[].cardAnchor）匹配本目标时，通过 uni.createSelectorQuery().in(instance.proxy) 查询目标元素 boundingClientRect 并上报到 guide store（.in() 确保能穿透微信小程序自定义组件 shadow 边界）。查询带重试机制（最多 8 次、每次间隔 120ms），覆盖页面入场动画期间目标节点尚未完成布局导致首次查询为空的情况，避免 BeginnerGuide 回退到全屏阻挡蒙版而误吞目标按钮点击。stopWatch 监听 currentStepData 变化触发首次查询（150ms 延迟 + 500ms 二次查询覆盖异步加载布局修正）；stopPageWatch 监听 currentPage 变化，当页面切换回当前步骤所在页面时重新查询（解决 plan 页期间 currentStep 推进到 settings 页 home-tab、BottomNav 不可见导致查询失败，返回 settings 页后 stopWatch 不再触发、位置不上报、全屏蒙版持续显示的问题）；位置去重：reportRect 用 Math.round 整数比较，新旧位置整数相同时跳过 setTargetRect，避免 computed 链重算与视图重建；requery 方法供页面布局变化时手动触发重新查询（如 settings.vue 监听 isAdmin 变化调用）。组件卸载时自动停止监听并清理位置数据。用于 BottomNav(首页tab/设置tab)/settings.vue(用户资料卡/通知方式/制定计划)/login.vue(微信登录按钮/立即注册链接/登录卡片)/register.vue(注册卡片)/notification.vue(添加新方式/授权订阅提醒/新建通知方式表单卡锚点/邮件类型单选框/邮件保存按钮)/plan.vue(新建计划)/index.vue(打卡按钮)"
         },
         "store": {
@@ -170,18 +177,19 @@
           "描述": "前端通用工具函数目录",
           "announcementRead.js": "公告已读持久化工具：announcementReadState 本地存储 {exp,readMap}，exp 取自当前 JWT 过期时间戳（秒），readMap 为 {公告id:已读时的updated_at}；getTokenExp 解析 JWT exp（兼容小程序无 atob，回退 uni.base64ToArrayBuffer）、loadReadMap 读取当前 token 下已读映射（exp 缺失/不匹配/过期返回空）、markRead(item) 记录该公告 updated_at、getUnread 过滤未读（仅 id 存在且 updated_at 一致才算已读）；已读绑定当前登录 token（过期/重新登录失效），且公告 updated_at 变化（后端更新）即重新展示"
         },
-        "App.vue": "应用根组件",
-        "main.js": "应用入口文件",
-        "manifest.json": "uni-app 多端配置文件：包含 mp-weixin（微信小程序：appid/urlCheck/usingComponents/lazyCodeLoading）、app-plus（App）、h5（H5 端：router.mode=history + router.base=/ + publicPath=/ + devServer.port=5173 + /api 代理到 localhost:8000 + title）等平台配置；vueVersion=3",
-        "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password/announcement)",
-        "uni.scss": "全局可用的SCSS变量"
+      "static": {
+        "描述": "HBuilderX 标准静态资源目录（原样拷贝到产物，不参与构建处理）",
+        "favicon.ico": "H5 端站点图标"
       },
-      ".env": "前端环境变量实际配置文件（不提交Git）",
-      ".env.template": "前端环境变量参数模板（提交Git）：VITE_API_BASE_URL 后端地址（开发环境 http://localhost:8000，H5 端可走 devServer /api 代理避免 CORS）、VITE_WX_SUBSCRIBE_TEMPLATE_ID 微信订阅消息模板ID（一次性订阅，打卡提醒模板，仅微信小程序端使用，H5 端无微信订阅消息能力，此变量不会被引用）",
-      "index.html": "HTML入口文件",
-      "package.json": "npm依赖配置",
+      "App.vue": "应用根组件",
+      "main.js": "应用入口文件",
+      "manifest.json": "uni-app 多端配置文件：包含 mp-weixin（微信小程序：appid/urlCheck/usingComponents/lazyCodeLoading）、app-plus（App，appid __UNI__528E611，用于 HBuilderX 打包 Android/iOS）、h5（H5 端：router.mode=history + router.base=/ + publicPath=/ + devServer.port=5173 + /api 代理到 localhost:8000 + title）等平台配置；vueVersion=3",
+      "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password/announcement)",
+      "uni.scss": "全局可用的SCSS变量",
+      "index.html": "H5 端 HTML 入口文件（script src 指向 /main.js）",
+      "package.json": "npm依赖配置；scripts 经 scripts/run-uni.js 包装以设置 UNI_INPUT_DIR",
       "package-lock.json": "npm依赖锁定文件",
-      "vite.config.js": "Vite构建工具配置"
+      "vite.config.js": "Vite构建工具配置：root 为项目根目录，@ 别名指向项目根目录（HBuilderX 布局，无 src 层）"
     },
     "scripts": {
       "描述": "本地开发辅助脚本",

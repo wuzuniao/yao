@@ -1,0 +1,30 @@
+/**
+ * 全端环境配置
+ * --------------------------------------------------------------------------
+ * 为什么不用 .env / import.meta.env：
+ *   HBuilderX 内置编译器不加载 .env 文件，`import.meta.env.VITE_*` 会取到
+ *   undefined，导致接口地址静默回退到 localhost、订阅消息模板 ID 变空串。
+ *   为同时支持 HBuilderX（App/iOS/多端小程序）与 CLI 构建，改用本常量模块，
+ *   通过 uni-app 条件编译区分开发与生产环境。
+ *
+ * 使用方式：
+ *   import { API_BASE_URL, WX_SUBSCRIBE_TEMPLATE_ID } from '../config/env'
+ *
+ * 切换生产环境：
+ *   HBuilderX：菜单「发行」构建时自动进入 #ifdef 的生产分支（NODE_ENV=production）
+ *   CLI：`npm run build:mp-weixin` 同样进入生产分支
+ *   本地开发（运行/dev）走开发分支
+ *
+ * 注意：本文件提交 Git，不得写入密码、密钥等敏感信息。
+ *      模板 ID 与接口域名属公开信息，可安全提交。
+ */
+
+// 后端 API 基础地址
+export const API_BASE_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://yao.wuzuniao.com'
+    : 'http://localhost:8000'
+
+// 微信订阅消息模板 ID（一次性订阅，打卡提醒模板）
+// 仅微信小程序端使用，其他端不会引用
+export const WX_SUBSCRIBE_TEMPLATE_ID = 'Tvn1TtWubjqi0RrYRRTjQgg9qaTB3Fntzt0Jju8RmEY'

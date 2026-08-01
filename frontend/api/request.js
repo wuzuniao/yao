@@ -1,7 +1,7 @@
 /**
  * 统一请求封装（基于 uni.request）
  * --------------------------------------------------------------------------
- * - baseURL 从 VITE_API_BASE_URL 读取，开发环境回退到 localhost:8000
+ * - baseURL 从 config/env.js 读取（按环境区分，兼容 HBuilderX 与 CLI 构建）
  * - 自动附加 JWT：从本地存储读取 accessToken，存在则添加 Authorization: Bearer <token>
  * - 统一解析后端响应与错误：
  *   - 成功（2xx）：resolve 响应体
@@ -9,7 +9,9 @@
  * - 401 处理：token 失效时清除本地登录态并跳转登录页（避免在登录页重复跳转）
  * - 网络失败（fail 回调）：保留微信小程序 errMsg 诊断信息，针对域名未配置场景给出明确指引
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '../config/env'
+
+const BASE_URL = API_BASE_URL
 
 // 登录页路由（401 时跳转目标，避免循环跳转）
 const LOGIN_PAGE = '/pages/user/login'
