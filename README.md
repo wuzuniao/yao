@@ -50,14 +50,14 @@ yao/
 │   │   └── main.py         # 应用入口（含后台定时任务生命周期）
 │   ├── sql/                # 数据库初始化 SQL
 │   └── .env.template       # 环境变量模板
-├── frontend/               # 前端（uni-app Vue 3）
-│   └── src/
-│       ├── api/            # 请求封装（request + modules）
-│       ├── components/     # 可复用组件
-│       ├── composables/    # 组合式函数
-│       ├── pages/          # 主包（index / record / settings）+ 用户分包
-│       ├── store/          # Pinia 状态管理
-│       └── .env.template   # 前端环境变量模板
+├── frontend/               # 前端（uni-app Vue 3，HBuilderX 标准布局，无 src 层）
+│   ├── api/                # 请求封装（request + modules）
+│   ├── components/         # 可复用组件
+│   ├── composables/        # 组合式函数
+│   ├── config/             # 全端环境配置（env.js 常量模块，取代 .env）
+│   ├── pages/              # 主包（index / record / settings / notification / plan）+ 用户分包
+│   ├── store/              # Pinia 状态管理
+│   └── utils/              # 通用工具函数
 ├── scripts/                # 运维脚本（部署 / 初始化 DB / 连接测试）
 ├── tests/                  # 测试套件（unit / integration / e2e）
 ├── AGENTS.md               # AI 编程指南
@@ -134,11 +134,16 @@ npm run build:mp-weixin  # 生产构建
 | `ENCRYPTION_SECRET_KEY` | AES-256-GCM 加密密钥（base64 编码 32 字节） |
 | `JWT_SECRET_KEY` / `JWT_EXPIRE_DAYS` | JWT 签名密钥 / 过期天数（默认 7） |
 
-### 前端（`frontend/.env`）
+### 前端（`frontend/config/env.js`）
 
-| 变量 | 说明 |
+前端环境配置集中在 `frontend/config/env.js` 常量模块（HBuilderX 内置编译器不加载 `.env`，故改用常量模块使两种构建方式行为一致），按 `process.env.NODE_ENV` 区分开发/生产：
+
+| 常量 | 说明 |
 |------|------|
-| `VITE_API_BASE_URL` | 后端地址，开发 `http://localhost:8000`、生产填域名 |
+| `API_BASE_URL` | 后端地址，开发 `http://localhost:8000`、生产 `https://yao.wuzuniao.com` |
+| `WX_SUBSCRIBE_TEMPLATE_ID` | 微信订阅消息模板 ID |
+
+该文件**提交 Git，严禁写入密码/密钥**（域名与订阅模板 ID 属公开信息）。新增前端配置项一律加到此文件。
 
 ### 数据库
 
@@ -193,6 +198,28 @@ docker compose ps                   # 查看容器状态
 docker compose logs -f backend      # 后端日志
 docker compose restart backend      # 重启后端
 ```
+
+---
+
+## 常见问题（FAQ）
+
+### 这是什么应用？
+无足鸟按时吃药打卡是一款免费、开源的通用打卡计划与按时提醒工具。你可以为任何需要按时执行的事项（吃药、健身、学习、喝水等）创建计划，到点自动提醒，并记录打卡历史。
+
+### 支持哪些平台？
+微信小程序（主要）、H5 网页、Android/iOS App（通过 HBuilderX 打包）。同一套 uni-app（Vue 3）代码跨端运行。
+
+### 数据安全吗？
+密码经 bcrypt 哈希，邮件客户端专用密码与微信 session_key 经 AES-256-GCM 加密存储，传输全程 HTTPS。支持自行部署，数据完全掌握在自己手中。
+
+### 通知渠道有哪些？
+站内信（默认，应用内查看）、微信订阅消息（一次性订阅，需用户授权）、邮件（用户自配 SMTP）。同一计划可关联多个渠道，到点同时发送。
+
+### 如何自行部署？
+后端 Docker 化部署（`scripts/deploy.sh` 一键完成 MariaDB + FastAPI + Nginx）；前端用 HBuilderX 发行到各端，或 CLI 构建（`npm run build:mp-weixin`）。详见上方"部署"章节。
+
+### 开源协议？
+GNU GPLv3，开源地址 https://github.com/wuzuniao/yao 。
 
 ---
 

@@ -50,7 +50,7 @@
         "devServer" : {
             "port" : 5173
         },
-        "title" : "无足鸟按时吃药打卡"
+        "title" : "无足鸟按时吃药打卡 - 通用打卡计划与按时提醒工具（免费开源）"
     },
     "uniStatistics" : {
         "enable" : false
