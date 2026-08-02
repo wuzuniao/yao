@@ -307,17 +307,27 @@ function randomizeCloud() {
   })
   // #endif
   // #ifndef H5
-  // 微信小程序端使用 createSelectorQuery（需 .in(instance.proxy) 限定组件上下文）
-  uni.createSelectorQuery()
-    .in(instance.proxy)
-    .select('.index-page__welcome-cloud')
-    .boundingClientRect()
-    .exec((res) => {
-      const rect = res && res[0]
-      const W = rect && rect.width > 0 ? rect.width : uni.upx2px(604)
-      const H = rect && rect.height > 0 ? rect.height : uni.upx2px(700)
-      generateWords(W, H)
-    })
+  // 小程序 / App 端使用 createSelectorQuery（需 .in(instance.proxy) 限定组件上下文）。
+  //
+  // App 端必须先兜底生成一次：randomizeCloud 由 onShow 调用，而 App(uni-app v3) 首次
+  // onShow 早于页面 DOM 提交，此时 createSelectorQuery 查询的组件上下文尚未挂载，
+  // App 运行时会静默丢弃该查询、exec 回调永不触发（微信端则会以 [null] 回调从而走到
+  // 回退分支，这正是同一份代码只有 App 端词云空白的原因）。
+  // 因此这里先用估算尺寸同步出图保证必然可见，再在 DOM 就绪后按实测尺寸精修落点。
+  generateWords(uni.upx2px(604), uni.upx2px(700))
+  nextTick(() => {
+    uni.createSelectorQuery()
+      .in(instance.proxy)
+      .select('.index-page__welcome-cloud')
+      .boundingClientRect()
+      .exec((res) => {
+        const rect = res && res[0]
+        // 查询失败时保留上面的兜底结果，不再重复生成（避免闪烁）
+        if (rect && rect.width > 0 && rect.height > 0) {
+          generateWords(rect.width, rect.height)
+        }
+      })
+  })
   // #endif
 }
 
@@ -1063,6 +1073,10 @@ onUnmounted(() => {
 .index-page__welcome-word {
   position: absolute;
   z-index: 1;
+  /* App 端 <text> 默认按行内文本节点渲染，行内元素上的 absolute + 百分比 left/top
+     定位不可靠（词会堆叠在容器左上角或不可见）；显式声明 block 使其成为块级绝对定位元素，
+     各端行为一致 */
+  display: block;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;

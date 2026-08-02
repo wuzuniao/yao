@@ -421,6 +421,8 @@ async function submitForm() {
       code: form.code
     })
     uni.showToast({ title: '注册成功', icon: 'success' })
+    // 注册成功后推进新手引导（离开注册卡片步骤，避免回登录页时残留引导）
+    guideStore.nextStep()
     // 注册成功后跳转登录页（带 mode=normal 直接展示账号密码登录卡片）
     setTimeout(() => {
       uni.redirectTo({ url: '/pages/user/login?mode=normal' })

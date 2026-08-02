@@ -26,7 +26,7 @@
     <!-- #endif -->
 
     <!-- 主登录卡片（账号密码登录，H5 端默认展示；微信端切换或注册页跳转时展示） -->
-    <view v-if="loginMode === 'normal'" class="login-page__card guide-target-login-card">
+    <view v-if="loginMode === 'normal'" class="login-page__card">
       <text class="login-page__title">欢迎回来</text>
 
       <view class="login-page__form">
@@ -154,10 +154,8 @@ useShare({ title: '登录' })
 
 const guideStore = useGuideStore()
 
-// 新手引导：上报「立即注册」链接与登录卡片位置（非微信小程序端第 3 步目标）
-// 高亮整个登录卡片而非仅登录按钮，确保用户可输入用户名密码后再点击登录
+// 新手引导：上报「立即注册」链接位置（非微信小程序端第 3 步目标）
 useGuideTarget('register-link', '.guide-target-register-link')
-useGuideTarget('login-card', '.guide-target-login-card')
 // 新手引导：上报微信一键登录按钮位置（仅微信小程序端引导第 3 步目标）
 // #ifdef MP-WEIXIN
 useGuideTarget('wechat-login', '.guide-target-wechat-login')
