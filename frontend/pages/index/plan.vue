@@ -334,8 +334,8 @@
                   <view class="plan-page__checkbox" :class="{ 'plan-page__checkbox--checked': editingSelectedChannelIds.includes(ch.id) }">
                     <view v-if="editingSelectedChannelIds.includes(ch.id)" class="plan-page__checkmark"></view>
                   </view>
-                  <text class="plan-page__notify-text">{{ ch.channel_type }}</text>
-                </view>
+                <text class="plan-page__notify-text">{{ ch.channel_type }}</text>
+              </view>
               </view>
               <view v-else class="plan-page__notify-empty">
                 <text class="plan-page__notify-empty-text">暂无通知方式，请先到"通知方式"页配置</text>

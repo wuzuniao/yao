@@ -583,9 +583,9 @@ const wechatRemaining = computed(() => {
 // 计算属性：App 推送渠道相关（仅 App 端使用）
 // #ifdef APP-PLUS
 // 计算属性：是否已配置 App 推送渠道（每用户仅一行，多设备共存于该行）
-const hasAppPush = computed(() => channels.value.some(ch => ch.channel_type === 'app_push'))
+const hasAppPush = computed(() => channels.value.some(ch => ch.channel_type === 'App推送'))
 // 计算属性：App 推送渠道对象
-const appPushChannel = computed(() => channels.value.find(ch => ch.channel_type === 'app_push') || null)
+const appPushChannel = computed(() => channels.value.find(ch => ch.channel_type === 'App推送') || null)
 // 计算属性：已登记设备数量（后端仅返回数量与平台，不回传 device_token 原文）
 const appPushDeviceCount = computed(() => {
   const ch = appPushChannel.value
