@@ -9,6 +9,7 @@ from ...schemas.notification_channel import (
     CHANNEL_TYPE_WECHAT,
     CreateEmailChannel,
     DeleteChannel,
+    UpdateAppPushChannel,
     UpdateEmailChannel,
     UpdateWechatChannel,
     UpsertAppPushChannel,
@@ -168,6 +169,29 @@ async def upsert_app_push_channel(
     return {
         "code": 0,
         "msg": "App推送设备已登记",
+        "data": _channel_to_dict(channel),
+    }
+
+
+@router.put("/app-push")
+async def update_app_push_channel(
+    payload: UpdateAppPushChannel,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新 App 推送通知渠道的启用状态（user_id 来自 JWT，不改动设备 token 数组）"""
+    service = NotificationChannelService(db)
+    try:
+        channel = await service.update_app_push_enabled(
+            channel_id=payload.channel_id,
+            user_id=user_id,
+            enabled=payload.enabled,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "code": 0,
+        "msg": "App推送通知方式更新成功",
         "data": _channel_to_dict(channel),
     }
 

@@ -184,3 +184,15 @@ class DeleteChannel(BaseModel):
     @classmethod
     def validate_channel_id(cls, v: int) -> int:
         return Security.validate_positive_int(v, "渠道ID")
+
+
+class UpdateAppPushChannel(BaseModel):
+    """更新 App 推送通知渠道启用状态请求 Schema（user_id 由 JWT 提供，不改动设备 token）"""
+
+    channel_id: int
+    enabled: bool
+
+    @field_validator("channel_id")
+    @classmethod
+    def validate_channel_id(cls, v: int) -> int:
+        return Security.validate_positive_int(v, "渠道ID")

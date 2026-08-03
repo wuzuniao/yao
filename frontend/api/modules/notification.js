@@ -98,3 +98,17 @@ export function grantWechatChannel() {
     method: 'POST'
   })
 }
+
+/**
+ * 更新 App 推送通知渠道启用状态（user_id 由 JWT 提供，不改动设备 token）
+ * @param {Object} param0
+ * @param {number} param0.channel_id 渠道ID
+ * @param {boolean} param0.enabled 是否启用
+ */
+export function updateAppPushChannel({ channel_id, enabled }) {
+  return request({
+    url: '/api/v1/notification-channels/app-push',
+    method: 'PUT',
+    data: { channel_id, enabled }
+  })
+}

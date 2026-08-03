@@ -193,6 +193,23 @@ class NotificationChannelService:
         await self.db.delete(channel)
         await self.db.commit()
 
+    async def update_app_push_enabled(
+        self, channel_id: int, user_id: int, enabled: bool
+    ) -> NotificationChannel:
+        """更新 App 推送通知渠道的启用状态（仅 App 推送渠道支持，不改动设备 token 数组）"""
+        channel = await self.get_by_id(channel_id)
+        if not channel:
+            raise ValueError("通知渠道不存在")
+        if channel.user_id != user_id:
+            raise ValueError("无权操作该通知渠道")
+        if channel.channel_type != CHANNEL_TYPE_APP_PUSH:
+            raise ValueError("仅 App 推送通知渠道支持该操作")
+        channel.enabled = enabled
+        channel.updated_at = now_shanghai()
+        await self.db.commit()
+        await self.db.refresh(channel)
+        return channel
+
     @staticmethod
     def parse_email_channel_value(channel_value: str) -> dict[str, Any] | None:
         """解析邮件渠道的 channel_value JSON 为字典（失败返回 None）"""

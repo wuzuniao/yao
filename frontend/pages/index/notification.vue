@@ -188,17 +188,48 @@
         <!-- #endif -->
 
         <!-- #ifdef APP-PLUS -->
-        <!-- App 推送卡片（仅 App 端显示；含删除图标，删除后本机不再接收系统通知栏推送） -->
-        <view v-if="hasAppPush" class="notification-page__card" :class="{ 'notification-page__card--disabled': appPushChannel && !appPushChannel.enabled }">
-          <view class="notification-page__card-info">
-            <view class="notification-page__card-badge notification-page__card-badge--app">推</view>
-            <view class="notification-page__card-text">
-              <text class="notification-page__card-title">App推送</text>
-              <text class="notification-page__card-subtitle">系统通知栏提醒 · 已登记 {{ appPushDeviceCount }} 台设备</text>
+        <!-- App 推送卡片（仅 App 端显示；点击卡片展开启用状态修改表单，含删除图标） -->
+        <view v-if="hasAppPush">
+          <view class="notification-page__card" :class="{ 'notification-page__card--disabled': appPushChannel && !appPushChannel.enabled }" @click="toggleAppPushEdit">
+            <view class="notification-page__card-info">
+              <view class="notification-page__card-badge notification-page__card-badge--app">推</view>
+              <view class="notification-page__card-text">
+                <text class="notification-page__card-title">App推送</text>
+                <text class="notification-page__card-subtitle">系统通知栏提醒 · 已登记 {{ appPushDeviceCount }} 台设备</text>
+              </view>
+            </view>
+            <view class="notification-page__card-delete" @click.stop="handleDeleteAppPush">
+              <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
             </view>
           </view>
-          <view class="notification-page__card-delete" @click.stop="handleDeleteAppPush">
-            <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
+
+          <!-- App 推送启用状态修改表单（点击卡片展开，仅"是否启用"单选 + 提交/取消按钮） -->
+          <view v-if="appPushEditExpanded" class="notification-page__email-form">
+            <view class="notification-page__field">
+              <text class="notification-page__label">是否启用</text>
+              <view class="notification-page__radio-row">
+                <view class="notification-page__radio-item" @click="appPushEditForm.enabled = true">
+                  <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': appPushEditForm.enabled }">
+                    <view v-if="appPushEditForm.enabled" class="notification-page__radio-dot"></view>
+                  </view>
+                  <text class="notification-page__radio-text">是</text>
+                </view>
+                <view class="notification-page__radio-item" @click="appPushEditForm.enabled = false">
+                  <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': !appPushEditForm.enabled }">
+                    <view v-if="!appPushEditForm.enabled" class="notification-page__radio-dot"></view>
+                  </view>
+                  <text class="notification-page__radio-text">否</text>
+                </view>
+              </view>
+            </view>
+            <view class="notification-page__btn-row">
+              <view class="notification-page__save notification-page__btn-row-item" @click="handleUpdateAppPush">
+                <text class="notification-page__save-text">提交</text>
+              </view>
+              <view class="notification-page__cancel notification-page__btn-row-item" @click="appPushEditExpanded = false">
+                <text class="notification-page__cancel-text">取消</text>
+              </view>
+            </view>
           </view>
         </view>
         <!-- #endif -->
@@ -401,7 +432,8 @@ import {
   listNotificationChannels,
   createEmailChannel,
   updateEmailChannel,
-  deleteNotificationChannel
+  deleteNotificationChannel,
+  updateAppPushChannel
 } from '../../api/modules/notification'
 // 微信订阅消息相关（仅微信小程序端使用）
 // #ifdef MP-WEIXIN
@@ -487,6 +519,16 @@ const editForm = reactive({
 const wechatEditExpanded = ref(false)
 // 微信启用状态修改表单（仅 enabled 字段）
 const wechatEditForm = reactive({
+  enabled: true
+})
+// #endif
+
+// App 推送启用状态修改表单（仅 App 端使用）
+// #ifdef APP-PLUS
+// App 推送启用状态修改表单是否展开（点击 App 推送卡片切换）
+const appPushEditExpanded = ref(false)
+// App 推送启用状态修改表单（仅 enabled 字段）
+const appPushEditForm = reactive({
   enabled: true
 })
 // #endif
@@ -868,6 +910,36 @@ async function handleEnableAppPush() {
   uni.showToast({ title: '开启成功', icon: 'success' })
   showForm.value = false
   await loadChannels()
+}
+
+// 点击 App 推送卡片：展开/收起启用状态修改表单
+function toggleAppPushEdit() {
+  if (appPushEditExpanded.value) {
+    appPushEditExpanded.value = false
+    return
+  }
+  const ch = appPushChannel.value
+  appPushEditForm.enabled = ch ? !!ch.enabled : true
+  appPushEditExpanded.value = true
+}
+
+// 提交 App 推送启用状态修改（参考微信 handleUpdateWechat）
+async function handleUpdateAppPush() {
+  const ch = appPushChannel.value
+  if (!ch || !userStore.userInfo) return
+  try {
+    const res = await updateAppPushChannel({
+      channel_id: ch.id,
+      enabled: appPushEditForm.enabled
+    })
+    if (res.code === 0) {
+      uni.showToast({ title: '更新成功', icon: 'success' })
+      appPushEditExpanded.value = false
+      await loadChannels()
+    }
+  } catch (e) {
+    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+  }
 }
 
 // 删除 App 推送通知方式（复用通用删除接口，删除后本机及其他已登记设备均不再收到推送）
