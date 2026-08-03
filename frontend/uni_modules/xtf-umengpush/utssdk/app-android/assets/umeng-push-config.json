@@ -1,0 +1,101 @@
+{
+  "android": {
+    "applicationId": "com.wuzuniao.yao",
+    "appName": "无足鸟按时吃药打卡",
+    "channel": "wuzuniao",
+    "minSdkVersion": 23,
+    "targetSdkVersion": 35
+  },
+  "ios": {
+    "bundleId": "com.wuzuniao.yao",
+    "appName": "无足鸟按时吃药打卡",
+    "channel": "wuzuniao",
+    "apsEnvironment": "production"
+  },
+  "android_umeng": {
+    "appKey": "6a700f2ce87a8d65f0a5902c",
+    "messageSecret": "9cc21249944b199c55bfb0824979c95f",
+    "debug": false
+  },
+  "ios_umeng": {
+    "appKey": "",
+    "messageSecret": "",
+    "debug": false
+  },
+  "vendors": {
+    "huawei": {
+      "enabled": false,
+      "appId": "",
+      "agconnectServicesJsonPath": ""
+    },
+    "honor": {
+      "enabled": false,
+      "appId": "",
+      "appKey": "",
+      "clientId": "",
+      "configFilePath": ""
+    },
+    "xiaomi": {
+      "enabled": false,
+      "appId": "",
+      "appKey": "",
+      "appSecret": ""
+    },
+    "oppo": {
+      "enabled": false,
+      "appKey": "",
+      "appSecret": "",
+      "masterSecret": ""
+    },
+    "vivo": {
+      "enabled": false,
+      "appId": "",
+      "appKey": "",
+      "appSecret": ""
+    },
+    "meizu": {
+      "enabled": false,
+      "appId": "",
+      "appKey": "",
+      "appSecret": ""
+    },
+    "fcm": {
+      "enabled": false,
+      "googleServicesJsonPath": "",
+      "projectId": "",
+      "applicationId": "",
+      "apiKey": "",
+      "senderId": ""
+    }
+  },
+  "advanced": {
+    "notificationOnForeground": true,
+    "displayNotificationNumber": 5,
+    "resourcePackageName": "REPLACE_WITH_RESOURCE_PACKAGE_NAME_OPTIONAL",
+    "pushCheck": true,
+    "smartEnable": false,
+    "muteDurationSeconds": 0,
+    "noDisturbMode": {
+      "enabled": false,
+      "startHour": 23,
+      "startMinute": 0,
+      "endHour": 7,
+      "endMinute": 0
+    },
+    "playSoundMode": "server",
+    "playLightsMode": "server",
+    "playVibrateMode": "server",
+    "notificationChannelName": "",
+    "notificationSilenceChannelName": "",
+    "customNotificationStyleEnabled": false,
+    "customMessageServiceEnabled": true,
+    "smallIconResourceName": "umeng_push_notification_default_small_icon",
+    "largeIconResourceName": "umeng_push_notification_default_large_icon",
+    "soundResourceName": "umeng_push_notification_default_sound"
+  },
+  "notes": {
+    "packageNameMustMatchVendorConsole": true,
+    "signatureMustMatchVendorConsole": true,
+    "allPathsUseAbsolutePath": true
+  }
+}

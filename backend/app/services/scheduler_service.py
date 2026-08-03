@@ -17,6 +17,8 @@
 - 防重：以 (plan_time_id, trigger_type, notify_date, channel_id) 为去重键查询 notification_logs
 - 站内信：直接写 notification_logs（status=2 未读）
 - 邮件：读取用户 notification_channels.channel_value 作为 SMTP 发送，收件人取 users.email
+- App 推送：读取 channel_value 内的设备 token 数组，逐个走友盟+ U-Push 下发，
+  失败计数满 3 次剔除该设备，数组清空则删除整行渠道；按渠道只记 1 条日志
 """
 import asyncio
 import json
@@ -36,6 +38,8 @@ from ..schemas.notification_channel import (
     CHANNEL_TYPE_ZNX,
     CHANNEL_TYPE_EMAIL,
     CHANNEL_TYPE_WECHAT,
+    CHANNEL_TYPE_APP_PUSH,
+    APP_PUSH_MAX_FAIL_COUNT,
 )
 from ..schemas.notification_log import (
     LOG_STATUS_SUCCESS,
@@ -50,6 +54,7 @@ from ..schemas.notification_log import (
 from ..core.config import settings
 from ..models.user_miniapp_account import UserMiniappAccount
 from ..services.wechat_service import WeChatService, ERRCODE_NO_PERMISSION
+from ..services.umeng_service import UmengService, UmengPushError
 from ..utils.timezone import now_shanghai
 from ..utils.crypto import decrypt
 from ..utils.logger import logger
@@ -395,6 +400,10 @@ class NotificationDispatcher:
             await self._send_wechat(plan, plan_time, channel, trigger_type, notify_date, now)
             return
 
+        if channel.channel_type == CHANNEL_TYPE_APP_PUSH:
+            await self._send_app_push(plan, plan_time, channel, trigger_type, notify_date, now)
+            return
+
         logger.warning(f"未知渠道类型 channel={channel.id} type={channel.channel_type}，跳过")
 
     async def _send_email(self, plan: CheckinPlan, plan_time: PlanNotificationTime,
@@ -518,6 +527,92 @@ class NotificationDispatcher:
         else:
             await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
                                   LOG_STATUS_FAILED, f"微信发送失败 errcode={errcode} {result.get('errmsg')}"[:255])
+
+    async def _send_app_push(self, plan: CheckinPlan, plan_time: PlanNotificationTime,
+                             channel: NotificationChannel, trigger_type: int, notify_date,
+                             now: datetime) -> None:
+        """
+        App 推送渠道发送（友盟+ U-Push，多设备遍历下发）
+
+        - 每用户仅一行渠道，channel_value 内为设备 token 数组，逐个 token 下发
+        - 成功：该 token 的 fail_count 归零
+        - 失败：该 token 的 fail_count +1，累计满 APP_PUSH_MAX_FAIL_COUNT 次即剔除
+        - 数组被清空时删除整行渠道（用户需重新在通知方式页添加）
+        - 日志：无论多少设备，按渠道只写 1 条 notification_logs
+          全部成功 / 部分成功 → status=成功；全部失败 → status=失败
+        """
+        cfg = NotificationChannelService.parse_app_push_channel_value(channel.channel_value)
+        if not cfg.device_tokens:
+            # 无设备可推送：清理空渠道行，避免残留
+            await self.db.delete(channel)
+            try:
+                await self.db.commit()
+            except Exception:
+                await self.db.rollback()
+            logger.info(f"App推送渠道 {channel.id} 无可用设备，已删除该通知方式")
+            return
+
+        trigger_desc = TRIGGER_DESC.get(trigger_type, "提醒")
+        reminder_str = plan_time.notification_time.strftime("%H:%M")
+        title = f"{plan.name} - {trigger_desc}"
+        content = f"{reminder_str} {plan.remark or '请按时完成打卡'}"
+        # 附加跳转路径，前端 plus.push click 事件据此 reLaunch 到首页打卡
+        extra = {"page": settings.UMENG_PUSH_PAGE, "plan_id": str(plan.id)}
+
+        success_count = 0
+        errors: list[str] = []
+        kept_tokens = []
+        for device in cfg.device_tokens:
+            try:
+                await UmengService.send(
+                    device_token=device.token,
+                    title=title,
+                    content=content,
+                    platform=device.platform,
+                    extra=extra,
+                )
+            except UmengPushError as e:
+                device.fail_count += 1
+                errors.append(str(e))
+                if device.fail_count >= APP_PUSH_MAX_FAIL_COUNT:
+                    # 连续失败达上限：判定设备失效，从数组中剔除
+                    logger.info(
+                        f"App推送设备连续失败{device.fail_count}次已剔除 "
+                        f"channel={channel.id} platform={device.platform}"
+                    )
+                    continue
+                kept_tokens.append(device)
+            else:
+                device.fail_count = 0  # 成功即归零，避免历史失败累积误删
+                success_count += 1
+                kept_tokens.append(device)
+
+        if success_count > 0:
+            status, error_msg = LOG_STATUS_SUCCESS, None
+        else:
+            status = LOG_STATUS_FAILED
+            error_msg = ("；".join(errors) or "App推送全部失败")[:255]
+
+        # 先落日志（内部会 commit），再处理渠道行本身，避免删除后 channel.id 失效
+        cfg.device_tokens = kept_tokens
+        if cfg.device_tokens:
+            channel.channel_value = cfg.model_dump_json()
+            channel.updated_at = now_shanghai()
+            await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                                  status, error_msg)
+            return
+
+        # 全部设备失效：写完日志后删除该通知方式（外键无物理约束，日志 channel_id 保留可溯源）
+        await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
+                              status, error_msg)
+        await self.db.delete(channel)
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            logger.exception(f"App推送渠道删除失败 channel={channel.id}")
+        else:
+            logger.info("App推送渠道全部设备失效，已删除该通知方式")
 
     async def _get_openid(self, user_id: int) -> str | None:
         """按 user_id + appid 在用户库 user_miniapp_accounts 中查询 openid"""

@@ -1,12 +1,19 @@
-from pydantic import BaseModel, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 
 from ..core.security import Security
 
 
-# 允许的通知类型（站内信不允许用户主动创建/修改，邮件/微信可由用户配置）
+# 允许的通知类型（站内信不允许用户主动创建/修改，邮件/微信/App推送可由用户配置）
 CHANNEL_TYPE_ZNX = "站内信"
 CHANNEL_TYPE_EMAIL = "邮件"
 CHANNEL_TYPE_WECHAT = "微信"
+# App 推送（友盟+ U-Push），仅 App 端（#ifdef APP-PLUS）可添加，小程序端不展示
+CHANNEL_TYPE_APP_PUSH = "app_push"
+
+# App 推送设备 token 累计失败上限：连续失败达到该次数即从数组中剔除该 token
+APP_PUSH_MAX_FAIL_COUNT = 3
 
 
 class EmailChannelValue(BaseModel):
@@ -113,6 +120,59 @@ class UpdateWechatChannel(BaseModel):
     @classmethod
     def validate_channel_id(cls, v: int) -> int:
         return Security.validate_positive_int(v, "渠道ID")
+
+
+class AppPushDeviceToken(BaseModel):
+    """App 推送渠道 channel_value 中单个设备 token 的结构"""
+
+    token: str
+    platform: Literal["android", "ios"]
+    fail_count: int = 0
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("设备 token 不能为空")
+        if len(v) > 128:
+            raise ValueError("设备 token 长度非法")
+        return v
+
+    @field_validator("fail_count")
+    @classmethod
+    def validate_fail_count(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("失败次数不能为负数")
+        return v
+
+
+class AppPushChannelValue(BaseModel):
+    """App 推送通知渠道的 channel_value JSON 结构（每用户单行，值内存设备 token 数组）"""
+
+    device_tokens: list[AppPushDeviceToken] = Field(default_factory=list)
+
+
+class UpsertAppPushChannel(BaseModel):
+    """上报 App 设备 token 请求 Schema（user_id 由 JWT 提供，不入请求体）
+
+    - 由通知方式页添加、App 端打卡完成时调用
+    - create_if_missing=False 时（打卡上报）仅刷新已有渠道，不自动建行
+    """
+
+    device_token: str
+    platform: Literal["android", "ios"]
+    create_if_missing: bool = False
+
+    @field_validator("device_token")
+    @classmethod
+    def validate_device_token(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("设备 token 不能为空")
+        if len(v) > 128:
+            raise ValueError("设备 token 长度非法")
+        return v
 
 
 class DeleteChannel(BaseModel):

@@ -1,0 +1,16 @@
+{
+  "deploymentTarget": "12",
+  "frameworks": [
+    "UserNotifications.framework"
+  ],
+  "dependencies-pod-sources": [
+    "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
+  ],
+  "dependencies-pods": [
+    {
+      "name": "UMPush",
+      "version": "4.1.3",
+      "source": "https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git"
+    }
+  ]
+}

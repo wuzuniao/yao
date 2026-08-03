@@ -1,7 +1,14 @@
 <script>
 	import { useUserStore } from './store/modules/user'
+	import { useAppPush } from './composables/useAppPush'
 	export default {
-		onLaunch: function() {},
+		onLaunch: function() {
+			// App 端：先初始化友盟推送 SDK，再注册通知栏点击跳转监听
+			// #ifdef APP-PLUS
+			const appPush = useAppPush()
+			appPush.registerPushClick()
+			// #endif
+		},
 		onShow: function() {
 			// 应用回到前台时，若账号处于待删除状态，验证账号是否已被后端删除
 			const userStore = useUserStore()

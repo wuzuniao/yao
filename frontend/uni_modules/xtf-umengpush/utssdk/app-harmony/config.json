@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@umeng/common": "1.1.2",
+    "@umeng/analytics": "1.2.2",
+    "@umeng/utunnel": "1.1.3",
+    "@umeng/push": "2.0.4"
+  }
+}

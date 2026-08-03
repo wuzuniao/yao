@@ -1,0 +1,81 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    <uses-permission android:name="com.meizu.flyme.permission.PUSH" />
+
+    <application>
+        <!--
+          华为厂商推送依赖编译期 manifest 配置，运行时 JSON 不能替代这里。
+          你后续需要把 REPLACE_WITH_HUAWEI_APP_ID 改成真实华为 AppId，格式必须保留 appid= 前缀。
+        -->
+        <meta-data
+            android:name="com.huawei.hms.client.appid"
+            android:value="appid=REPLACE_WITH_HUAWEI_APP_ID" />
+
+        <meta-data
+            android:name="push_kit_auto_init_enabled"
+            android:value="false" />
+
+        <!-- 荣耀厂商推送静态 AppId -->
+        <meta-data
+            android:name="com.hihonor.push.app_id"
+            android:value="REPLACE_WITH_HONOR_APP_ID" />
+
+        <!-- vivo 厂商推送静态参数 -->
+        <meta-data
+            android:name="com.vivo.push.api_key"
+            android:value="REPLACE_WITH_VIVO_APP_KEY" />
+        <meta-data
+            android:name="com.vivo.push.app_id"
+            android:value="REPLACE_WITH_VIVO_APP_ID" />
+
+        <!--
+          FCM 这里先保留为默认自动初始化。若后续你要关闭 Firebase 自动初始化，
+          可以把下面两个值改成 false。
+        -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="true" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="true" />
+
+        <meta-data
+            android:name="com.huawei.hms.client.service.name:push"
+            tools:node="remove" />
+
+        <!-- 厂商通知点击辅助弹窗，友盟厂商通道可通过 agoo scheme 回流到这里 -->
+        <activity
+            android:name="uts.sdk.modules.xtfUmengpush.UmengThirdPushActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="${applicationId}"
+                    android:path="/thirdpush"
+                    android:scheme="agoo" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name="uts.sdk.modules.xtfUmengpush.UmengCustomMessageService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <activity
+            android:name="uts.sdk.modules.xtfUmengpush.UmengCustomNotificationClickActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    </application>
+</manifest>

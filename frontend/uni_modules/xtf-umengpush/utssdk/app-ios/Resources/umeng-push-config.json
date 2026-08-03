@@ -1,0 +1,51 @@
+{
+  "android": {
+    "applicationId": "uni.app.xxxx",
+    "appName": "REPLACE_WITH_APP_NAME",
+    "channel": "official",
+    "minSdkVersion": 23,
+    "targetSdkVersion": 35
+  },
+  "ios": {
+    "bundleId": "com.xxxx.xxxx",
+    "appName": "REPLACE_WITH_IOS_APP_NAME",
+    "channel": "official",
+    "apsEnvironment": "production"
+  },
+  "android_umeng": {
+    "appKey": "xxxx",
+    "messageSecret": "xxxx",
+    "debug": false
+  },
+  "ios_umeng": {
+    "appKey": "xxxx",
+    "messageSecret": "xxxx",
+    "debug": false
+  },
+  "vendors": {},
+  "advanced": {
+    "notificationOnForeground": true,
+    "displayNotificationNumber": 5,
+    "resourcePackageName": "REPLACE_WITH_RESOURCE_PACKAGE_NAME_OPTIONAL",
+    "pushCheck": true,
+    "smartEnable": false,
+    "muteDurationSeconds": 0,
+    "noDisturbMode": {
+      "enabled": false,
+      "startHour": 23,
+      "startMinute": 0,
+      "endHour": 7,
+      "endMinute": 0
+    },
+    "playSoundMode": "server",
+    "playLightsMode": "server",
+    "playVibrateMode": "server",
+    "notificationChannelName": "",
+    "notificationSilenceChannelName": "",
+    "customNotificationStyleEnabled": false,
+    "customMessageServiceEnabled": true,
+    "smallIconResourceName": "umeng_push_notification_default_small_icon",
+    "largeIconResourceName": "umeng_push_notification_default_large_icon",
+    "soundResourceName": "umeng_push_notification_default_sound"
+  }
+}

@@ -4,12 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
 from ...schemas.notification_channel import (
+    CHANNEL_TYPE_APP_PUSH,
     CHANNEL_TYPE_EMAIL,
     CHANNEL_TYPE_WECHAT,
     CreateEmailChannel,
     DeleteChannel,
     UpdateEmailChannel,
     UpdateWechatChannel,
+    UpsertAppPushChannel,
 )
 from ...services.notification_channel_service import NotificationChannelService
 
@@ -39,6 +41,13 @@ def _channel_to_dict(channel) -> dict:
         quota = NotificationChannelService.parse_wechat_channel_value(channel.channel_value)
         item["wechat_quota"] = quota
         item["remaining"] = quota["granted"] - quota["sent"]
+    elif channel.channel_type == CHANNEL_TYPE_APP_PUSH:
+        # 仅返回设备数量与平台，不下发 device_token 原文（属设备标识，无需回传前端）
+        cfg = NotificationChannelService.parse_app_push_channel_value(channel.channel_value)
+        item["app_push_devices"] = [
+            {"platform": d.platform, "fail_count": d.fail_count} for d in cfg.device_tokens
+        ]
+        item["device_count"] = len(cfg.device_tokens)
     return item
 
 
@@ -129,6 +138,36 @@ async def update_wechat_channel(
     return {
         "code": 0,
         "msg": "微信通知方式更新成功",
+        "data": _channel_to_dict(channel),
+    }
+
+
+@router.post("/app-push")
+async def upsert_app_push_channel(
+    payload: UpsertAppPushChannel,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    上报 App 设备 token（user_id 来自 JWT，仅 App 端调用）
+
+    - create_if_missing=true：通知方式页添加，渠道行不存在时新建
+    - create_if_missing=false：打卡完成时刷新，渠道行不存在则不处理（用户须先去通知方式页添加）
+    - 已存在的 token 重置失败计数并更新平台，新 token 追加进数组
+    """
+    service = NotificationChannelService(db)
+    channel = await service.upsert_app_push_token(
+        user_id=user_id,
+        device_token=payload.device_token,
+        platform=payload.platform,
+        create_if_missing=payload.create_if_missing,
+    )
+    if not channel:
+        # 未添加 App 推送通知方式时静默跳过（打卡上报场景），不视为错误
+        return {"code": 0, "msg": "未开启App推送通知方式，已跳过", "data": None}
+    return {
+        "code": 0,
+        "msg": "App推送设备已登记",
         "data": _channel_to_dict(channel),
     }
 

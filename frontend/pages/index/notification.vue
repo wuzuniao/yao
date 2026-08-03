@@ -186,6 +186,22 @@
           </view>
         </view>
         <!-- #endif -->
+
+        <!-- #ifdef APP-PLUS -->
+        <!-- App 推送卡片（仅 App 端显示；含删除图标，删除后本机不再接收系统通知栏推送） -->
+        <view v-if="hasAppPush" class="notification-page__card" :class="{ 'notification-page__card--disabled': appPushChannel && !appPushChannel.enabled }">
+          <view class="notification-page__card-info">
+            <view class="notification-page__card-badge notification-page__card-badge--app">推</view>
+            <view class="notification-page__card-text">
+              <text class="notification-page__card-title">App推送</text>
+              <text class="notification-page__card-subtitle">系统通知栏提醒 · 已登记 {{ appPushDeviceCount }} 台设备</text>
+            </view>
+          </view>
+          <view class="notification-page__card-delete" @click.stop="handleDeleteAppPush">
+            <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
+          </view>
+        </view>
+        <!-- #endif -->
       </view>
 
       <!-- 添加新方式入口卡（点击后切换为"新建通知方式"表单卡） -->
@@ -220,6 +236,14 @@
                 <text class="notification-page__radio-text">微信</text>
               </view>
               <!-- #endif -->
+              <!-- #ifdef APP-PLUS -->
+              <view class="notification-page__radio-item" @click="selectType('App推送')">
+                <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === 'App推送' }">
+                  <view v-if="formType === 'App推送'" class="notification-page__radio-dot"></view>
+                </view>
+                <text class="notification-page__radio-text">App推送</text>
+              </view>
+              <!-- #endif -->
             </view>
           </view>
 
@@ -227,6 +251,13 @@
           <!-- 微信订阅授权说明（仅"微信"类型时显示，使用默认文字样式） -->
           <template v-if="formType === '微信'">
             <text>点击下方「授权订阅提醒」并选择允许，打卡时间到达时将通过微信订阅消息提醒您（一次性订阅，每次授权可下发 1 条）。您每日完成打卡时也会自动补充授权额度。</text>
+          </template>
+          <!-- #endif -->
+
+          <!-- #ifdef APP-PLUS -->
+          <!-- App 推送说明（仅"App推送"类型时显示，使用默认文字样式） -->
+          <template v-if="formType === 'App推送'">
+            <text>点击下方「开启推送」后，打卡时间到达时将通过系统通知栏提醒您，App 退出后依然可以收到。多台设备可分别开启，点击通知栏消息会自动跳转到首页打卡。</text>
           </template>
           <!-- #endif -->
 
@@ -320,13 +351,13 @@
             </view>
           </template>
 
-          <!-- 保存按钮：邮件类型填写完整可点击；微信类型点击即发起授权 -->
+          <!-- 保存按钮：邮件类型填写完整可点击；微信类型点击即发起授权；App推送类型点击即登记本机设备 -->
           <view
             class="notification-page__save guide-target-wechat-auth-button guide-target-email-save-button"
             :class="{ 'notification-page__save--disabled': !canSave }"
             @click="handleSave"
           >
-            <text class="notification-page__save-text">{{ formType === '微信' ? '授权订阅提醒' : '保存通知' }}</text>
+            <text class="notification-page__save-text">{{ saveButtonText }}</text>
           </view>
         </view>
       </view>
@@ -378,6 +409,10 @@ import { bindWechat } from '../../api/modules/user'
 import { updateWechatChannel } from '../../api/modules/notification'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 // #endif
+// App 推送相关（仅 App 端使用）
+// #ifdef APP-PLUS
+import { useAppPush } from '../../composables/useAppPush'
+// #endif
 import znxIcon from '../../assets/images/tz_znx.png'
 import yxIcon from '../../assets/images/tz_yx.png'
 import deleteIcon from '../../assets/images/shanchu.png'
@@ -406,16 +441,24 @@ useGuideTarget('email-save-button', '.guide-target-email-save-button')
 const { requestSubscribe, isSubscribeSilentRejected } = useWechatSubscribe()
 // #endif
 
+// App 推送设备登记（仅在 App 端生效）
+// #ifdef APP-PLUS
+const { reportDeviceToken, requestPermission } = useAppPush()
+// #endif
+
 // 用户的通知渠道列表（从数据库加载）
 const channels = ref([])
 // 当前展开配置表单的邮件渠道ID（null 表示未展开）
 const expandedEmailId = ref(null)
 // 卡片切换：默认显示"添加新的通知方式"入口卡，点击后切换为"新建通知方式"表单卡
 const showForm = ref(false)
-// 表单通知类型：微信小程序端默认 '微信'（订阅消息为推荐提醒方式），其他端默认 '邮件'
+// 表单通知类型：微信小程序端默认 '微信'（订阅消息为推荐提醒方式），App 端默认 'App推送'，其他端默认 '邮件'
 let _defaultFormType = '邮件'
 // #ifdef MP-WEIXIN
 _defaultFormType = '微信'
+// #endif
+// #ifdef APP-PLUS
+_defaultFormType = 'App推送'
 // #endif
 const formType = ref(_defaultFormType)
 // 邮箱未绑定倒计时弹窗（3秒后自动跳转绑定邮箱页面）
@@ -495,15 +538,46 @@ const wechatRemaining = computed(() => {
 })
 // #endif
 
-// 计算属性：保存按钮是否可点击（邮件类型需填写完整；微信类型可点击）
+// 计算属性：App 推送渠道相关（仅 App 端使用）
+// #ifdef APP-PLUS
+// 计算属性：是否已配置 App 推送渠道（每用户仅一行，多设备共存于该行）
+const hasAppPush = computed(() => channels.value.some(ch => ch.channel_type === 'app_push'))
+// 计算属性：App 推送渠道对象
+const appPushChannel = computed(() => channels.value.find(ch => ch.channel_type === 'app_push') || null)
+// 计算属性：已登记设备数量（后端仅返回数量与平台，不回传 device_token 原文）
+const appPushDeviceCount = computed(() => {
+  const ch = appPushChannel.value
+  return ch && typeof ch.device_count === 'number' ? ch.device_count : 0
+})
+// #endif
+
+// 计算属性：保存按钮是否可点击（邮件类型需填写完整；微信/App推送类型可点击）
 const canSave = computed(() => {
   if (formType.value === '邮件') {
     return form.smtp_host && form.smtp_port && form.email && form.password
   }
+  // #ifdef MP-WEIXIN
   if (formType.value === '微信') {
     return true
   }
+  // #endif
+  // #ifdef APP-PLUS
+  if (formType.value === 'App推送') {
+    return true
+  }
+  // #endif
   return false
+})
+
+// 计算属性：保存按钮文案（按通知类型区分）
+const saveButtonText = computed(() => {
+  // #ifdef MP-WEIXIN
+  if (formType.value === '微信') return '授权订阅提醒'
+  // #endif
+  // #ifdef APP-PLUS
+  if (formType.value === 'App推送') return '开启推送'
+  // #endif
+  return '保存通知'
 })
 
 // 端口格式校验：空值返回空，非整数或超出 1-65535 范围返回错误提示
@@ -592,11 +666,14 @@ function startEmailCountdown() {
 function handleAdd() {
   // 点击"添加新的通知方式"入口卡：切换显示"新建通知方式"表单卡
   showForm.value = true
-  // 默认通知类型：微信小程序端选"微信"（订阅消息为推荐提醒方式），其他端选"邮件"
+  // 默认通知类型：微信小程序端选"微信"（订阅消息为推荐提醒方式），App 端选"App推送"，其他端选"邮件"
   // #ifdef MP-WEIXIN
   formType.value = '微信'
   // #endif
-  // #ifndef MP-WEIXIN
+  // #ifdef APP-PLUS
+  formType.value = 'App推送'
+  // #endif
+  // #ifndef MP-WEIXIN || APP-PLUS
   formType.value = '邮件'
   // #endif
   form.smtp_host = ''
@@ -617,11 +694,17 @@ function handleAdd() {
   }
 }
 
-// 保存通知：邮件类型走 SMTP 保存；微信类型走授权流程（仅微信小程序端）
+// 保存通知：邮件类型走 SMTP 保存；微信类型走授权流程（仅微信小程序端）；App推送类型登记本机设备（仅 App 端）
 async function handleSave() {
   // #ifdef MP-WEIXIN
   if (formType.value === '微信') {
     await handleWechatAuthorize()
+    return
+  }
+  // #endif
+  // #ifdef APP-PLUS
+  if (formType.value === 'App推送') {
+    await handleEnableAppPush()
     return
   }
   // #endif
@@ -768,6 +851,49 @@ async function handleDeleteEmail(channelId) {
     }
   })
 }
+
+// #ifdef APP-PLUS
+// 开启 App 推送：登记本机设备标识到后端（渠道不存在时新建，已存在则追加/刷新本机设备）
+async function handleEnableAppPush() {
+  if (!userStore.userInfo) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+  uni.showLoading({ title: '开启中...' })
+  // 用户主动添加 App 推送时才申请系统通知权限（避免 App 启动即弹授权打扰）
+  requestPermission()
+  const ok = await reportDeviceToken({ createIfMissing: true, silent: false })
+  uni.hideLoading()
+  if (!ok) return
+  uni.showToast({ title: '开启成功', icon: 'success' })
+  showForm.value = false
+  await loadChannels()
+}
+
+// 删除 App 推送通知方式（复用通用删除接口，删除后本机及其他已登记设备均不再收到推送）
+async function handleDeleteAppPush() {
+  const ch = appPushChannel.value
+  if (!ch || !userStore.userInfo) return
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除App推送通知方式吗？删除后所有已登记设备都将不再收到通知栏提醒。',
+    confirmText: '删除',
+    cancelText: '取消',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        const r = await deleteNotificationChannel({ channel_id: ch.id })
+        if (r.code === 0) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          await loadChannels()
+        }
+      } catch (e) {
+        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+      }
+    }
+  })
+}
+// #endif
 
 // #ifdef MP-WEIXIN
 // 微信订阅授权主流程（发起授权）
@@ -1081,7 +1207,7 @@ async function handleUpdateWechat() {
   display: block;
 }
 
-/* 微信渠道圆形角标（以「微」字替代二进制图标，避免引入图片资源） */
+/* 微信/App推送渠道圆形角标（以文字替代二进制图标，避免引入图片资源） */
 .notification-page__card-badge {
   width: 96rpx;
   height: 96rpx;
@@ -1098,6 +1224,11 @@ async function handleUpdateWechat() {
 
 .notification-page__card-badge--wechat {
   background: var(--color-wechat); // 微信绿，便于用户识别
+}
+
+/* App 推送角标（沿用主品牌绿，与微信品牌绿区分） */
+.notification-page__card-badge--app {
+  background: var(--color-brand);
 }
 
 /* 渠道操作区（重新授权 + 删除） */

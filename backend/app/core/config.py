@@ -29,6 +29,18 @@ class Settings(BaseSettings):
     # 订阅消息「机构名称」字段（thing12）展示值
     WX_SUBSCRIBE_ORG_NAME: str = "无足鸟"
 
+    # 友盟+ U-Push 配置（App 端离线推送，Android / iOS 各一套应用密钥）
+    # 在友盟+ 控制台 → U-Push → 应用管理中获取 AppKey 与 App Master Secret
+    UMENG_ANDROID_APP_KEY: str = ""
+    UMENG_ANDROID_MASTER_SECRET: str = ""
+    UMENG_IOS_APP_KEY: str = ""
+    UMENG_IOS_MASTER_SECRET: str = ""
+    # 推送环境开关：true=生产环境，false=测试环境
+    # 仅 iOS 生效（决定走 APNs 生产证书还是开发证书）；Android 侧友盟忽略该字段
+    UMENG_PRODUCTION_MODE: bool = True
+    # 点击 App 推送通知后跳转的页面路径（#ifdef APP-PLUS 由前端 reLaunch 使用）
+    UMENG_PUSH_PAGE: str = "/pages/index/index"
+
     # 数据加密密钥（AES-256-GCM，base64 编码的 32 字节密钥）
     # 用于加密邮件客户端专用密码等敏感信息
     ENCRYPTION_SECRET_KEY: str = ""

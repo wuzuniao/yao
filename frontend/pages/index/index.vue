@@ -203,6 +203,7 @@ import checkinDoneIcon from '../../assets/images/daka_1.png'
 import brandLogo from '../../assets/images/touxiang/hong.png'
 import { useShare } from '../../composables/useShare'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
+import { useAppPush } from '../../composables/useAppPush'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 
 useShare({ title: '首页' })
@@ -355,6 +356,9 @@ const userStore = useUserStore()
 
 // 微信订阅消息（静默补授权，仅在微信小程序端生效）
 const { requestSubscribe } = useWechatSubscribe()
+
+// App 推送设备标识（打卡成功后刷新，仅在 App 端生效）
+const { reportDeviceToken } = useAppPush()
 
 // 进行中的计划列表（从数据库加载，按 priority 升序排序）
 const activePlans = ref([])
@@ -848,6 +852,11 @@ async function handleCheckin() {
       if (hasWechatNotification.value) {
         await requestSubscribe({ silent: true })
       }
+      // App 端打卡成功后刷新设备标识（设备重装/卸载重装会换 token）
+      // 仅刷新已有的 App 推送通知方式，未添加时后端静默跳过（须先去通知方式页添加）
+      // #ifdef APP-PLUS
+      await reportDeviceToken({ createIfMissing: false, silent: true })
+      // #endif
     }
   } catch (e) {
     uni.showToast({ title: e.message || '打卡失败', icon: 'none' })

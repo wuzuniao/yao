@@ -6,9 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.notification_channel import NotificationChannel
 from ..schemas.notification_channel import (
+    CHANNEL_TYPE_APP_PUSH,
     CHANNEL_TYPE_EMAIL,
     CHANNEL_TYPE_WECHAT,
     CHANNEL_TYPE_ZNX,
+    AppPushChannelValue,
+    AppPushDeviceToken,
     EmailChannelValue,
 )
 from ..utils.crypto import encrypt
@@ -22,6 +25,7 @@ class NotificationChannelService:
     --------------------------------------------------------------------------
     - 站内信：注册时自动创建，channel_value=用户ID，不允许用户删除/修改
     - 邮件：用户主动配置，channel_value=JSON 字符串（含 SMTP 配置），可增删改
+    - App 推送：App 端用户主动添加，每用户仅一行，channel_value=JSON（设备 token 数组）
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -256,3 +260,81 @@ class NotificationChannelService:
             "sent": quota["sent"],
             "remaining": quota["granted"] - quota["sent"],
         }
+
+    # ------------------------------------------------------------------
+    # App 推送渠道（友盟+ U-Push）
+    # 每用户仅一行（channel_type='app_push'），多设备共存于 channel_value 数组中
+    # channel_value 结构：
+    #   {"device_tokens": [{"token": "...", "platform": "android|ios", "fail_count": 0}]}
+    #   token：友盟 SDK 返回的设备唯一标识（device_token）
+    #   platform：设备平台，决定派发时使用哪套友盟应用密钥
+    #   fail_count：连续下发失败次数，成功即归零，累计满 3 次剔除该 token
+    # ------------------------------------------------------------------
+    @staticmethod
+    def parse_app_push_channel_value(channel_value: str) -> AppPushChannelValue:
+        """解析 App 推送渠道的 channel_value，非法数据返回空数组（不抛异常）"""
+        try:
+            return AppPushChannelValue.model_validate_json(channel_value or "{}")
+        except Exception:
+            return AppPushChannelValue()
+
+    async def get_app_push_channel(self, user_id: int) -> NotificationChannel | None:
+        """查询用户的 App 推送渠道（每用户至多一行，不存在返回 None）"""
+        result = await self.db.execute(
+            select(NotificationChannel).where(
+                NotificationChannel.user_id == user_id,
+                NotificationChannel.channel_type == CHANNEL_TYPE_APP_PUSH,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def upsert_app_push_token(
+        self,
+        user_id: int,
+        device_token: str,
+        platform: str,
+        create_if_missing: bool = False,
+    ) -> NotificationChannel | None:
+        """
+        上报 App 设备 token（通知方式页添加 / App 端打卡完成时刷新）
+
+        - 渠道行不存在时：create_if_missing=True 才新建（通知方式页添加）；
+          False 则直接返回 None（打卡上报仅刷新，不自动建行）
+        - token 已存在：重置 fail_count=0，并更新 platform（设备重装换平台的兜底）
+        - token 不存在：追加到数组末尾
+        """
+        channel = await self.get_app_push_channel(user_id)
+        if not channel:
+            if not create_if_missing:
+                return None
+            cfg = AppPushChannelValue(
+                device_tokens=[
+                    AppPushDeviceToken(token=device_token, platform=platform, fail_count=0)
+                ]
+            )
+            channel = NotificationChannel(
+                user_id=user_id,
+                channel_type=CHANNEL_TYPE_APP_PUSH,
+                channel_value=cfg.model_dump_json(),
+                enabled=True,
+            )
+            self.db.add(channel)
+            await self.db.commit()
+            await self.db.refresh(channel)
+            return channel
+
+        cfg = self.parse_app_push_channel_value(channel.channel_value)
+        for item in cfg.device_tokens:
+            if item.token == device_token:
+                item.fail_count = 0
+                item.platform = platform  # type: ignore[assignment]
+                break
+        else:
+            cfg.device_tokens.append(
+                AppPushDeviceToken(token=device_token, platform=platform, fail_count=0)
+            )
+        channel.channel_value = cfg.model_dump_json()
+        channel.updated_at = now_shanghai()
+        await self.db.commit()
+        await self.db.refresh(channel)
+        return channel

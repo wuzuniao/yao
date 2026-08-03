@@ -47,16 +47,20 @@ CREATE TABLE `plan_notification_times` (
 
 -- ------------------------------------------------------
 -- 表：notification_channels（通知渠道配置表）
--- 说明：用户预配置的各种通知方式（站内信、邮件等）
+-- 说明：用户预配置的各种通知方式（站内信、邮件、微信、App推送等）
 -- 存储规范：
 --   - 站内信：channel_type='站内信'，channel_value=用户ID（字符串形式）
 --   - 邮件：channel_type='邮件'，channel_value=JSON 字符串（含 smtp_host/smtp_port/email/password 字段）
+--   - 微信：channel_type='微信'，channel_value=JSON 字符串（一次性订阅额度：granted/sent）
+--   - App推送：channel_type='app_push'，每用户仅一行，多设备共存于同一 JSON 数组中
+--       channel_value = {"device_tokens":[{"token":"友盟设备token","platform":"android|ios","fail_count":0}]}
+--       fail_count 为连续下发失败次数，成功归零，累计满 3 次剔除该设备；数组清空则删除整行
 -- ------------------------------------------------------
 CREATE TABLE `notification_channels` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '渠道ID',
   `user_id` BIGINT NOT NULL COMMENT '所属用户ID（关联 users.id）',
-  `channel_type` VARCHAR(20) NOT NULL COMMENT '通知类型（站内信、邮件）',
-  `channel_value` TEXT NOT NULL COMMENT '通知值（站内信存用户ID；邮件存 JSON 配置：smtp_host/smtp_port/email/password）',
+  `channel_type` VARCHAR(20) NOT NULL COMMENT '通知类型（站内信、邮件、微信、app_push）',
+  `channel_value` TEXT NOT NULL COMMENT '通知值（站内信存用户ID；邮件存 SMTP JSON；微信存额度 JSON；app_push 存设备token数组 JSON）',
   `enabled` BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用（true-启用，false-停用）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

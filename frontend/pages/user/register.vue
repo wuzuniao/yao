@@ -437,6 +437,14 @@ async function submitForm() {
 }
 
 function goLogin() {
+  // 推进新手引导：用户从注册页返回登录页前，先离开「注册账号」步骤，
+  // 避免回登录页时 onPageEnter 判定为上一步而回退到「立即注册」引导重复出现
+  if (guideStore.isActive) {
+    const step = guideStore.currentStepData
+    if (step && step.page === 'register' && step.target === 'register-card') {
+      guideStore.nextStep()
+    }
+  }
   // 带 mode=normal 直接展示账号密码登录卡片
   uni.navigateTo({ url: '/pages/user/login?mode=normal' })
 }

@@ -116,7 +116,9 @@ class NotificationLogService:
         """
         查询用户站内信列表（分页）
         - 先自动标记已读：扫描未读站内信，匹配区间内有打卡记录的更新为已读
-        - JOIN notification_channels 过滤 channel_type='站内信'
+        - JOIN notification_channels 过滤 channel_type='站内信'：
+          仅查 channel_type=ZNX，App 推送（app_push）/ 邮件日志不在此列，
+          它们同样落在 notification_logs 中（仅作发送回执），但不在站内信页展示
         - LEFT JOIN checkin_plans 获取计划名称/备注（计划可能已删除，显示"已删除计划"）
         - 按 send_time 倒序（最新消息在前）
         - 返回 items + total + has_more + unread_count

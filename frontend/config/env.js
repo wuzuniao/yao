@@ -24,19 +24,18 @@
 //   1. HBuilderX「运行到手机」时 NODE_ENV 为 development，若沿用 localhost，
 //      真机上 localhost 指向手机自身，所有接口必然失败。
 //   2. Android 9+ 与 iOS ATS 默认禁止明文 HTTP，局域网 IP 亦需额外放行配置。
-// 如需 App 端连本地后端联调，把下方 APP-PLUS 分支临时改为局域网 IP，
+// 如需 App 端连本地后端联调，把下方 APP_PLUS 判断临时改为局域网 IP，
 // 并在 manifest.json 的 app-plus.distribute.android 开启 usesCleartextTraffic。
-// #ifdef APP-PLUS
-export const API_BASE_URL = 'https://yao.wuzuniao.com'
-// #endif
-
-// #ifndef APP-PLUS
-export const API_BASE_URL =
-  process.env.NODE_ENV === 'production'
-    ? 'https://yao.wuzuniao.com'
-    : 'http://localhost:8000'
-// #endif
+// UNI_PLATFORM 由 uni-app 编译期静态替换为字符串字面量（如 'app-plus'），单分支声明避免重复导出。
+const APP_PLUS = process.env.UNI_PLATFORM === 'app-plus'
+export const API_BASE_URL = APP_PLUS
+  ? 'https://yao.wuzuniao.com'
+  : (process.env.NODE_ENV === 'production'
+      ? 'https://yao.wuzuniao.com'
+      : 'http://localhost:8000')
 
 // 微信订阅消息模板 ID（一次性订阅，打卡提醒模板）
-// 仅微信小程序端使用，其他端不会引用
+// 仅微信小程序端使用，用条件编译隔离，避免非微信端产物引入该常量
+// #ifdef MP-WEIXIN
 export const WX_SUBSCRIBE_TEMPLATE_ID = 'Tvn1TtWubjqi0RrYRRTjQgg9qaTB3Fntzt0Jju8RmEY'
+// #endif

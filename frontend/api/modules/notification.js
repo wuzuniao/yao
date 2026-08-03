@@ -73,6 +73,22 @@ export function updateWechatChannel({ channel_id, enabled }) {
 }
 
 /**
+ * 上报 App 推送设备 token（user_id 由 JWT 提供，仅 App 端调用）
+ * @param {Object} param0
+ * @param {string} param0.device_token 友盟 SDK 返回的设备唯一标识
+ * @param {string} param0.platform 设备平台（android / ios）
+ * @param {boolean} param0.create_if_missing 渠道不存在时是否新建
+ *        true=通知方式页添加；false=打卡完成时刷新（不存在则后端静默跳过）
+ */
+export function upsertAppPushChannel({ device_token, platform, create_if_missing = false }) {
+  return request({
+    url: '/api/v1/notification-channels/app-push',
+    method: 'POST',
+    data: { device_token, platform, create_if_missing }
+  })
+}
+
+/**
  * 微信订阅消息授权回调：用户每同意一次授权（wx.requestSubscribeMessage 返回 accept）
  * 即 +1 下发额度并启用微信渠道（user_id 由 JWT 提供）
  */

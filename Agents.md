@@ -1,231 +1,66 @@
-# AGENTS.md – 项目开发指南（AI 辅助编程专用）
+# AGENTS.md – AI 编程执行规范
 
-> 本文件为 AI 编程工具（如 Cursor、GitHub Copilot、Trae 等）提供项目上下文与编码约束。所有自动生成的代码必须严格遵守本文档约定，以减少错误、提升代码质量和可维护性。
+> 本文件为 AI 编程工具（Cursor、GitHub Copilot、Trae 等）定义**执行行为约束**。项目固定的技术规范（技术栈、编码规范、API 设计、环境配置、Git 规范）见同目录 **`项目规范.md`**。
 
-
----
-
-## 1. 项目概述
-- **目标**：开发微信小程序，提供用户认证、数据展示与交互功能。
-- **架构**：前后端分离。
-  - 前端：uni-app (Vue 3) 构建微信小程序。
-  - 后端：FastAPI 提供 RESTful API。
-  - 数据库：MariaDB 12.3。
-- **开发环境**：Windows 11（Python 3.14.2 直装，MariaDB 12.3 直装，监听 127.0.0.1:3306，账密 root/root，数据库名 `wuzuniao_yao`）。
-- **生产环境**：Rocky Linux + Docker 容器化部署（数据库与后端均运行于容器中）。
-- **数据库设计状态**：当前数据库结构为演进式设计，**非最终确定**，允许在开发过程中按需调整表结构、字段、索引等。结构变更通过 `backend/sql/` 下的原始 SQL 文件管理（见第 6.3 节），**未使用 Alembic**。
+> **强制**：每次对话开始时，必须先用 Read 工具读取 `d:\wuzuniao\yao\项目规范.md` 并严格遵守其中约定，再开始任何编码工作。
 
 ---
 
-## 2. 技术栈版本（锁定）
-| 组件 | 版本 | 官方文档 |
-|---------------|----------------|----------------------------------------------------------------|
-| Python | 3.14.2 | https://docs.python.org/zh-tw/3/index.html |
-| MariaDB | 12.3 (LTS) | https://mariadb.com/docs/release-notes/community-server/12.3/ |
-| Vue.js | 3.x | https://cn.vuejs.org/ |
-| uni-app | 最新（Vue 3） | https://uniapp.dcloud.net.cn/ |
-| FastAPI | 最新 | https://fastapi.tiangolo.com/ |
-| 微信小程序 API | 最新 | https://developers.weixin.qq.com/miniprogram/dev/api/ |
+## 1. 新会话初始化（强制）
+每次新会话必须：
+1. 读取 `d:\wuzuniao\yao\AGENTS.md`（本文件，执行约束）。
+2. 读取 `d:\wuzuniao\yao\项目规范.md`（固定项目技术规范）。
+3. 读取 `d:\wuzuniao\yao\目录结构.json`（当前项目结构）。
+4. 查阅 `d:\wuzuniao\yao\更新记录.md`（最近变更）。
 
-> **AI 强制指令**：在实现任何功能前，必须优先查阅上述官方文档，尤其是 SDK/API 最新用法。严禁依赖训练数据中的过时知识。
+若上下文中未提供或不确定是否最新，必须用 Read 工具重新读取。
 
----
+## 2. 核心原则（减少 LLM 常见错误）
+稳健优先于速度；琐碎任务（拼写、单行改动）可灵活判断，业务逻辑/结构变更必须严格遵守。
 
-## 3. 核心原则（减少 LLM 常见错误）
+### 2.1 先思考，后编码
+- 实现前明确假设；需求模糊则列出可能解释、等待澄清，不擅自选择。
+- 多方案时简述优缺点，推荐最简方案；不实现未要求的扩展点/配置项/抽象层。
+- 遇困惑立即停止并提问，不掩饰。
 
-> **取向说明**：以下原则倾向于**稳健优先于速度**。对于琐碎任务（如修正拼写、单行改动），可适度灵活判断，但对于任何涉及业务逻辑或结构变更的任务，必须严格遵守。
+### 2.2 极简主义
+- 只写解决当前问题的最小代码量，不写投机性代码。
+- 不为不可能发生的错误写处理逻辑；代码超 200 行检查是否可简化。
+- 自检：「资深工程师会觉得这过于复杂吗？」是则简化。
 
-### 3.1 先思考，后编码（Think Before Coding）
-**不假设、不掩饰困惑、主动暴露权衡。**
+### 2.3 手术式修改
+- 仅触及与任务直接相关的行，不顺手优化/重构/格式化无关代码。
+- 发现预存在技术债务仅口头提醒，不主动清理；删除自己引入的未使用变量/导入，不删预存在死代码。
+- 每行改动应可追溯至用户本次请求。
 
-- **明确假设**：在实现前，明确陈述你的假设。如果需求模糊，列出所有可能解释，等待澄清，不要擅自选择。
-- **暴露权衡**：如果存在多种方案，简要说明优缺点，推荐最简方案。
-- **拒绝过度设计**：不实现未明确要求的功能、抽象或配置项。
-- **遇到困惑立即停止**：明确指出困惑点，并主动提问。
+### 2.4 目标驱动执行
+- 将任务转化为可验证目标（如「输入非法数据返回 422，然后实现通过」），构建验证循环独立迭代。
+- 多步骤任务先列小型验证点再实现。
 
-### 3.2 极简主义（Simplicity First）
-**编写解决当前问题的最小代码量，不写投机性代码。**
+## 3. 项目文档同步（强制）
+每次完成功能开发或修改后，必须同步更新根目录下：
+- **`目录结构.json`**：新增/删除/移动/重命名文件或文件夹时同步更新，保持与实际结构一致。
+- **`更新记录.md`**：按时间倒序追加条目（日期、变更类型、内容简述、影响范围）。
 
-- 不添加“未来可能需要”的扩展点、配置项或抽象层。
-- 不编写单次使用场景下的通用框架。
-- 不为不可能发生的错误编写处理逻辑。
-- 如果代码超过 200 行，检查是否有简化空间（如拆分函数、消除重复）。
-- **核心自检**：**“资深工程师会觉得这过于复杂吗？”** 如果是，请简化。
+> 违反此约束将导致文档与代码脱节，AI 后续生成错误代码。优先级等同于编码规范。
 
-### 3.3 手术式修改（Surgical Changes）
-**只改动必须改的地方。只清理自己引入的“垃圾”。**
+## 4. 成功标准与质量门禁
+完成变更后自检：无多余实现/未引入未要求特性；命名清晰无拼写错误；Python 类型注解完整/前端 JSDoc 完整；未引入新 lint 警告或类型错误；数据库操作已评估并解决 N+1；前端请求已处理错误状态（loading/toast）；**已同步更新 `目录结构.json` 与 `更新记录.md`**。任一项未通过必须先修正。
 
-- 修改现有代码时，**仅触及与任务直接相关的行**。
-- 不“顺手”优化、重构或格式化无关代码，即使其风格与你习惯不符。
-- 若发现预存在的技术债务（如未使用的导入、过时注释），**仅口头提醒，不主动清理**（除非明确要求）。
-- **清理自己的痕迹**：删除自己的改动引入的未使用变量/导入，但不要删除预存在的死代码。
-- **检验标准**：**每一行改动都应直接追溯至用户本次的具体请求。**
-
-### 3.4 目标驱动执行（Goal-Driven / TDD 思想）
-将每个任务转化为可验证的目标，构建“验证循环”以独立迭代：
-
-| 任务表述 | 转化为目标 |
-|--------------------------|----------------------------------------------------|
-| "添加用户注册验证" | "编写测试：输入非法数据应返回 422；然后实现通过" |
-| "修复登录 Bug" | "编写重现测试，修复后测试通过" |
-| "重构订单服务" | "确保现有测试全绿，重构后仍全绿" |
-
-对于多步骤任务，先列出小型验证点：
-```
-1. 创建数据库表 → 验证：`init_db.py` 执行成功，表存在
-2. 编写注册接口 → 验证：Postman 请求返回 200 和 token
-3. 前端调用登录 → 验证：小程序登录后存储 token
-```
-
-强验证标准使 AI 能自我迭代，减少来回确认。
-
----
-
-## 4. 新会话初始化要求（强制）
-
-每次新会话开启时，必须首先完成以下初始化步骤：
-
-1. **检查并加载核心文档**
-   - 检查上下文中是否存在 `d:\wuzuniao\yao\AGENTS.md`
-   - 检查上下文中是否存在 `d:\wuzuniao\yao\目录结构.json`
-   - 若不存在或不确定，必须使用 Read 工具重新读取这两个文件
-   - 确保使用的是这两个文档的最新版本
-
-2. **理解项目状态**
-   - 基于加载的 AGENTS.md 理解项目约束和编码规范
-   - 基于目录结构.json 了解当前项目结构
-   - 查阅更新记录.md 了解最近的项目变更
-
----
-
-## 5. 项目文档同步（强制）
-项目根目录下存在以下两个核心文档，**每次完成功能开发或修改后，必须同步更新它们**：
-
-- **`目录结构.json`**：记录当前项目的完整目录树及每个文件夹/文件的作用说明。任何新增、删除、移动或重命名文件/文件夹的操作，都必须在此文件中同步更新，保持与实际结构严格一致。
-- **`更新记录.md`**：按时间倒序记录项目的重要变更。每个条目应包括：日期、变更类型（新增/修复/重构/优化等）、变更内容简述、影响范围。每次代码提交前，必须在此文件中追加本次变更的说明。
-
-> **违反此约束将导致项目文档与代码脱节，AI 后续生成错误代码。此条优先级等同于编码规范。**
-
----
-
-## 6. 编码规范（具体技术细节）
-
-### 6.1 Python（后端）
-- **Python 3.14.2**，遵循 PEP 8，使用 `black`（行宽 100）和 `isort` 格式化。
-- **类型注解**：所有函数参数和返回值必须添加类型注解（`typing` 模块或 `from __future__ import annotations`）。
-- **异步**：使用 `async/await`（FastAPI 原生支持）。数据库驱动使用 `asyncmy`（开发环境）或 `mariadb` 异步版（生产）。
-- **配置管理**：`pydantic-settings`，统一从 `.env` 文件读取（`.env.template` 为参数模板，提交 Git；`.env` 为实际配置，不提交 Git）。
-- **异常处理**：自定义业务异常，使用 `HTTPException` 抛出，全局异常处理器统一返回 `{"code": int, "msg": str, "data": any}`。
-- **日志**：`logging` 模块，输出到 `backend/logs/`，格式包含时间、级别、模块、行号。
-- **SQLAlchemy**：
-  - 表名、字段名用小写+下划线。
-  - 关系明确 `back_populates`，避免 N+1（使用 `selectinload`）。
-  - 查询优先使用 `select()` 异步方法。
-- **Pydantic**：
-  - Schema 命名：`*Create`、`*Update`、`*Query`（请求），`*Out`（响应）。
-  - 校验使用 `@field_validator`（v2）。
-- **路由**：`APIRouter(prefix="/api/v1")`，每个模块独立文件。
-
-### 6.2 Vue 3 / uni-app（前端）
-- **语言**：JavaScript（组合式 API，`<script setup>` 语法）。
-- **组件命名**：PascalCase（如 `BaseButton.vue`）。
-- **样式**：SCSS，BEM 命名（`block__element--modifier`），全局变量在 `uni.scss` 或 `assets/styles/variables.scss`。
-- **状态管理**：Pinia，模块化（`store/modules/`）。
-- **API 请求**：统一封装 `api/request.js`（拦截 token、错误处理），`api/modules/` 下每个业务模块导出请求函数。
-- **页面路由**：`pages.json` 中注册，主包首页，其他分包。
-- **微信 API**：使用 `uni` 命名空间（如 `uni.request`），条件编译 `#ifdef MP-WEIXIN` 处理平台差异。
-- **性能**：避免在 `onLoad` 中重操作，合理使用下拉刷新和滚动加载。
-
-### 6.3 MariaDB（数据库）
-- **字符集**：`utf8mb4`，排序规则 `utf8mb4_unicode_ci`。
-- **表设计**：必须包含 `id`（BIGINT AUTO_INCREMENT）、`created_at`（DATETIME DEFAULT CURRENT_TIMESTAMP）、`updated_at`（DATETIME ON UPDATE CURRENT_TIMESTAMP）。
-- **索引**：高频查询字段建普通索引，外键不设物理约束（应用层保证引用完整性），但为外键字段建索引。
-- **迁移（原始 SQL 文件，非 Alembic）**：表结构由 `backend/sql/` 下的 SQL 文件创建与演进，不启用 Alembic。
-  - `create_user_db.sql`：创建共享用户库 `wuzuniao_yonghu`（users、user_miniapp_accounts 等）。
-  - `create_yao_db.sql`：创建业务库 `wuzuniao_yao`（checkin_plans、notification_logs、checkin_records、announcements 等）。
-  - 增量变更（新增字段/表）追加 `add_*.sql` 增量脚本，并同步回填到对应的 `create_*_db.sql`，使新环境一次建库即最新结构；生产环境按 `create_*_db.sql` → `add_*.sql`（按时间顺序）顺序执行。
-
----
-
-## 7. API 设计规范
-- **URL**：`/api/v1/{resource}`（复数）。
-- **方法**：GET（列表/详情）、POST、PUT、PATCH、DELETE 对应 CRUD。
-- **分页**：`?page=1&limit=20`，响应返回 `total`、`items`。
-- **统一响应格式**：
-```json
-{
-  "code": 0,
-  "msg": "success",
-  "data": { ... }
-}
-```
-- **认证**：JWT Bearer Token，过期 7 天，刷新待定。
-- **错误码**：非 0 表示错误，msg 不暴露敏感信息。
-
-## 8. 环境配置
-
-### 8.1 后端（`.env` 机制）
-
-- **统一配置文件 `.env`**：开发与生产环境均使用 `backend/.env`，该文件不提交 Git。`.env.template` 为参数模板（提交 Git），新环境部署时复制为 `.env` 并填入实际值。
-- 开发（Windows）：`DATABASE_URL=mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4`
-- 生产（Rocky Linux + Docker）：`DATABASE_URL=mysql+asyncmy://root:生产密码@mariadb:3306/wuzuniao_yao?charset=utf8mb4`（若使用 Docker Compose 服务名）或替换为内网 IP。
-
-### 8.2 前端（`config/env.js` 常量模块，2026-08-01 起）
-
-- **不再使用 `.env` 与 `import.meta.env`**。原因：工程已改为 HBuilderX 标准布局以支持发行 App/iOS/多端小程序，而 HBuilderX 内置编译器不加载 `.env` 文件，`import.meta.env.VITE_*` 取值为 `undefined`，会导致接口地址静默回退到 localhost、微信订阅模板 ID 变空串。
-- 前端环境配置集中在 `frontend/config/env.js`，导出 `API_BASE_URL`、`WX_SUBSCRIBE_TEMPLATE_ID` 两个常量，按 `process.env.NODE_ENV` 区分开发/生产分支。**该文件提交 Git，因此严禁写入密码、密钥等敏感信息**（接口域名与订阅模板 ID 属公开信息，可安全提交）。
-- 新增前端环境配置项时，一律加到 `config/env.js`，不要新建 `.env`。
-
-### 8.3 前端工程布局与启动命令
-
-- **前端为 HBuilderX 标准布局**：源码直接位于 `frontend/` 根目录（`pages/`、`components/`、`api/` 等），**没有 `src/` 层**。`manifest.json`、`pages.json`、`main.js`、`App.vue`、`uni.scss`、`static/` 均在 `frontend/` 根目录。
-- **HBuilderX**：直接打开 `frontend/` 目录，用「运行」/「发行」菜单构建 App、iOS、各端小程序；输出目录为 `frontend/unpackage/`（已 gitignore）。
-- **CLI**：`npm run dev:mp-weixin`（开发）/ `npm run build:mp-weixin`（构建），输出 `frontend/dist/dev|build/mp-weixin`（已 gitignore）。
-  - npm scripts 经 `frontend/scripts/run-uni.js` 包装，用于设置 `UNI_INPUT_DIR` 指向项目根目录（uni CLI 默认输入目录为 `<项目根>/src`，与 HBuilderX 布局冲突）。
-- **微信开发者工具导入目录**：`frontend/dist/build/mp-weixin`（CLI 构建）或 `frontend/unpackage/dist/dev/mp-weixin`（HBuilderX 运行）。切勿混用两者的产物。
-- **App（Android/iOS）打包**：HBuilderX 打开 `frontend/` → 菜单「发行 → 原生App-云打包」，输出 `frontend/unpackage/release/`（已 gitignore）。CLI 侧 `npm run dev:app` / `npm run build:app` 仅生成 App 资源包（`frontend/dist/{dev,build}/app`），**不产出 apk/ipa**，最终出包仍须经 HBuilderX 云打包或离线 SDK。
-  - Android 包名固定 `com.wuzuniao.yao`（`manifest.json` 的 `app-plus.distribute.android.packagename`）。
-  - App 端接口地址在 `config/env.js` 的 `#ifdef APP-PLUS` 分支中恒为生产 HTTPS 域名，**不随 `NODE_ENV` 变化**（真机 `localhost` 指向手机自身，且 Android 9+/iOS ATS 默认禁明文 HTTP）。
-  - App 端**不提供微信登录与微信订阅消息**（属小程序专有能力，已由 `#ifdef MP-WEIXIN` 隔离），仅账号密码登录 + 邮件/站内信提醒。
-- **跨端改动铁律**：新增 App 逻辑一律用 `#ifdef APP-PLUS` 包裹，禁止改动既有 `#ifdef MP-WEIXIN` / `#ifdef H5` 块；`manifest.json` 只增补 `app-plus` 段，`mp-weixin`、`h5` 段不得改动。
-- **后端启动命令**：`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`（开发），生产使用容器启动。
-
-## 9. 成功标准与质量门禁
-
-完成任何代码变更后，AI 应自检：
-
-- 代码无多余实现，未引入未要求的特性。
-- 所有函数/变量命名清晰，无拼写错误。
-- 类型注解完整（Python）或 JSDoc 完整（前端）。
-- 未引入新的 lint 警告或类型错误。
-- 涉及数据库操作，已评估并解决潜在 N+1 查询。
-- 涉及前端请求，已处理错误状态（如 loading、toast 提示）。
-- **已同步更新根目录下的 `目录结构.json` 和 `更新记录.md`**。
-
-**如果上述任何项未通过，必须先修正再提交。**
-
-## 10. AI 特别约束（禁止事项）
-
+## 5. AI 特别约束（禁止事项）
 - **禁止**生成测试代码（除非用户明确要求）。
 - **禁止**引入图片、字体等二进制资源。
 - **禁止**硬编码敏感信息（密码、密钥、Token）。
-- **禁止**使用已废弃的 API（必须查阅最新文档确认）。
+- **禁止**使用已废弃的 API（须查阅最新文档确认）。
 - **禁止**随意修改 `.gitignore` 或项目基础配置。
-- **必须**使用简体中文与用户交流，包括代码注释、日志消息、提交信息等所有自然语言内容（代码本身除外）。
-- **必须**遵守根目录下 `design_wise.md` 中的额外约定（若存在）。
+- **必须**使用简体中文交流（含代码注释、日志、提交信息，代码本身除外）。
+- **必须**遵守根目录下 `design_wise.md` 的额外约定（若存在）。
 
-## 11. 参考文档（查阅优先级：高→低）
-
-1. 官方文档（链接见第 2 节）—— **必须首先查阅**
-2. 本项目已有的代码（遵循现有模式）
-3. 社区通用最佳实践（仅当官方文档未覆盖时）
-
-## 12. 提交与版本控制
-
-- Git 忽略：`__pycache__/`、`*.pyc`、`node_modules/`、`unpackage/`、`logs/`、`.env`（实际配置文件）；`.env.template` 可提交 Git。
-- 提交信息格式：`<type>(<scope>): <subject>`，type 包括 `feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`chore`。
-
+## 6. 参考文档（查阅优先级：高→低）
+1. 官方文档（链接见 `项目规范.md` 技术栈表）—— **必须首先查阅**。
+2. 本项目已有代码（遵循现有模式）。
+3. 社区通用最佳实践（仅当官方文档未覆盖时）。
 
 ---
 
-**这些原则生效的标志：** diff 中不必要的变更减少了，因过度复杂导致的重写减少了，澄清问题在实现之前提出而非在犯错之后。
+**生效标志**：diff 中不必要变更减少，因过度复杂导致的重写减少，澄清问题在实现之前提出而非犯错之后。

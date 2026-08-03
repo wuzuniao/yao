@@ -1,0 +1,8 @@
+{
+  "bundleName": "uni.app.xxxx",
+  "appName": "REPLACE_WITH_HARMONY_APP_NAME",
+  "channel": "official",
+  "appKey": "xxxx",
+  "appMessageSecret": "xxxx",
+  "debug": true
+}

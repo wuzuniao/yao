@@ -1,0 +1,208 @@
+export type UmengPushVendor = 'huawei' | 'honor' | 'xiaomi' | 'oppo' | 'vivo' | 'meizu' | 'fcm'
+
+export type UmengVendorConfig = {
+  vendor : UmengPushVendor
+  enabled : boolean
+  appId : string | null
+  appKey : string | null
+  appSecret : string | null
+  clientId : string | null
+  masterSecret : string | null
+  applicationId : string | null
+  projectId : string | null
+  apiKey : string | null
+  senderId : string | null
+  googleServicesJsonPath : string | null
+  agconnectServicesJsonPath : string | null
+  configFilePath : string | null
+}
+
+export type UmengPushNotificationPlayMode = 'server' | 'sdk_enable' | 'sdk_disable'
+
+export type UmengPushNoDisturbMode = {
+  enabled : boolean
+  startHour : number
+  startMinute : number
+  endHour : number
+  endMinute : number
+}
+
+export type UmengPushAdvancedOptions = {
+  notificationOnForeground : boolean
+  displayNotificationNumber : number
+  resourcePackageName : string | null
+  pushCheck : boolean
+  smartEnable : boolean
+  muteDurationSeconds : number
+  noDisturbMode : UmengPushNoDisturbMode | null
+  playSoundMode : UmengPushNotificationPlayMode | null
+  playLightsMode : UmengPushNotificationPlayMode | null
+  playVibrateMode : UmengPushNotificationPlayMode | null
+  notificationChannelName : string | null
+  notificationSilenceChannelName : string | null
+  customNotificationStyleEnabled : boolean
+  customMessageServiceEnabled : boolean
+  smallIconResourceName : string | null
+  largeIconResourceName : string | null
+  soundResourceName : string | null
+}
+
+export type UmengPushInitOptions = {
+  androidPackageName : string | null
+  appKey : string | null
+  messageSecret : string | null
+  channel : string | null
+  debug : boolean
+  vendorConfigs : UmengVendorConfig[]
+  advancedOptions : UmengPushAdvancedOptions
+}
+
+export type UmengPushBaseResult = {
+  success : boolean
+  code : string
+  message : string
+}
+
+export type UmengPushOperationState = {
+  success : boolean
+  code : string
+  message : string
+  payload : string | null
+}
+
+export type UmengPushTagsResult = {
+  success : boolean
+  code : string
+  message : string
+  tags : string[]
+}
+
+export type UmengPushPermissionResult = {
+  success : boolean
+  code : string
+  message : string
+  granted : boolean
+  requested : boolean
+  notificationEnabled : boolean
+  permission : string
+  sdkInt : number
+}
+
+export type UmengPushClickInfo = {
+  hasData : boolean
+  source : string
+  title : string | null
+  body : string | null
+  payload : string | null
+  receivedAt : number
+}
+
+export type UmengPushMessage = {
+  source : string
+  title : string | null
+  body : string | null
+  payload : string
+  receivedAt : number
+}
+
+export type UmengPushRuntimeEventType = 'connect-state' | 'inapp-message' | 'register-state' | 'notification-click' | 'notification-dismiss'
+
+export type UmengPushInAppAction = 'onShow' | 'onClick' | 'onDismiss' | 'replay' | 'will-present'
+
+export type UmengPushRuntimeEvent = {
+  type : UmengPushRuntimeEventType
+  receivedAt : number
+  source : string | null
+  online : boolean | null
+  registered : boolean | null
+  action : UmengPushInAppAction | null
+  payload : string | null
+  deviceToken : string | null
+  registrationId : string | null
+  registerErrorCode : string | null
+  registerErrorMessage : string | null
+  message : string | null
+}
+
+export type UmengPushDeviceInfo = {
+  brand : string
+  manufacturer : string
+  model : string
+  packageName : string
+  sdkInt : number
+  notificationPermissionGranted : boolean
+  systemNotificationEnabled : boolean
+  supportedVendors : UmengPushVendor[]
+}
+
+export type UmengPushInitResult = {
+  success : boolean
+  code : string
+  message : string
+  initialized : boolean
+  isConfigured : boolean
+  sdkIntegrated : boolean
+  registered : boolean
+  deviceToken : string | null
+  registrationId : string | null
+  registerErrorCode : string | null
+  registerErrorMessage : string | null
+  vendorTokenSnapshot : string
+  missingKeys : string[]
+  supportedVendors : UmengPushVendor[]
+  clickInfo : UmengPushClickInfo | null
+}
+
+export type UmengPushDebugState = {
+  initialized : boolean
+  isConfigured : boolean
+  sdkIntegrated : boolean
+  registered : boolean
+  connectStateOnline : boolean | null
+  lastInitMessage : string
+  deviceToken : string | null
+  registrationId : string | null
+  registerErrorCode : string | null
+  registerErrorMessage : string | null
+  vendorTokenSnapshot : string
+  lastReceivedPushPayload : string | null
+  lastInAppMessagePayload : string | null
+  deviceInfo : UmengPushDeviceInfo
+  clickInfo : UmengPushClickInfo | null
+}
+
+export type UmengPushPermissionOptions = {
+  success ?: (res : UmengPushPermissionResult) => void
+  fail ?: (res : UmengPushApiFail) => void
+  complete ?: (res : any) => void
+}
+
+export type UmengPushErrorCode = 9011001 | 9011002 | 9011003 | 9011004 | 9011005
+
+export interface UmengPushApiFail extends IUniError {
+  errCode : UmengPushErrorCode
+}
+
+export type InitializeUmengPush = (options : UmengPushInitOptions) => UmengPushInitResult
+export type RequestNotificationPermission = (options : UmengPushPermissionOptions) => void
+export type GetPushDeviceInfo = () => UmengPushDeviceInfo
+export type RefreshLaunchPushClickInfo = () => UmengPushClickInfo | null
+export type GetLastPushClickInfo = () => UmengPushClickInfo | null
+export type ClearLastPushClickInfo = () => boolean
+export type OnUmengPushMessage = (callback : (message : UmengPushMessage) => void) => number
+export type OffUmengPushMessage = (listenerId : number) => boolean
+export type OnUmengPushRuntimeEvent = (callback : (event : UmengPushRuntimeEvent) => void) => number
+export type OffUmengPushRuntimeEvent = (listenerId : number) => boolean
+export type GetUmengPushDebugState = () => UmengPushDebugState
+export type GetLastUmengPushOperationState = () => UmengPushOperationState
+export type OpenUmengNotificationSettings = () => UmengPushBaseResult
+export type EnableUmengPush = () => UmengPushBaseResult
+export type DisableUmengPush = () => UmengPushBaseResult
+export type SetUmengPushBadgeNum = (num : number) => UmengPushBaseResult
+export type ChangeUmengPushBadgeNum = (num : number) => UmengPushBaseResult
+export type AddUmengPushTags = (tags : string[]) => UmengPushBaseResult
+export type DeleteUmengPushTags = (tags : string[]) => UmengPushBaseResult
+export type GetUmengPushTags = () => UmengPushTagsResult
+export type AddUmengPushAlias = (alias : string, aliasType : string) => UmengPushBaseResult
+export type SetUmengPushAlias = (alias : string, aliasType : string) => UmengPushBaseResult
+export type DeleteUmengPushAlias = (alias : string, aliasType : string) => UmengPushBaseResult

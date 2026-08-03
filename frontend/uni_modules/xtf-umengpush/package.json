@@ -1,0 +1,101 @@
+{
+	"id": "xtf-umengpush",
+	"displayName": "友盟推送 友盟push 推送",
+	"version": "1.0.2",
+	"description": "uni-app/uni-app x 一套代码接友盟推送，打通 Android、iOS、Harmony 消息、点击与调试。",
+	"keywords": [
+        "友盟推送",
+        "全端推送",
+        "推送",
+        "友盟"
+    ],
+	"repository": "",
+	"engines": {
+		"HBuilderX": "^3.6.8",
+		"uni-app": "^3.8.1",
+		"uni-app-x": "^4.04"
+	},
+	"dcloudext": {
+		"type": "uts",
+		"sale": {
+			"regular": {
+				"price": "0.99"
+			},
+			"sourcecode": {
+				"price": "300.00"
+			}
+		},
+		"contact": {
+			"qq": ""
+		},
+		"declaration": {
+			"ads": "无",
+			"data": "无",
+			"permissions": "android.permission.POST_NOTIFICATIONS、android.permission.INTERNET、android.permission.ACCESS_NETWORK_STATE、android.permission.RECEIVE_BOOT_COMPLETED、android.permission.WAKE_LOCK、android.permission.VIBRATE"
+		},
+		"npmurl": "",
+		"darkmode": "x",
+		"i18n": "x",
+		"widescreen": "x"
+	},
+	"uni_modules": {
+		"dependencies": [],
+		"encrypt": [],
+		"platforms": {
+			"cloud": {
+				"tcb": "x",
+				"aliyun": "x",
+				"alipay": "x"
+			},
+			"client": {
+				"uni-app": {
+					"vue": {
+						"vue2": "√",
+						"vue3": "√"
+					},
+					"web": {
+						"safari": "-",
+						"chrome": "-"
+					},
+					"app": {
+						"vue": "√",
+						"nvue": "√",
+						"android": "√",
+						"ios": "√",
+						"harmony": "√"
+					},
+					"mp": {
+						"weixin": "-",
+						"alipay": "-",
+						"toutiao": "-",
+						"baidu": "-",
+						"kuaishou": "-",
+						"jd": "-",
+						"harmony": "-",
+						"qq": "-",
+						"lark": "-",
+						"xhs": "-"
+					},
+					"quickapp": {
+						"huawei": "-",
+						"union": "-"
+					}
+				},
+				"uni-app-x": {
+					"web": {
+						"safari": "-",
+						"chrome": "-"
+					},
+					"app": {
+						"android": "√",
+						"ios": "√",
+						"harmony": "√"
+					},
+					"mp": {
+						"weixin": "-"
+					}
+				}
+			}
+		}
+	}
+}
