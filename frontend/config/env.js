@@ -35,7 +35,7 @@ export const API_BASE_URL = APP_PLUS
       : 'http://localhost:8000')
 
 // 微信订阅消息模板 ID（一次性订阅，打卡提醒模板）
-// 仅微信小程序端使用，用条件编译隔离，避免非微信端产物引入该常量
-// #ifdef MP-WEIXIN
+// 全端始终导出：模板 ID 属公开信息，无敏感风险；import 处（useWechatSubscribe.js）
+// 在任意平台都需能静态解析到该名字，避免非微信端打包时「未导出」构建失败。
+// 实际仅微信小程序端使用，使用处由 #ifdef MP-WEIXIN 隔离，非微信端取到空串由调用方兜底。
 export const WX_SUBSCRIBE_TEMPLATE_ID = 'Tvn1TtWubjqi0RrYRRTjQgg9qaTB3Fntzt0Jju8RmEY'
-// #endif

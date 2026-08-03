@@ -3,7 +3,7 @@
     "appid" : "__UNI__528E611",
     "description" : "制定通用打卡计划并按时提醒、记录的跨端APP",
     "versionName" : "1.0.0",
-    "versionCode" : 101,
+    "versionCode" : 102,
     "transformPx" : false,
     "app-plus" : {
         "usingComponents" : true,
