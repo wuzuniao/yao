@@ -2,7 +2,13 @@
 	import { useUserStore } from './store/modules/user'
 	import { useAppPush } from './composables/useAppPush'
 	import { useTokenRefresh } from './composables/useTokenRefresh'
+	import { useThemeStore } from './store/modules/theme'
 	export default {
+		// 在 setup 中暴露主题 store，使根节点可绑定 :data-theme 实现全站换肤
+		setup() {
+			const themeStore = useThemeStore()
+			return { themeStore }
+		},
 		onLaunch: function() {
 			// App 端：先初始化友盟推送 SDK，再注册通知栏点击跳转监听
 			// #ifdef APP-PLUS
@@ -23,11 +29,27 @@
 	}
 </script>
 
+<template>
+	<!-- 应用根容器：挂载 data-theme 使 global.scss 的配色方案覆盖全站 CSS 变量
+	     （小程序端 page 自身亦匹配 page[data-theme]，App 端由本根 view 命中 [data-theme]） -->
+	<view class="app-root" :data-theme="themeStore.current">
+		<router-view />
+	</view>
+</template>
+
 <style lang="scss">
 /* ===== 单位转换说明（px → rpx）=====
  * 设计稿基准 375px 宽，1px = 2rpx（uni-app 标准 750rpx = 屏宽）
  * App.vue 仅全局引入 global.scss，自身无尺寸样式，故无 rpx 转换内容与断点锁定。
  * 全局 CSS 变量的转换在 global.scss 中完成，具体尺寸的宽屏断点锁定由各页面/组件级样式处理。
  */
+.app-root {
+	min-height: 100vh;
+	width: 100%;
+	/* 承载主题背景：自身带 data-theme，故 var(--page-bg-color) 解析为当前方案色，
+	   避免 App/H5 端 page 根（默认绿主题令牌）透出绿底与墨黑主题内容冲突 */
+	background-color: var(--page-bg-color);
+}
+
 @import './assets/styles/global.scss';
 </style>

@@ -296,6 +296,39 @@
           </view>
         </view>
         <!-- #endif -->
+
+        <!-- 主题切换：仅 role>1 用户显示（进入页面时已查询数据库刷新 role） -->
+        <template v-if="showTheme">
+          <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('theme')">
+            <text class="profile-page__group-text">主题</text>
+            <view class="u-arrow-right"></view>
+          </view>
+          <!-- 主题选择（动态显示） -->
+          <view v-if="expandedSections.theme" class="profile-page__form-section">
+            <view class="profile-page__theme-list">
+              <view
+                v-for="item in themeList"
+                :key="item.key"
+                class="profile-page__theme-option"
+                :class="{ 'profile-page__theme-option--selected': themeForm.selected === item.key }"
+                @click="themeForm.selected = item.key"
+              >
+                <view class="profile-page__theme-swatch" :style="{ background: item.swatchBg }">
+                  <view class="profile-page__theme-dot" :style="{ background: item.swatch }"></view>
+                </view>
+                <text class="profile-page__theme-name">{{ item.name }}</text>
+              </view>
+            </view>
+            <view class="profile-page__form-actions">
+              <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('theme')">
+                <text class="profile-page__btn-text">取消</text>
+              </view>
+              <view class="profile-page__btn profile-page__btn--submit" @click="handleApplyTheme">
+                <text class="profile-page__btn-text">提交</text>
+              </view>
+            </view>
+          </view>
+        </template>
       </view>
 
       <!-- 分组 2：退出登录 + 删除账号（危险操作，单独分组并使用红色文字提示） -->
@@ -334,6 +367,7 @@ import PageHeader from '../../components/PageHeader.vue'
 import PasswordEye from '../../components/PasswordEye.vue'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
+import { useThemeStore, THEME_LIST } from '../../store/modules/theme'
 import {
   updateSignature,
   changePassword,
@@ -345,7 +379,8 @@ import {
   cancelDeletion,
   updateUsername,
   setPassword,
-  bindEmail
+  bindEmail,
+  getUserInfo
 } from '../../api/modules/user'
 import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
@@ -359,6 +394,9 @@ import { useBiometric } from '../../composables/useBiometric'
 useShare({ title: '个人信息' })
 
 const userStore = useUserStore()
+const themeStore = useThemeStore()
+// 主题清单（与 global.scss 的 [data-theme] 方案一一对应，按代表色命名）
+const themeList = THEME_LIST
 
 // 输入框字符限制（与后端字段长度严格匹配）
 const usernameLimit = useInputLimit(15, /^[\u4e00-\u9fa5a-zA-Z0-9]$/)
@@ -413,6 +451,8 @@ const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 const hasPassword = computed(() => !!userStore.userInfo?.has_password)
 // 当前用户是否已绑定邮箱（微信登录用户可能无邮箱）
 const hasEmail = computed(() => !!userStore.userInfo?.email)
+// 仅 users 表中 role > 1 的用户显示「主题」入口（进入页面时查询数据库刷新）
+const showTheme = computed(() => (userStore.userInfo?.role ?? 0) > 1)
 
 // ===== App 端指纹登录开关（仅 App 端）=====
 // 显示条件：设备支持指纹 + 当前已登录
@@ -431,13 +471,29 @@ const expandedSections = reactive({
   avatar: false,
   signature: false,
   password: false,
-  email: false
+  email: false,
+  theme: false
 })
 
 // 页面加载时接收参数：focus=email 时自动展开绑定邮箱区域（从 notification 页跳转）
 onLoad((options) => {
   if (options && options.focus === 'email' && !isDeletionScheduled.value) {
     expandedSections.email = true
+  }
+  // 查询数据库刷新最新 userInfo（含 role），用于「主题」入口按 role>1 显隐判定
+  if (userStore.userInfo?.id) {
+    getUserInfo()
+      .then((res) => {
+        if (res && res.data) {
+          userStore.userInfo = { ...userStore.userInfo, ...res.data }
+          try {
+            uni.setStorageSync('userInfo', userStore.userInfo)
+          } catch (e) {
+            console.warn('刷新本地用户信息失败', e)
+          }
+        }
+      })
+      .catch((e) => console.warn('获取用户信息失败', e))
   }
   // App 端：检测指纹能力并读取本地开关状态
   // #ifdef APP-PLUS
@@ -459,6 +515,12 @@ const avatarForm = reactive({
   selected: urlToAvatarKey(userStore.userInfo?.avatar_url)
 })
 
+// ===== 主题切换 =====
+const themeForm = reactive({
+  // 默认选中当前已生效主题
+  selected: themeStore.current
+})
+
 // ===== 修改签名 =====
 const signatureForm = reactive({ value: '' })
 const signatureError = ref('')
@@ -478,6 +540,8 @@ function resetSection(section) {
     usernameError.value = ''
   } else if (section === 'avatar') {
     avatarForm.selected = urlToAvatarKey(userStore.userInfo?.avatar_url)
+  } else if (section === 'theme') {
+    themeForm.selected = themeStore.current
   } else if (section === 'signature') {
     signatureForm.value = ''
     signatureError.value = ''
@@ -558,6 +622,17 @@ async function handleUpdateAvatar() {
   } catch (e) {
     uni.showToast({ title: e.message, icon: 'none' })
   }
+}
+
+async function handleApplyTheme() {
+  if (!themeForm.selected) {
+    uni.showToast({ title: '请选择主题', icon: 'none' })
+    return
+  }
+  // 写入主题 store（内部持久化 + 更新 App.vue 根 data-theme，全端即时生效）
+  themeStore.setTheme(themeForm.selected)
+  uni.showToast({ title: '主题已应用', icon: 'success' })
+  toggleSection('theme')
 }
 
 async function handleUpdateSignature() {
@@ -1170,6 +1245,55 @@ function handleLogout() {
   padding: 16rpx 0;
 }
 
+/* ===== 主题选择列表 ===== */
+.profile-page__theme-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  padding: 16rpx 0;
+}
+
+.profile-page__theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx 16rpx;
+  box-sizing: border-box;
+  border-radius: 20rpx;
+  border: 2px solid transparent;
+  background: var(--color-surface-hover);
+}
+
+.profile-page__theme-option--selected {
+  border-color: var(--color-brand-bg);
+  background: var(--color-selected-bg);
+}
+
+.profile-page__theme-swatch {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 16rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: var(--shadow-card);
+}
+
+.profile-page__theme-dot {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+}
+
+.profile-page__theme-name {
+  color: var(--color-text-primary);
+  font-size: 28rpx;
+  line-height: 40rpx;
+  font-weight: 500;
+}
+
 .profile-page__avatar-option {
   width: 144rpx;
   height: 144rpx;
@@ -1317,6 +1441,34 @@ function handleLogout() {
   .profile-page__avatar-image {
     width: 56px;
     height: 56px;
+  }
+
+  /* 主题选择列表 */
+  .profile-page__theme-list {
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .profile-page__theme-option {
+    gap: 6px;
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+
+  .profile-page__theme-swatch {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+  }
+
+  .profile-page__theme-dot {
+    width: 24px;
+    height: 24px;
+  }
+
+  .profile-page__theme-name {
+    font-size: 14px;
+    line-height: 20px;
   }
 }
 </style>

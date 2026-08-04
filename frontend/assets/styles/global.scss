@@ -172,6 +172,54 @@ page {
 }
 */
 
+/* --------------------------------------------------------------------------
+ * 「墨黑」主题（配色参考 DESIGN-vercel.md：近黑 ink #171717 + 近白 canvas #fafafa
+ * + 极淡灰 hairline #ebebeb，近零彩色，仅保留微信绿/链接蓝/危险红等功能性色）
+ * 切换：根节点 data-theme="ink"；默认（无 data-theme 或 "green"）即青绿主题。
+ * 选择器同时覆盖 page（小程序原生根）与任意 [data-theme] 元素（App 端根 view）。
+ * -------------------------------------------------------------------------- */
+page[data-theme="ink"],
+[data-theme="ink"] {
+  --palette-neutral-0:   #ffffff;  /* 卡片背景：纯白 */
+  --palette-neutral-5:   #fafafa;  /* 表单区域背景：canvas */
+  --palette-neutral-10:  #f7f7f7;  /* 次级容器背景 */
+  --palette-neutral-15:  #f2f2f2;  /* 悬停/选项背景：hairline-soft */
+  --palette-neutral-20:  #f2f2f2;  /* 分隔线：hairline-soft */
+  --palette-neutral-25:  #ededed;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #f0f0f0;  /* 取消按钮背景 */
+  --palette-neutral-40:  #fafafa;  /* 页面背景：canvas #fafafa */
+  --palette-neutral-45:  #ebebeb;  /* 卡片阴影描边：hairline #ebebeb */
+  --palette-neutral-50:  #d4d4d4;  /* 未激活圆点 */
+  --palette-neutral-55:  #ebebeb;  /* 输入框外描边：hairline */
+  --palette-neutral-60:  #bfbfbf;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #a1a1a1;  /* 禁用态标题文字 / 禁用按钮背景：faint */
+  --palette-neutral-70:  #8f8f8f;  /* 灰色计数文字：mute */
+  --palette-neutral-75:  #8f8f8f;  /* 占位/箭头：mute */
+  --palette-neutral-80:  #a1a1a1;  /* 弱化变体：faint */
+  --palette-neutral-85:  #737373;  /* 弱化标签 */
+  --palette-neutral-90:  #4d4d4d;  /* 次要文本：body */
+  --palette-neutral-95:  #171717;  /* 表单标签：ink */
+  --palette-neutral-100: #171717;  /* 主文本：ink #171717 */
+
+  --palette-brand-base:      #171717;  /* 主品牌（墨黑，作 CTA 主色） */
+  --palette-brand-dark:      #171717;
+  --palette-brand-darker:    #171717;
+  --palette-brand-light:     #f2f2f2;  /* 品牌浅绿位 → 浅灰面 */
+  --palette-brand-lightest:  #fafafa;  /* 品牌极浅绿 → canvas */
+  --palette-brand-selected:  #f2f2f2;  /* 选中态背景：浅灰 */
+  --palette-brand-unread:    #f2f2f2;  /* 未读卡片背景：浅灰 */
+
+  --palette-success:   #0070f3;  /* 成功绿 → Vercel 链接蓝（success maps to link） */
+  --palette-wechat:    #07c160;  /* 微信品牌绿：独立品牌色，不随主题变 */
+  --palette-danger:    #ee0000;  /* 危险红：error */
+  --palette-form-error:#ee0000;  /* 表单错误红 */
+  --palette-error-text:#ee0000;  /* 错误提示红 */
+  --palette-warning:   #f5a623;  /* 警告黄 */
+  --palette-link:      #0070f3;  /* 链接蓝：link */
+  --palette-stripe-default: #ebebeb;
+  --palette-stripe-paused:  #737373;
+}
+
 /* ==========================================================================
  * 复用工具类
  * --------------------------------------------------------------------------
