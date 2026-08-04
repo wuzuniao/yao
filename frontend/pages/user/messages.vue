@@ -1,5 +1,5 @@
 <template>
-  <view class="messages-page">
+  <view :data-theme="themeKey" class="messages-page">
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
 

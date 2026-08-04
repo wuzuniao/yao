@@ -1,5 +1,5 @@
 <template>
-  <view class="index-page">
+  <view :data-theme="themeKey" class="index-page">
     <view class="index-page__frame">
       <NoticeButton />
 

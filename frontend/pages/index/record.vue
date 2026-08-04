@@ -1,5 +1,5 @@
 <template>
-  <view class="record-page">
+  <view :data-theme="themeKey" class="record-page">
     <NoticeButton :has-notification="hasNotification" />
 
     <view class="record-page__main">

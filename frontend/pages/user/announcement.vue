@@ -1,5 +1,5 @@
 <template>
-  <view class="announcement-page">
+  <view :data-theme="themeKey" class="announcement-page">
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
 

@@ -6,7 +6,7 @@
        且不拦截 click，高亮洞内目标按钮仍可点击 -->
   <page-meta :scroll-y="!guideScrollLock" />
   <!-- #endif -->
-  <view class="notification-page">
+  <view :data-theme="themeKey" class="notification-page">
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
 
@@ -1295,7 +1295,7 @@ async function handleUpdateWechat() {
 }
 
 .notification-page__card-badge--wechat {
-  background: var(--color-wechat); // 微信绿，便于用户识别
+  background: var(--color-wechat); // 微信渠道标识底色，随主题代表色（绿/蓝/靛蓝/薰衣草）
 }
 
 /* App 推送角标（沿用主品牌绿，与微信品牌绿区分） */
@@ -1317,7 +1317,7 @@ async function handleUpdateWechat() {
   padding: 0 24rpx;
   box-sizing: border-box;
   border-radius: 9999px;
-  background: var(--color-wechat);
+  background: var(--color-wechat); // 微信渠道角标，随主题代表色
   display: flex;
   flex-direction: row;
   justify-content: center;

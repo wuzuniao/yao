@@ -1,5 +1,5 @@
 <template>
-  <view class="profile-page">
+  <view :data-theme="themeKey" class="profile-page">
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
 
@@ -188,7 +188,7 @@
         </view>
 
         <!-- 修改邮箱 / 绑定邮箱（无邮箱用户显示"绑定邮箱"） -->
-        <view class="profile-page__group-item" @click="toggleSection('email')">
+        <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('email')">
           <text class="profile-page__group-text">{{ hasEmail ? '修改邮箱' : '绑定邮箱' }}</text>
           <view class="u-arrow-right"></view>
         </view>
@@ -313,9 +313,7 @@
                 :class="{ 'profile-page__theme-option--selected': themeForm.selected === item.key }"
                 @click="themeForm.selected = item.key"
               >
-                <view class="profile-page__theme-swatch" :style="{ background: item.swatchBg }">
-                  <view class="profile-page__theme-dot" :style="{ background: item.swatch }"></view>
-                </view>
+                <view class="profile-page__theme-swatch" :style="{ background: item.swatch }"></view>
                 <text class="profile-page__theme-name">{{ item.name }}</text>
               </view>
             </view>
@@ -1059,7 +1057,7 @@ function handleLogout() {
   flex-shrink: 0;
 }
 .profile-page__biometric-switch--on {
-  background: var(--color-wechat); /* 开态轨道色（微信绿，等价于原 #07c160） */
+  background: var(--color-wechat); /* 开态轨道色（随主题代表色：绿/蓝/靛蓝/薰衣草） */
 }
 .profile-page__biometric-switch-knob {
   position: absolute;
@@ -1224,14 +1222,16 @@ function handleLogout() {
 
 .profile-page__btn--cancel {
   background: var(--color-btn-cancel-bg);
+  color: var(--color-text-primary);
 }
 
 .profile-page__btn--submit {
-  background: var(--color-brand-bg);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
 }
 
 .profile-page__btn-text {
-  color: var(--color-text-primary);
+  color: inherit;
   font-size: 28rpx;
   line-height: 40rpx;
   font-weight: 400;
@@ -1275,16 +1275,7 @@ function handleLogout() {
   width: 96rpx;
   height: 96rpx;
   border-radius: 16rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   box-shadow: var(--shadow-card);
-}
-
-.profile-page__theme-dot {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
 }
 
 .profile-page__theme-name {
@@ -1459,11 +1450,6 @@ function handleLogout() {
     width: 48px;
     height: 48px;
     border-radius: 8px;
-  }
-
-  .profile-page__theme-dot {
-    width: 24px;
-    height: 24px;
   }
 
   .profile-page__theme-name {

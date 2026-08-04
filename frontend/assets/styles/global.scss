@@ -82,9 +82,13 @@ page {
  * --------------------------------------------------------------------------
  * 全部由 Palette 派生，业务页面/组件只使用 --color-*，不直接碰 --palette-*。
  * 配色方案切换时本层名不变，仅底层 Palette 值被覆盖。
+ * 注意：声明作用域必须同时包含 [data-theme]（带主题属性的根节点），
+ *   否则 var(--palette-*) 只在 page/html 层解析、取不到子节点覆盖后的 Palette 值，
+ *   导致切换主题后页面颜色不变（CSS 变量就近解析原则）。
  * ========================================================================== */
 :root,
-page {
+page,
+[data-theme] {
   /* ----- 页面背景色 ----- */
   --page-bg-color: var(--palette-neutral-40);
 
@@ -147,9 +151,7 @@ page {
   /* ----- 品牌绿光晕（品牌浅绿 #9fe870 / 选中背景 #e2f6d5 带 alpha）----- */
   --color-brand-glow: rgba(159, 232, 112, 0.6);     /* 光晕标准档 */
   --color-brand-glow-soft: rgba(159, 232, 112, 0.4);/* 光晕柔和档 */
-  --color-brand-glow-mid: rgba(159, 232, 112, 0.45);/* 光晕中档（渐变专用） */
   --color-brand-glow-strong: rgba(159, 232, 112, 0.8); /* 光晕强档 */
-  --color-brand-glow-faint: rgba(226, 246, 213, 0.18); /* 光晕极淡档（渐变收尾） */
 }
 
 /* ==========================================================================
@@ -206,11 +208,11 @@ page[data-theme="ink"],
   --palette-brand-darker:    #171717;
   --palette-brand-light:     #f2f2f2;  /* 品牌浅绿位 → 浅灰面 */
   --palette-brand-lightest:  #fafafa;  /* 品牌极浅绿 → canvas */
-  --palette-brand-selected:  #f2f2f2;  /* 选中态背景：浅灰 */
+  --palette-brand-selected:  #dcdcdc;  /* 选中态背景：中灰（与 hover #f2f2f2 拉开，墨黑下选中项可辨，浅灰边框衬此底形成描边环） */
   --palette-brand-unread:    #f2f2f2;  /* 未读卡片背景：浅灰 */
 
-  --palette-success:   #0070f3;  /* 成功绿 → Vercel 链接蓝（success maps to link） */
-  --palette-wechat:    #07c160;  /* 微信品牌绿：独立品牌色，不随主题变 */
+  --palette-success:   #0070f3;  /* 成功绿 → 墨黑主题代表色（Vercel 链接蓝，随主题更换） */
+  --palette-wechat:    #0070f3;  /* 微信品牌绿 → 墨黑主题代表色（随主题更换，非固定 #07c160） */
   --palette-danger:    #ee0000;  /* 危险红：error */
   --palette-form-error:#ee0000;  /* 表单错误红 */
   --palette-error-text:#ee0000;  /* 错误提示红 */
@@ -218,6 +220,398 @@ page[data-theme="ink"],
   --palette-link:      #0070f3;  /* 链接蓝：link */
   --palette-stripe-default: #ebebeb;
   --palette-stripe-paused:  #737373;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「靛蓝」主题（配色参考 DESIGN-stripe.md：靛蓝 accent #533afd + 海军蓝墨 ink
+ * #0d253d + 近白 canvas #ffffff / canvas-soft #f6f9fc + 极淡灰 hairline #e3e8ee，
+ * 近零彩色，仅保留微信绿/靛蓝/危险红等功能性色）
+ * 切换：根节点 data-theme="indigo"；默认（无 data-theme 或 "green"）即青绿主题。
+ * 选择器同时覆盖 page（小程序原生根）与任意 [data-theme] 元素（App 端根 view）。
+ * -------------------------------------------------------------------------- */
+page[data-theme="indigo"],
+[data-theme="indigo"] {
+  --palette-neutral-0:   #ffffff;  /* 卡片背景：纯白 */
+  --palette-neutral-5:   #f6f9fc;  /* 表单区域背景：canvas-soft */
+  --palette-neutral-10:  #f4f6fb;  /* 次级容器背景 */
+  --palette-neutral-15:  #eef1f6;  /* 悬停/选项背景：hairline-soft */
+  --palette-neutral-20:  #e3e8ee;  /* 分隔线：hairline */
+  --palette-neutral-25:  #e9edf3;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #f0f2f5;  /* 取消按钮背景 */
+  --palette-neutral-40:  #f6f9fc;  /* 页面背景：canvas-soft */
+  --palette-neutral-45:  #e3e8ee;  /* 卡片阴影描边：hairline */
+  --palette-neutral-50:  #cdd5e0;  /* 未激活圆点 */
+  --palette-neutral-55:  #e3e8ee;  /* 输入框外描边：hairline */
+  --palette-neutral-60:  #aab4c0;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #8a95a3;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #7a8694;  /* 灰色计数文字 */
+  --palette-neutral-75:  #6b7682;  /* 占位/箭头 */
+  --palette-neutral-80:  #8a95a3;  /* 弱化变体 */
+  --palette-neutral-85:  #4a5568;  /* 弱化标签 */
+  --palette-neutral-90:  #334155;  /* 次要文本 */
+  --palette-neutral-95:  #0d253d;  /* 表单标签：海军蓝墨 */
+  --palette-neutral-100: #0d253d;  /* 主文本：海军蓝墨 #0d253d */
+
+  --palette-brand-base:      #533afd;  /* 主品牌（靛蓝，作 CTA 主色） */
+  --palette-brand-dark:      #4326e0;  /* 品牌深靛蓝 */
+  --palette-brand-darker:    #34209e;  /* 品牌更深靛蓝 */
+  --palette-brand-light:     #b9b9f9;  /* 品牌浅靛蓝：次级按钮背景 */
+  --palette-brand-lightest:  #eef0fe;  /* 品牌极浅靛蓝：徽标浅色背景 */
+  --palette-brand-selected:  #eef0fe;  /* 选中态背景：极浅靛蓝 */
+  --palette-brand-unread:    #f2f0fe;  /* 未读卡片背景：极浅靛蓝 */
+
+  --palette-success:   #533afd;  /* 成功绿 → 靛蓝主题代表色（随主题更换，非固定 #07c160） */
+  --palette-wechat:    #533afd;  /* 微信品牌绿 → 靛蓝主题代表色（随主题更换，非固定 #07c160） */
+  --palette-danger:    #e03131;  /* 危险红 */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d97706;  /* 警告黄 */
+  --palette-link:      #533afd;  /* 链接蓝 → 靛蓝 */
+  --palette-stripe-default: #e3e8ee;
+  --palette-stripe-paused:  #4a5568;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「薰衣草」主题（配色参考 DESIGN-linear.md：薰衣草 accent #5e6ad2 + 近黑 canvas
+ * #010102 / surface #0f1011 + 亮墨文本 #f7f8f8 + 暗灰 hairline #23252a，
+ * 唯一 chromatic accent = 薰衣草蓝，其余全中性灰阶，近零彩度暗色方案）
+ * 切换：根节点 data-theme="lavender"；默认（无 data-theme 或 "green"）即青绿主题。
+ * 选择器同时覆盖 page（小程序原生根）与任意 [data-theme] 元素（App 端根 view）。
+ * -------------------------------------------------------------------------- */
+page[data-theme="lavender"],
+[data-theme="lavender"] {
+  --palette-neutral-0:   #1c1d20;  /* 卡片背景：surface（暗色提亮，与页面底拉开明度差使卡片浮起） */
+  --palette-neutral-5:   #16171a;  /* 表单区域背景 */
+  --palette-neutral-10:  #18191c;  /* 次级容器背景 */
+  --palette-neutral-15:  #1c1d20;  /* 悬停/选项背景：hairline-soft */
+  --palette-neutral-20:  #23252a;  /* 分隔线：hairline */
+  --palette-neutral-25:  #1a1b1e;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #23252a;  /* 取消按钮背景：hairline */
+  --palette-neutral-40:  #010102;  /* 页面背景：canvas #010102 */
+  --palette-neutral-45:  #34373f;  /* 卡片阴影描边：hairline（暗底提亮可见） */
+  --palette-neutral-50:  #3a3c42;  /* 未激活圆点 */
+  --palette-neutral-55:  #23252a;  /* 输入框外描边：hairline */
+  --palette-neutral-60:  #6b6d73;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #8a8c92;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #9a9ca2;  /* 灰色计数文字 */
+  --palette-neutral-75:  #9a9ca2;  /* 占位/箭头 */
+  --palette-neutral-80:  #8a8c92;  /* 弱化变体 */
+  --palette-neutral-85:  #b4b6bc;  /* 弱化标签 */
+  --palette-neutral-90:  #d8dade;  /* 次要文本 */
+  --palette-neutral-95:  #f7f8f8;  /* 表单标签：亮墨 */
+  --palette-neutral-100: #f7f8f8;  /* 主文本：亮墨 #f7f8f8 */
+
+  --palette-brand-base:      #5e6ad2;  /* 主品牌（薰衣草蓝，作 CTA 主色） */
+  --palette-brand-dark:      #5560c0;  /* 品牌深薰衣草 */
+  --palette-brand-darker:    #4a55a8;  /* 品牌更深薰衣草 */
+  --palette-brand-light:     #828fff;  /* 品牌浅薰衣草：次级按钮背景 */
+  --palette-brand-lightest:  #2a2d44;  /* 品牌极浅薰衣草：徽标浅色背景（暗底） */
+  --palette-brand-selected:  #2a2d44;  /* 选中态背景：暗薰衣草 */
+  --palette-brand-unread:    #23252a;  /* 未读卡片背景：hairline 暗 */
+
+  --palette-success:   #5e6ad2;  /* 成功绿 → 薰衣草主题代表色（随主题更换，非固定 #07c160） */
+  --palette-wechat:    #5e6ad2;  /* 微信品牌绿 → 薰衣草主题代表色（随主题更换，非固定 #07c160） */
+  --palette-danger:    #e5484d;  /* 危险红 */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d98b1a;  /* 警告黄（暗底适配提亮） */
+  --palette-link:      #828fff;  /* 链接蓝 → 浅薰衣草 */
+  --palette-stripe-default: #23252a;
+  --palette-stripe-paused:  #6b6d73;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「青碧」主题（冷色系，色相位于蓝绿之间，与 indigo 蓝 / lavender 紫明显区分）。
+ * 主色取青 cyan #0891b2（派生自 design_wise.md 的 accent-cyan #38c8ff 降饱和沉稳）。
+ * 亮色方案：中性阶沿用绿系浅底逻辑，仅品牌/功能色换青；success/wechat 跟随青色。
+ * 切换：根节点 data-theme="cyan"；选择器同时覆盖 page（小程序）与 [data-theme]（App）。
+ * -------------------------------------------------------------------------- */
+page[data-theme="cyan"],
+[data-theme="cyan"] {
+  --palette-neutral-0:   #ffffff;  /* 卡片背景 */
+  --palette-neutral-5:   #f3fbfc;  /* 表单区域背景 */
+  --palette-neutral-10:  #eff8fa;  /* 次级容器背景 */
+  --palette-neutral-15:  #e6f4f7;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #d9eef1;  /* 分隔线 */
+  --palette-neutral-25:  #e9f3f5;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #eef6f7;  /* 取消按钮背景 */
+  --palette-neutral-40:  #e9f4f6;  /* 页面背景 */
+  --palette-neutral-45:  #d9eef1;  /* 卡片阴影描边 */
+  --palette-neutral-50:  #b6d6dc;  /* 未激活圆点 */
+  --palette-neutral-55:  #cfe6ea;  /* 输入框外描边 */
+  --palette-neutral-60:  #9fc0c6;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #7fa6ad;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #6fa0a8;  /* 灰色计数文字 */
+  --palette-neutral-75:  #5f949c;  /* 占位/箭头 */
+  --palette-neutral-80:  #7fa6ad;  /* 弱化变体 */
+  --palette-neutral-85:  #3f7a82;  /* 弱化标签 */
+  --palette-neutral-90:  #1f5b63;  /* 次要文本 */
+  --palette-neutral-95:  #0f4a52;  /* 表单标签 */
+  --palette-neutral-100: #0f3b42;  /* 主文本 */
+
+  --palette-brand-base:      #0891b2;  /* 主品牌青 */
+  --palette-brand-dark:      #0e7490;  /* 品牌深青 */
+  --palette-brand-darker:    #155e75;  /* 品牌更深青 */
+  --palette-brand-light:     #67d3ea;  /* 品牌浅青：次级按钮背景 */
+  --palette-brand-lightest:  #e0f6fa;  /* 品牌极浅青：徽标浅色背景 */
+  --palette-brand-selected:  #e0f6fa;  /* 选中态背景 */
+  --palette-brand-unread:    #e6f7fa;  /* 未读卡片背景 */
+
+  --palette-success:   #0891b2;  /* 成功绿 → 青碧主题代表色（随主题更换） */
+  --palette-wechat:    #0891b2;  /* 微信品牌绿 → 青碧主题代表色（随主题更换） */
+  --palette-danger:    #e5484d;  /* 危险红 */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d97706;  /* 警告黄 */
+  --palette-link:      #0891b2;  /* 链接蓝 → 青 */
+  --palette-stripe-default: #d9eef1;
+  --palette-stripe-paused:  #3f7a82;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「琥珀」主题（暖色系浅色，橙黄 #f59e0b，派生自 design_wise.md 的 accent-orange）。
+ * 亮色方案：中性阶暖白底，品牌/功能色换橙黄；success/wechat 跟随琥珀橙。
+ * 切换：根节点 data-theme="amber"；选择器同时覆盖 page 与 [data-theme]。
+ * -------------------------------------------------------------------------- */
+page[data-theme="amber"],
+[data-theme="amber"] {
+  --palette-neutral-0:   #ffffff;  /* 卡片背景 */
+  --palette-neutral-5:   #fffaf0;  /* 表单区域背景（暖白） */
+  --palette-neutral-10:  #fff6e6;  /* 次级容器背景 */
+  --palette-neutral-15:  #fdf0d8;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #f7e6c4;  /* 分隔线 */
+  --palette-neutral-25:  #fdf3e2;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #fdf1df;  /* 取消按钮背景 */
+  --palette-neutral-40:  #fdf3e0;  /* 页面背景（暖白） */
+  --palette-neutral-45:  #f7e6c4;  /* 卡片阴影描边 */
+  --palette-neutral-50:  #ecd09a;  /* 未激活圆点 */
+  --palette-neutral-55:  #f3e0bc;  /* 输入框外描边 */
+  --palette-neutral-60:  #d8b378;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #bd9450;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #c79a55;  /* 灰色计数文字 */
+  --palette-neutral-75:  #b0823c;  /* 占位/箭头 */
+  --palette-neutral-80:  #bd9450;  /* 弱化变体 */
+  --palette-neutral-85:  #8a5e1e;  /* 弱化标签 */
+  --palette-neutral-90:  #6b4715;  /* 次要文本 */
+  --palette-neutral-95:  #5c3d10;  /* 表单标签 */
+  --palette-neutral-100: #4a3008;  /* 主文本 */
+
+  --palette-brand-base:      #f59e0b;  /* 主品牌琥珀橙黄 */
+  --palette-brand-dark:      #d97706;  /* 品牌深橙 */
+  --palette-brand-darker:    #b45309;  /* 品牌更深橙 */
+  --palette-brand-light:     #fbbf24;  /* 品牌浅橙黄：次级按钮背景 */
+  --palette-brand-lightest:  #fdf2dc;  /* 品牌极浅橙黄：徽标浅色背景 */
+  --palette-brand-selected:  #fdf2dc;  /* 选中态背景 */
+  --palette-brand-unread:    #fef4e0;  /* 未读卡片背景 */
+
+  --palette-success:   #f59e0b;  /* 成功绿 → 琥珀主题代表色（随主题更换） */
+  --palette-wechat:    #f59e0b;  /* 微信品牌绿 → 琥珀主题代表色（随主题更换） */
+  --palette-danger:    #e5484d;  /* 危险红（暖色底保留标准红） */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d97706;  /* 警告黄 */
+  --palette-link:      #b45309;  /* 链接 → 深橙（暖色底提对比） */
+  --palette-stripe-default: #f7e6c4;
+  --palette-stripe-paused:  #8a5e1e;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「珊瑚」主题（暖色系浅色，红橙 #ff6b5e，比 amber 更红、比 rose 更橙）。
+ * 亮色方案：中性阶暖白底，品牌/功能色换珊瑚红橙；success/wechat 跟随珊瑚。
+ * 切换：根节点 data-theme="coral"；选择器同时覆盖 page 与 [data-theme]。
+ * -------------------------------------------------------------------------- */
+page[data-theme="coral"],
+[data-theme="coral"] {
+  --palette-neutral-0:   #ffffff;  /* 卡片背景 */
+  --palette-neutral-5:   #fff7f5;  /* 表单区域背景（暖白偏红） */
+  --palette-neutral-10:  #fff0ee;  /* 次级容器背景 */
+  --palette-neutral-15:  #ffe6e2;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #ffd9d4;  /* 分隔线 */
+  --palette-neutral-25:  #fff0ee;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #ffeeec;  /* 取消按钮背景 */
+  --palette-neutral-40:  #fff1ef;  /* 页面背景（暖白） */
+  --palette-neutral-45:  #ffd9d4;  /* 卡片阴影描边 */
+  --palette-neutral-50:  #f5b3ac;  /* 未激活圆点 */
+  --palette-neutral-55:  #ffc9c2;  /* 输入框外描边 */
+  --palette-neutral-60:  #e89b93;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #d97a71;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #e08a82;  /* 灰色计数文字 */
+  --palette-neutral-75:  #cf6f66;  /* 占位/箭头 */
+  --palette-neutral-80:  #d97a71;  /* 弱化变体 */
+  --palette-neutral-85:  #a8453c;  /* 弱化标签 */
+  --palette-neutral-90:  #8a352d;  /* 次要文本 */
+  --palette-neutral-95:  #7a2a22;  /* 表单标签 */
+  --palette-neutral-100: #5e1d17;  /* 主文本 */
+
+  --palette-brand-base:      #ff6b5e;  /* 主品牌珊瑚红橙 */
+  --palette-brand-dark:      #f0503f;  /* 品牌深珊瑚 */
+  --palette-brand-darker:    #d83b2c;  /* 品牌更深珊瑚 */
+  --palette-brand-light:     #ff9b91;  /* 品牌浅珊瑚：次级按钮背景 */
+  --palette-brand-lightest:  #ffe6e2;  /* 品牌极浅珊瑚：徽标浅色背景 */
+  --palette-brand-selected:  #ffe6e2;  /* 选中态背景 */
+  --palette-brand-unread:    #ffefed;  /* 未读卡片背景 */
+
+  --palette-success:   #ff6b5e;  /* 成功绿 → 珊瑚主题代表色（随主题更换） */
+  --palette-wechat:    #ff6b5e;  /* 微信品牌绿 → 珊瑚主题代表色（随主题更换） */
+  --palette-danger:    #e5484d;  /* 危险红 */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d97706;  /* 警告黄 */
+  --palette-link:      #d83b2c;  /* 链接 → 深珊瑚 */
+  --palette-stripe-default: #ffd9d4;
+  --palette-stripe-paused:  #a8453c;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「玫瑰」主题（暖色系浅色，品红粉 #e11d74，明显偏红粉，与 coral 拉开）。
+ * 亮色方案：中性阶暖白偏粉底，品牌/功能色换玫瑰；success/wechat 跟随玫瑰。
+ * 切换：根节点 data-theme="rose"；选择器同时覆盖 page 与 [data-theme]。
+ * -------------------------------------------------------------------------- */
+page[data-theme="rose"],
+[data-theme="rose"] {
+  --palette-neutral-0:   #ffffff;  /* 卡片背景 */
+  --palette-neutral-5:   #fff5f9;  /* 表单区域背景（暖白偏粉） */
+  --palette-neutral-10:  #fff0f5;  /* 次级容器背景 */
+  --palette-neutral-15:  #ffe6ef;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #ffd6e6;  /* 分隔线 */
+  --palette-neutral-25:  #fff0f5;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #ffeef4;  /* 取消按钮背景 */
+  --palette-neutral-40:  #fff1f6;  /* 页面背景（暖白） */
+  --palette-neutral-45:  #ffd6e6;  /* 卡片阴影描边 */
+  --palette-neutral-50:  #f3a9c6;  /* 未激活圆点 */
+  --palette-neutral-55:  #ffc6dc;  /* 输入框外描边 */
+  --palette-neutral-60:  #e389ac;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #d06c94;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #dd7ba2;  /* 灰色计数文字 */
+  --palette-neutral-75:  #cc6690;  /* 占位/箭头 */
+  --palette-neutral-80:  #d06c94;  /* 弱化变体 */
+  --palette-neutral-85:  #a83d6c;  /* 弱化标签 */
+  --palette-neutral-90:  #8c2f5a;  /* 次要文本 */
+  --palette-neutral-95:  #7a234d;  /* 表单标签 */
+  --palette-neutral-100: #5e1739;  /* 主文本 */
+
+  --palette-brand-base:      #e11d74;  /* 主品牌玫瑰品红 */
+  --palette-brand-dark:      #be185d;  /* 品牌深玫瑰 */
+  --palette-brand-darker:    #9d174d;  /* 品牌更深玫瑰 */
+  --palette-brand-light:     #f472b6;  /* 品牌浅玫瑰：次级按钮背景 */
+  --palette-brand-lightest:  #fce2ee;  /* 品牌极浅玫瑰：徽标浅色背景 */
+  --palette-brand-selected:  #fce2ee;  /* 选中态背景 */
+  --palette-brand-unread:    #ffeef5;  /* 未读卡片背景 */
+
+  --palette-success:   #e11d74;  /* 成功绿 → 玫瑰主题代表色（随主题更换） */
+  --palette-wechat:    #e11d74;  /* 微信品牌绿 → 玫瑰主题代表色（随主题更换） */
+  --palette-danger:    #e5484d;  /* 危险红 */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d97706;  /* 警告黄 */
+  --palette-link:      #be185d;  /* 链接 → 深玫瑰 */
+  --palette-stripe-default: #ffd6e6;
+  --palette-stripe-paused:  #a83d6c;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「绯红」主题（暖色系暗色，正红 #dc2626 + 近黑暖底 #2a0e0e）。
+ * 与 ink/lavender 同属暗色家族但调性不同（红 vs 黑/紫），中性阶整体反转为暗底。
+ * 暗色方案：中性 0→暗卡片底、100→亮文本；品牌/功能色换正红；success/wechat 跟随绯红。
+ * 切换：根节点 data-theme="crimson"；选择器同时覆盖 page 与 [data-theme]。
+ * -------------------------------------------------------------------------- */
+page[data-theme="crimson"],
+[data-theme="crimson"] {
+  --palette-neutral-0:   #341717;  /* 卡片背景：暗暖底（提亮，与页面底拉开明度差使卡片浮起） */
+  --palette-neutral-5:   #281212;  /* 表单区域背景 */
+  --palette-neutral-10:  #2c1414;  /* 次级容器背景 */
+  --palette-neutral-15:  #341717;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #3e1c1c;  /* 分隔线 */
+  --palette-neutral-25:  #2a1212;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #3e1c1c;  /* 取消按钮背景 */
+  --palette-neutral-40:  #1a0808;  /* 页面背景：更深暖底 */
+  --palette-neutral-45:  #4e2424;  /* 卡片阴影描边（暗底提亮可见） */
+  --palette-neutral-50:  #5e2a2a;  /* 未激活圆点 */
+  --palette-neutral-55:  #3e1c1c;  /* 输入框外描边 */
+  --palette-neutral-60:  #9c6b6b;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #c08a8a;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #d59a9a;  /* 灰色计数文字 */
+  --palette-neutral-75:  #d59a9a;  /* 占位/箭头 */
+  --palette-neutral-80:  #c08a8a;  /* 弱化变体 */
+  --palette-neutral-85:  #f0c4c4;  /* 弱化标签 */
+  --palette-neutral-90:  #f3d6d6;  /* 次要文本 */
+  --palette-neutral-95:  #fbeaea;  /* 表单标签 */
+  --palette-neutral-100: #fbeaea;  /* 主文本：亮暖白 */
+
+  --palette-brand-base:      #dc2626;  /* 主品牌正红 */
+  --palette-brand-dark:      #b91c1c;  /* 品牌深红 */
+  --palette-brand-darker:    #991b1b;  /* 品牌更深红 */
+  --palette-brand-light:     #f87171;  /* 品牌浅红：次级按钮背景 */
+  --palette-brand-lightest:  #3a1316;  /* 品牌极浅红：暗底徽标背景 */
+  --palette-brand-selected:  #3a1316;  /* 选中态背景：暗红 */
+  --palette-brand-unread:    #3e1c1c;  /* 未读卡片背景：暗底 */
+
+  --palette-success:   #dc2626;  /* 成功绿 → 绯红主题代表色（随主题更换） */
+  --palette-wechat:    #dc2626;  /* 微信品牌绿 → 绯红主题代表色（随主题更换） */
+  --palette-danger:    #f87171;  /* 危险红（暗底提亮） */
+  --palette-form-error:#f87171;  /* 表单错误红（暗底提亮） */
+  --palette-error-text:#ff9a8a;  /* 错误提示橙红（暗底提亮） */
+  --palette-warning:   #f5b623;  /* 警告黄（暗底提亮） */
+  --palette-link:      #f87171;  /* 链接 → 浅红 */
+  --palette-stripe-default: #3e1c1c;
+  --palette-stripe-paused:  #9c6b6b;
+
+}
+
+/* --------------------------------------------------------------------------
+ * 「流金」主题（暖色系暗色，金棕 #c9a227 + 近黑暖底 #1f1a0a）。
+ * 唯一「金」调，与 crimson 同属暗色但色相为金棕，区分度最高。
+ * 暗色方案：中性阶整体反转为暗底；品牌/功能色换金；success/wechat 跟随金。
+ * 切换：根节点 data-theme="gold"；选择器同时覆盖 page 与 [data-theme]。
+ * -------------------------------------------------------------------------- */
+page[data-theme="gold"],
+[data-theme="gold"] {
+  --palette-neutral-0:   #322a12;  /* 卡片背景：暗金底（提亮，与页面底拉开明度差使卡片浮起） */
+  --palette-neutral-5:   #26200d;  /* 表单区域背景 */
+  --palette-neutral-10:  #2a2310;  /* 次级容器背景 */
+  --palette-neutral-15:  #322a12;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #3c3315;  /* 分隔线 */
+  --palette-neutral-25:  #271f0d;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #3c3315;  /* 取消按钮背景 */
+  --palette-neutral-40:  #181307;  /* 页面背景：更深暖底 */
+  --palette-neutral-45:  #4d421a;  /* 卡片阴影描边（暗底提亮可见） */
+  --palette-neutral-50:  #5c4f1c;  /* 未激活圆点 */
+  --palette-neutral-55:  #3c3315;  /* 输入框外描边 */
+  --palette-neutral-60:  #99884c;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #bca65e;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #ccb46a;  /* 灰色计数文字 */
+  --palette-neutral-75:  #ccb46a;  /* 占位/箭头 */
+  --palette-neutral-80:  #bca65e;  /* 弱化变体 */
+  --palette-neutral-85:  #ecdc9e;  /* 弱化标签 */
+  --palette-neutral-90:  #f0e6bf;  /* 次要文本 */
+  --palette-neutral-95:  #f7efcf;  /* 表单标签 */
+  --palette-neutral-100: #f7efcf;  /* 主文本：亮暖白 */
+
+  --palette-brand-base:      #c9a227;  /* 主品牌金 */
+  --palette-brand-dark:      #a8841c;  /* 品牌深金 */
+  --palette-brand-darker:    #8a6d16;  /* 品牌更深金 */
+  --palette-brand-light:     #e3c45c;  /* 品牌浅金：次级按钮背景 */
+  --palette-brand-lightest:  #2a2410;  /* 品牌极浅金：暗底徽标背景 */
+  --palette-brand-selected:  #2a2410;  /* 选中态背景：暗金 */
+  --palette-brand-unread:    #3c3315;  /* 未读卡片背景：暗底 */
+
+  --palette-success:   #c9a227;  /* 成功绿 → 流金主题代表色（随主题更换） */
+  --palette-wechat:    #c9a227;  /* 微信品牌绿 → 流金主题代表色（随主题更换） */
+  --palette-danger:    #f87171;  /* 危险红（暗底提亮） */
+  --palette-form-error:#f87171;  /* 表单错误红（暗底提亮） */
+  --palette-error-text:#ff9a8a;  /* 错误提示橙红（暗底提亮） */
+  --palette-warning:   #f5b623;  /* 警告黄（暗底提亮） */
+  --palette-link:      #e3c45c;  /* 链接 → 浅金 */
+  --palette-stripe-default: #3c3315;
+  --palette-stripe-paused:  #99884c;
+
 }
 
 /* ==========================================================================

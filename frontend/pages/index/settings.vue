@@ -1,5 +1,5 @@
 <template>
-  <view class="settings-page">
+  <view :data-theme="themeKey" class="settings-page">
     <NoticeButton />
 
     <view class="settings-page__main">
@@ -7,7 +7,6 @@
       <view class="settings-page__near-group">
         <!-- 用户资料卡片 -->
         <view class="settings-page__profile-card guide-target-profile-card" @click="goProfileOrLogin">
-          <view class="settings-page__profile-card-glow"></view>
           <view class="settings-page__profile-info">
             <text class="settings-page__profile-name">{{ displayName }}</text>
             <text class="settings-page__profile-slogan">{{ displaySlogan }}</text>
@@ -302,8 +301,11 @@ function goPrivacy() {
  * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
  * ========================================================================== */
 .settings-page {
-  /* 不再设 min-height:100vh：全局 page 已撑满视口并兜底背景，
-     此处高度自适应内容，内容不足一屏时不出现多余滚动条 */
+  /* 撑满至少一屏：小程序端原生 page 元素不携带 data-theme，其背景取 :root,page 默认值（绿），
+     内容不足一屏时底部会显示默认绿底、不随主题切换；此处 min-height:100vh 使页面根 view
+     （带 data-theme）的主题背景覆盖整个视口，消除底部色差。box-sizing:border-box 含 padding，
+     内容不足一屏时高度恰为一屏、无多余滚动条；内容超屏时自然滚动。 */
+  min-height: 100vh;
   background-color: var(--page-bg-color);
   position: relative;
   box-sizing: border-box;
@@ -336,24 +338,6 @@ function goPrivacy() {
   justify-content: space-between;
   align-items: center;
   overflow: hidden;
-}
-
-/* 右上角绿色渐变点缀：绝对定位 + 渐变到透明，仅作背景装饰，不影响头像 */
-.settings-page__profile-card-glow {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 320rpx;
-  height: 320rpx;
-  background: linear-gradient(
-    225deg,
-    var(--color-brand-glow-mid) 0%,
-    var(--color-brand-glow-faint) 55%,
-    transparent 100%
-  );
-  border-top-right-radius: 48rpx;
-  z-index: 0;
-  pointer-events: none;
 }
 
 .settings-page__profile-info {
@@ -606,11 +590,6 @@ function goPrivacy() {
     height: 145px;
     padding: 24px;
     border-radius: 24px;
-  }
-  .settings-page__profile-card-glow {
-    width: 160px;
-    height: 160px;
-    border-top-right-radius: 24px;
   }
   .settings-page__profile-name {
     font-size: 28px;
