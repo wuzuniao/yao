@@ -70,6 +70,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://yao.wuzuniao.com/pages/user/agreement</loc>
+    <lastmod>2026-08-04</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://yao.wuzuniao.com/pages/user/privacy</loc>
     <lastmod>2026-08-01</lastmod>
     <changefreq>yearly</changefreq>

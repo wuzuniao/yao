@@ -83,6 +83,13 @@
           }
         },
         {
+          "path": "agreement",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "服务协议 - 用户协议与权利义务"
+          }
+        },
+        {
           "path": "privacy",
           "style": {
             "navigationStyle": "custom",

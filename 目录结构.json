@@ -128,7 +128,7 @@
         "components": {
           "描述": "可复用组件目录",
           "NoticeButton.vue": "通知按钮组件（一级页面专用），图标由全局未读站内信数量驱动（userStore.unreadCount>0 显示 tongzhi_1.png，否则 tongzhi_0.png），onShow 时强制刷新未读数量（绕过节流），触发后端自动标记已读并返回清理后的真实数量；含 NoticeButton 的页面切换时均会触发；点击 navigateTo 直达站内信页 /pages/user/messages。仅用于 index/record/settings 三个一级页面",
-          "BackButton.vue": "返回按钮组件（次级页面专用），以 NoticeButton 为蓝本，图标使用 fanhui.png，点击触发 uni.navigateBack 返回上一页（页面栈为空时 reLaunch 回首页）。用于 notification/plan/profile/login/register/contact/help/messages/privacy/forgot-password 等次级页面",
+          "BackButton.vue": "返回按钮组件（次级页面专用），以 NoticeButton 为蓝本，图标使用 fanhui.png，点击触发 uni.navigateBack 返回上一页（页面栈为空时 reLaunch 回首页）。用于 notification/plan/profile/login/register/contact/help/messages/agreement/privacy/forgot-password 等次级页面",
           "BottomNav.vue": "底部导航栏组件，包含首页、记录、设置三个导航项。首页 tab 含 guide-target-home-tab 类、设置 tab 含 guide-target-settings-tab 类，供新手引导定位（useGuideTarget composable 上报位置）",
           "PageHeader.vue": "页面标题区复用组件，Props: title(必填)/desc(可选,文本自动换行)，用于 notification/profile/help/contact 等页面",
           "AnnouncementCard.vue": "首页公告临时卡片组件：接收最近7天公告，用 announcementRead 过滤未读后逐条轮播（每条10秒，最新优先），flex:1 填充首页空白高度保持一屏；倒计时常驻右上角；点击卡片暂停倒计时并满屏展示（全屏卡片固定高度70vh，标题+内容置于 scroll-view，标题多行完整显示，内容超出时卡片内右侧滚动），再次点击缩回继续",
@@ -175,6 +175,7 @@
             "contact.vue": "联系我们页面，静态展示客服邮箱、微信公众号与QQ群二维码",
             "help.vue": "帮助中心页面，静态展示常见问题问答（FAQ）卡片列表",
             "messages.vue": "站内信页面，从 notification_logs 表查询当前用户所有站内信（JOIN渠道过滤+LEFT JOIN计划取名称/备注，后端自动标记已读后返回精简字段 id/plan_name/plan_remark/send_time/is_unread）。卡片展示计划名称+备注说明+发送时间；未读(is_unread=true)左侧绿色高亮条+浅绿背景；点击未读卡片调API标记已读，前端实时移除高亮(卡片保留)；全部已读按钮(存在未读时显示，防抖置灰，点击后移除所有高亮卡片保留)；通知按钮图标随未读状态切换(tongzhi_1/tongzhi_0)；打开页面时加载列表(后端自动标记已读并返回 unread_count)，不再使用轮询；onReachBottom分页加载；加载中/空数据/加载失败三态反馈(失败可点击重试)",
+            "agreement.vue": "服务协议页面，布局与 privacy.vue 完全一致：heading(64rpx 大标题) + intro(前言同意机制) + card(白底圆角阴影 gap:64rpx) 包裹 13 个 section(section-title 48rpx + para 32rpx/pre-line)，列表复用 __list/__item/__bullet/__list-text，重点条款嵌套 __em 加粗；style 全局同名（非 scoped），统一引用 --page-bg-color/--color-text-primary 等真实 token 并含 @media(min-width:768px) 平板断点；themeKey 由 main.js 全局 mixin 注入，含 BackButton 返回、useShare({title:'服务协议'})；满足应用商店《用户协议》独立链接合规要求",
             "privacy.vue": "隐私政策页面，静态展示十一章节政策条款，含权限清单/本地存储/第三方共享三张横向滚动表格",
             "forgot-password.vue": "找回密码页面，两步流程：步骤1输入邮箱+验证码验证身份，步骤2设置新密码。所有输入框均接入字符限制提示，验证码错误统一提示'请输入正确验证码'",
             "announcement.vue": "公告管理页面（分包 pages/user，仅管理员可进入，onLoad 校验 role==7 否则提示无权限并退回）。顶部'公告模板'入口卡点击后编辑 id=1 的公共模板（标题+内容+取消/更新）；'发布公告'入口卡点击后显示表单，自动用 id=1 模板内容预填充输入框，提交后新增公告记录；已有公告卡片列表从数据库加载（已排除 id=1 模板），点击卡片就地展开编辑表单（标题+内容+取消/更新），右上角红色垃圾桶图标点击二次确认后删除；样式与交互对齐 plan.vue（announcement-page__ 前缀/BEM/宽屏断点）"
@@ -204,15 +205,16 @@
           "ios-iphone-spotlight-120.png": "iOS Spotlight 图标 @3x 120x120（待放置）"
         }
       },
-      "public": {
-        "描述": "H5 端 SEO 静态资源目录，由 vite.config.js 在 H5 模式下设 publicDir='public' 复制到 H5 产物根目录（标准路径供爬虫识别）；小程序构建不设 publicDir，故不进入小程序产物",
-        "robots.txt": "爬虫抓取规则：允许全部抓取，并声明 sitemap.xml 位置",
-        "sitemap.xml": "站点地图：覆盖 H5 全部 14 个可路由页面（按 pages.json 路由路径），含 lastmod/changefreq/priority 与中文 hreflang 备用链接"
-      },
-      "App.vue": "应用根组件。onLaunch 内用 #ifdef APP-PLUS 调用 useAppPush().registerPushClick() 注册推送通知栏点击监听（registerPushClick 内部已幂等初始化友盟 SDK，不在此上报设备标识）。onShow 内调用 useTokenRefresh().tryRefresh() 对已登录态临近过期的 token 静默续期（多端一致，不跳页）",
+        "public": {
+          "描述": "H5 端 SEO 静态资源目录，由 vite.config.js 在 H5 模式下设 publicDir='public' 复制到 H5 产物根目录（标准路径供爬虫识别）；小程序构建不设 publicDir，故不进入小程序产物",
+          "robots.txt": "爬虫抓取规则：允许全部抓取，并声明 sitemap.xml 位置",
+          "sitemap.xml": "站点地图：覆盖 H5 全部 15 个可路由页面（按 pages.json 路由路径，含新增 agreement），含 lastmod/changefreq/priority 与中文 hreflang 备用链接"
+        },
+      "App.vue": "应用根组件。onLaunch 内用 #ifdef APP-PLUS 注册推送通知栏点击监听：若存在 uni.onAgreePrivacy 则监听用户同意隐私政策后再调用 useAppPush().registerPushClick()（内部幂等初始化友盟 SDK、采集 Device Token），否则降级为直接注册——确保隐私同意前不采集设备信息（国内上架合规）。onShow 内调用 useTokenRefresh().tryRefresh() 对已登录态临近过期的 token 静默续期（多端一致，不跳页）",
       "main.js": "应用入口文件",
-      "manifest.json": "uni-app 多端配置文件：包含 mp-weixin（微信小程序：appid/urlCheck/usingComponents/lazyCodeLoading）、app-plus（App，appid __UNI__528E611，用于 HBuilderX 打包 Android/iOS；modules 开启 Push 模块与 Fingerprint 指纹识别模块（后者为 uni.checkIsSupportSoterAuthentication / uni.startSoterAuthentication 等生物认证 API 的原生依赖，未声明会在 App 端运行时报「打包时未添加 fingerprint 模块」，改后须重新云打包或制作自定义基座才生效），nativePlugins 已置空——友盟推送改由 uni_modules/xtf-umengpush 插件（已购普通授权版，绑定 __UNI__528E611 / 包名 com.wuzuniao.yao）集成，appKey/messageSecret 配置在插件自带 umeng-push-config.json 而非 manifest；android.permissions 增加 POST_NOTIFICATIONS/VIBRATE/RECEIVE_BOOT_COMPLETED 通知相关权限，android.packagename 为 com.wuzuniao.yao 与插件绑定包名一致，iOS 侧 appkey 留空待苹果开发者账号就绪后再填）、h5（H5 端：router.mode=history + router.base=/ + publicPath=/ + devServer.port=5173 + title，title 与 index.html 的 title 标签一致为 SEO 友好标题）等平台配置；vueVersion=3",
-      "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password/announcement)；每个页面的 navigationBarTitleText 已优化为 SEO/GEO 友好描述性标题（如「打卡记录 - 日历查看与按月统计」），H5 端注入 document.title、微信搜一搜可用，不影响小程序 UI（navigationStyle 均为 custom）",
+      "manifest.json": "uni-app 多端配置文件：包含 mp-weixin（微信小程序：appid/urlCheck/usingComponents/lazyCodeLoading）、app-plus（App，appid __UNI__528E611，用于 HBuilderX 打包 Android/iOS；modules 开启 Push 模块与 Fingerprint 指纹识别模块（后者为 uni.checkIsSupportSoterAuthentication / uni.startSoterAuthentication 等生物认证 API 的原生依赖，未声明会在 App 端运行时报「打包时未添加 fingerprint 模块」，改后须重新云打包或制作自定义基座才生效）；app-plus.privacy 设 { prompt: template } 启用 Android 原生隐私提示框（配合 androidPrivacy.json，国内上架合规，消云端打包「缺少隐私配置」Warning）；nativePlugins 已置空——友盟推送改由 uni_modules/xtf-umengpush 插件（已购普通授权版，绑定 __UNI__528E611 / 包名 com.wuzuniao.yao）集成，appKey/messageSecret 配置在插件自带 umeng-push-config.json 而非 manifest；android.permissions 仅 INTERNET/ACCESS_NETWORK_STATE/ACCESS_WIFI_STATE/POST_NOTIFICATIONS/VIBRATE/RECEIVE_BOOT_COMPLETED（无读写存储/设备信息/定位等敏感权限，已最小化），android.packagename 为 com.wuzuniao.yao 与插件绑定包名一致，iOS 侧 appkey 留空待苹果开发者账号就绪后再填）、h5（H5 端：router.mode=history + router.base=/ + publicPath=/ + devServer.port=5173 + title，title 与 index.html 的 title 标签一致为 SEO 友好标题）等平台配置；vueVersion=3",
+      "androidPrivacy.json": "Android 原生隐私政策提示框配置（HX 3.2.1+，prompt:template）。message 富文本含《服务协议》《隐私政策》双链接，分别指向线上 H5 真实页面 https://yao.wuzuniao.com/pages/user/agreement 与 https://yao.wuzuniao.com/pages/user/privacy（DCloud 原生弹窗 a 链接不支持 uni-app 路由，仅支持 http(s) 外链，故用线上页面 URL 满足「真实页面」；hrefLoader:system 用系统浏览器打开）。含 second 二次确认、disagreeMode、styles 样式。须重新云打包/自定义基座才生效。注意：本文件不能加注释",
+      "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/agreement/privacy/forgot-password/announcement)；每个页面的 navigationBarTitleText 已优化为 SEO/GEO 友好描述性标题（如「打卡记录 - 日历查看与按月统计」），H5 端注入 document.title、微信搜一搜可用，不影响小程序 UI（navigationStyle 均为 custom）",
       "uni.scss": "uni-app 约定文件，编译期自动全局引入的 SCSS 变量层（$uni-*）。非项目配色真源——配色真源为 global.scss 的设计令牌。保留的 $uni-* 均为兼容兜底（当前未被任何业务代码引用），每行注释标明「对齐 --color-*」，取值与 global.scss 语义令牌一致；已删除三个零引用且与项目配色无关的 uni 颜色遗留变量（$uni-color-title/subtitle/paragraph）。新增配色方案只需改 global.scss，本文件无需改动",
       "index.html": "H5 端 HTML 入口文件：含 SEO 元信息（title/description/keywords/robots/author/theme-color/canonical）、Open Graph 与 Twitter Card 社交分享标签、SoftwareApplication 类型 JSON-LD 结构化数据（供搜索引擎与 AI 生成式引擎准确理解应用类型、功能与许可）；保留 uni-app SSR 占位符（preload-links/app-context/app-html 注释与 div）与 viewport 刘海屏兼容脚本；script src 指向 /main.js",
       "package.json": "npm依赖配置；scripts 经 scripts/run-uni.js 包装以设置 UNI_INPUT_DIR；新增 @noble/ciphers 与 @noble/hashes 依赖（App 端指纹登录本地加密存储 biometric_token 使用，纯 ESM、支持 AES-256-GCM）",

@@ -1,3 +1,44 @@
 {
-    "prompt" : "none"
+    "version": "1",
+    "prompt": "template",
+    "title": "服务协议和隐私政策",
+    "message": "　　感谢您使用「无足鸟按时吃药打卡」！我们非常重视您的个人信息和隐私保护。在您使用本应用前，请仔细阅读<a href=\"https://yao.wuzuniao.com/pages/user/privacy\">《服务协议》</a>和<a href=\"https://yao.wuzuniao.com/pages/user/privacy\">《隐私政策》</a>。如您同意，请点击「同意」并开始使用本应用。",
+    "buttonAccept": "同意",
+    "buttonRefuse": "暂不同意",
+    "hrefLoader": "system",
+    "backToExit": true,
+    "second": {
+        "title": "温馨提示",
+        "message": "　　在您使用本应用前，需要阅读并同意<a href=\"https://yao.wuzuniao.com/pages/user/agreement\">《服务协议》</a>与<a href=\"https://yao.wuzuniao.com/pages/user/privacy\">《隐私政策》</a>。如果您不同意，将无法使用本应用。",
+        "buttonAccept": "同意并继续",
+        "buttonRefuse": "仍不同意"
+    },
+    "disagreeMode": {
+        "loadNativePlugin": false,
+        "visitorEntry": false
+    },
+    "styles": {
+        "backgroundColor": "#ffffff",
+        "borderRadius": "12px",
+        "title": {
+            "color": "#171717",
+            "size": "18px"
+        },
+        "message": {
+            "color": "#555555",
+            "size": "14px",
+            "lineHeight": "22px",
+            "align": "left"
+        },
+        "buttonAccept": {
+            "color": "#ffffff",
+            "size": "16px",
+            "backgroundColor": "#3a7d44"
+        },
+        "buttonRefuse": {
+            "color": "#888888",
+            "size": "16px",
+            "backgroundColor": "#f2f2f2"
+        }
+    }
 }

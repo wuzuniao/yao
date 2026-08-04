@@ -142,6 +142,8 @@
               <view v-if="agreed" class="register-page__checkmark"></view>
             </view>
             <text class="register-page__agree-text">查看并同意</text>
+            <text class="register-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
+            <text class="register-page__agree-text">和</text>
             <text class="register-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
           </view>
 
@@ -452,6 +454,15 @@ function goLogin() {
 function goPrivacy() {
   uni.navigateTo({
     url: '/pages/user/privacy',
+    fail: () => {
+      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+    }
+  })
+}
+
+function goAgreement() {
+  uni.navigateTo({
+    url: '/pages/user/agreement',
     fail: () => {
       uni.showToast({ title: '页面跳转失败', icon: 'none' })
     }

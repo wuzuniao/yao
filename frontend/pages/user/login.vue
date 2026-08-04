@@ -16,6 +16,8 @@
           <view v-if="wechatAgree" class="login-page__checkmark"></view>
         </view>
         <text class="login-page__remember-text">查看并同意</text>
+        <text class="login-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
+        <text class="login-page__remember-text">和</text>
         <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
       </view>
       <!-- 切换到账号密码登录引导（放大突出） -->
@@ -38,6 +40,8 @@
           <view v-if="fingerprintAgree" class="login-page__checkmark"></view>
         </view>
         <text class="login-page__remember-text">查看并同意</text>
+        <text class="login-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
+        <text class="login-page__remember-text">和</text>
         <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
       </view>
       <!-- 切换到账号密码登录引导 -->
@@ -109,6 +113,8 @@
               <view v-if="remember" class="login-page__checkmark"></view>
             </view>
             <text class="login-page__remember-text">查看并同意</text>
+            <text class="login-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
+            <text class="login-page__remember-text">和</text>
             <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
           </view>
           <view class="login-page__submit guide-target-login-submit" @click="handleLogin">
@@ -332,7 +338,7 @@ async function handleLogin() {
   if (!remember.value) {
     uni.showModal({
       title: '提示',
-      content: '请先查看并同意《隐私政策》',
+      content: '请先查看并同意《服务协议》和《隐私政策》',
       confirmText: '确认',
       cancelText: '取消',
       success: (res) => {
@@ -397,7 +403,7 @@ function handleWechatLogin() {
   if (!wechatAgree.value) {
     uni.showModal({
       title: '提示',
-      content: '请先查看并同意《隐私政策》',
+      content: '请先查看并同意《服务协议》和《隐私政策》',
       confirmText: '确认',
       cancelText: '取消',
       success: (res) => {
@@ -479,7 +485,7 @@ async function handleFingerprintLogin() {
   if (!fingerprintAgree.value) {
     uni.showModal({
       title: '提示',
-      content: '请先查看并同意《隐私政策》',
+      content: '请先查看并同意《服务协议》和《隐私政策》',
       confirmText: '确认',
       cancelText: '取消',
       success: (res) => {
@@ -541,6 +547,15 @@ function goRegister() {
 function goPrivacy() {
   uni.navigateTo({
     url: '/pages/user/privacy',
+    fail: () => {
+      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+    }
+  })
+}
+
+function goAgreement() {
+  uni.navigateTo({
+    url: '/pages/user/agreement',
     fail: () => {
       uni.showToast({ title: '页面跳转失败', icon: 'none' })
     }

@@ -10,10 +10,20 @@
 			return { themeStore }
 		},
 		onLaunch: function() {
-			// App 端：先初始化友盟推送 SDK，再注册通知栏点击跳转监听
+			// App 端：注册通知栏点击跳转监听并初始化友盟推送 SDK
+			// 隐私合规：原生隐私弹窗（app-plus.privacy=template）会在用户同意前
+			// 自动拦截三方 SDK 的设备信息采集；此处进一步将 SDK 初始化推迟到
+			// 用户点击「同意」之后，避免在隐私同意前采集设备标识（Device Token）。
 			// #ifdef APP-PLUS
 			const appPush = useAppPush()
-			appPush.registerPushClick()
+			if (typeof uni.onAgreePrivacy === 'function') {
+				// 监听隐私同意事件，同意后再初始化推送（未同意则不上报设备信息）
+				uni.onAgreePrivacy(() => {
+					appPush.registerPushClick()
+				})
+			} else {
+				appPush.registerPushClick()
+			}
 			// #endif
 		},
 		onShow: function() {

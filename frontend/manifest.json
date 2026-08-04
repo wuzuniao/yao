@@ -23,6 +23,9 @@
             "Push" : {},
             "Fingerprint" : {}
         },
+        "privacy" : {
+            "prompt" : "template"
+        },
         "distribute" : {
             "android" : {
                 "packagename" : "com.wuzuniao.yao",

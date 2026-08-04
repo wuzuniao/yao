@@ -54,7 +54,7 @@
         </view>
       </view>
 
-      <!-- 分组 2：帮助中心 + 联系我们 + 隐私政策 -->
+      <!-- 分组 2：帮助中心 + 联系我们 + 服务协议 + 隐私政策 -->
       <view class="settings-page__group2">
         <view class="settings-page__group2-item settings-page__group2-item--bordered" @click="goHelp">
           <text class="settings-page__group2-text">帮助中心</text>
@@ -62,6 +62,10 @@
         </view>
         <view class="settings-page__group2-item settings-page__group2-item--bordered" @click="goContact">
           <text class="settings-page__group2-text">联系我们</text>
+          <view class="u-arrow-right"></view>
+        </view>
+        <view class="settings-page__group2-item settings-page__group2-item--bordered" @click="goAgreement">
+          <text class="settings-page__group2-text">服务协议</text>
           <view class="u-arrow-right"></view>
         </view>
         <view class="settings-page__group2-item" @click="goPrivacy">
@@ -288,6 +292,10 @@ function goContact() {
 
 function goPrivacy() {
   navigate('/pages/user/privacy')
+}
+
+function goAgreement() {
+  navigate('/pages/user/agreement')
 }
 </script>
 
