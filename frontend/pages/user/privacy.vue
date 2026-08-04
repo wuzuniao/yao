@@ -239,7 +239,7 @@ useShare({ title: '隐私政策' })
   box-sizing: border-box;
   background: var(--color-card-bg);
   border-radius: 48rpx;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 64rpx;
@@ -251,7 +251,7 @@ useShare({ title: '隐私政策' })
   flex-direction: column;
 }
 
-/* 章节标题（对应 Heading 3，24px/32px #0e0f0c） */
+/* 章节标题（对应 Heading 3，24px/32px var(--color-text-primary)） */
 .privacy-page__section-title {
   color: var(--color-text-primary);
   font-size: 48rpx;
@@ -261,7 +261,7 @@ useShare({ title: '隐私政策' })
   white-space: pre-line;
 }
 
-/* 普通段落（对应 Container，16px/24px #454745，padding-bottom 16px） */
+/* 普通段落（对应 Container，16px/24px var(--color-text-secondary)，padding-bottom 16px） */
 .privacy-page__para {
   color: var(--color-text-secondary);
   font-size: 32rpx;
@@ -275,7 +275,7 @@ useShare({ title: '隐私政策' })
   padding-top: 32rpx;
 }
 
-/* 子标题（对应 Heading 4，16px/24px #0e0f0c，padding-bottom 8px） */
+/* 子标题（对应 Heading 4，16px/24px var(--color-text-primary)，padding-bottom 8px） */
 .privacy-page__sub-title {
   color: var(--color-text-primary);
   font-size: 32rpx;
@@ -380,7 +380,7 @@ useShare({ title: '隐私政策' })
   white-space: pre-line;
 }
 
-/* 表头单元格文字颜色 #0e0f0c */
+/* 表头单元格文字颜色 var(--color-text-primary) */
 .privacy-page__table-row--header .privacy-page__table-cell {
   color: var(--color-text-primary);
   font-weight: 600;

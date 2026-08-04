@@ -382,7 +382,7 @@ onShow(() => {
   box-sizing: border-box;
   border-radius: 24rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 16rpx;
@@ -534,7 +534,7 @@ onShow(() => {
   box-sizing: border-box;
   border-radius: 24rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 32rpx;

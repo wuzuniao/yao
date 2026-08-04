@@ -476,7 +476,7 @@ function getCurrentTime() {
   return `${h}:${m}`
 }
 
-// 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
+// 输入框 placeholder 聚焦交互：聚焦变浅灰 var(--color-text-disabled)，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
 
 // 输入框字符限制（与后端字段限制严格匹配：计划名称100字符，备注255字符）
@@ -1200,7 +1200,7 @@ async function handleSaveEdit(planId) {
   box-sizing: border-box;
   border-radius: 9999px;
   background: var(--color-brand);
-  box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-popup);
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -1239,7 +1239,7 @@ async function handleSaveEdit(planId) {
   box-sizing: border-box;
   border-radius: 24rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 

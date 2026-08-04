@@ -330,7 +330,7 @@ function goPrivacy() {
   box-sizing: border-box;
   border-radius: 48rpx;
   background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -347,8 +347,8 @@ function goPrivacy() {
   height: 320rpx;
   background: linear-gradient(
     225deg,
-    rgba(159, 232, 112, 0.45) 0%,
-    rgba(226, 246, 213, 0.18) 55%,
+    var(--color-brand-glow-mid) 0%,
+    var(--color-brand-glow-faint) 55%,
     transparent 100%
   );
   border-top-right-radius: 48rpx;
@@ -455,7 +455,7 @@ function goPrivacy() {
   box-sizing: border-box;
   border-radius: 48rpx;
   background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
 }
 
 .settings-page__admin-title {
@@ -475,7 +475,7 @@ function goPrivacy() {
   box-sizing: border-box;
   border-radius: 48rpx;
   background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
 }
 
 .settings-page__link-card--plan {
@@ -563,7 +563,7 @@ function goPrivacy() {
 .settings-page__group2 {
   border-radius: 48rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 

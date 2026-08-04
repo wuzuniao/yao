@@ -222,7 +222,7 @@ const counting = ref(false)
 const isSending = ref(false)
 const submitting = ref(false)
 
-// 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
+// 输入框 placeholder 聚焦交互：聚焦变浅灰 var(--color-text-disabled)，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
 
 // 输入框字符限制（与后端字段长度严格匹配）
@@ -493,7 +493,7 @@ function goPrivacy() {
   box-sizing: border-box;
   background: var(--color-card-bg);
   border-radius: 48rpx;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 48rpx;
@@ -598,7 +598,7 @@ function goPrivacy() {
   border-radius: 0 24rpx 24rpx 0;
 }
 
-/* 输入框错误态：红色边框（覆盖默认 #c1cab5） */
+/* 输入框错误态：红色边框（覆盖默认 var(--color-border-input)） */
 .register-page__input--error {
   box-shadow: inset 0 0 0 1px var(--color-form-error);
 }

@@ -7,67 +7,170 @@
  *   - 微信小程序 CSS 变量支持：https://developers.weixin.qq.com/miniprogram/dev/framework/view/wxss.html
  * CSS 变量在 App.vue 全局引入本文件后，所有页面均可直接通过 var(--xxx) 引用，
  * 避免在多个页面硬编码相同的颜色 / 阴影 / 圆角值，确保设计一致性。
+ *
+ * ----- 令牌分层（Design Tokens 三层架构）-----
+ *   1) Palette（原始色板）：--palette-*，集中存放所有基础 hex，是配色方案的唯一定义源。
+ *      新增一套配色（如深色模式）只需覆盖本层对应的 --palette-* 取值。
+ *   2) Semantic（语义令牌）：--color-*，业务代码只引用这一层，含义稳定不随方案变化
+ *      （如 --color-text-primary 永远是「主文本」，dark 方案下只是值变浅/变深）。
+ *   3) Scheme（配色方案）：通过 :root[data-theme] / page[data-theme] 切换，
+ *      默认（不写 data-theme 或 "light"）即下方定义；扩展方案见文件末尾骨架。
+ *  所以「加一套配色方案」= 在 global.scss 末尾追加一个 [data-theme="xxx"] 块覆盖 Palette。
  * ========================================================================== */
 
+/* :root 覆盖 H5 / App Webview；page 为微信小程序原生根元素，二者等价承载令牌。 */
+:root,
 page {
   /* 页面根元素强制撑满视口，避免折叠屏/平板切换宽度后左右出现窗口白边 */
   width: 100%;
   min-height: 100vh;
   background-color: var(--page-bg-color);
+}
 
+/* ==========================================================================
+ * 1) Palette 原始色板（配色方案唯一定义源）
+ * --------------------------------------------------------------------------
+ * 本层集中全部基础色值，按中性 / 品牌 / 功能分组。语义令牌与配色方案均派生自此。
+ * ========================================================================== */
+:root,
+page {
+  /* ----- 中性灰阶 ----- */
+  --palette-neutral-0:   #ffffff;  /* 最亮：卡片背景 */
+  --palette-neutral-5:   #fafafa;  /* 表单区域背景 */
+  --palette-neutral-10:  #f9f9f9;  /* 次级容器背景 */
+  --palette-neutral-15:  #f5f5f5;  /* 悬停/选项背景 */
+  --palette-neutral-20:  #f3f3f4;  /* 分隔线 */
+  --palette-neutral-25:  #f2f3f1;  /* 禁用卡片背景 */
+  --palette-neutral-30:  #f0f0f0;  /* 取消按钮背景 */
+  --palette-neutral-40:  #e8ebe6;  /* 页面背景 / 卡片内描边（源自 Figma record 页采样） */
+  --palette-neutral-45:  #e2e2e2;  /* 卡片阴影描边 */
+  --palette-neutral-50:  #dadada;  /* 未激活圆点 */
+  --palette-neutral-55:  #c1cab5;  /* 输入框外描边 */
+  --palette-neutral-60:  #b3b5b2;  /* 禁用态副标题文字 */
+  --palette-neutral-65:  #9a9c99;  /* 禁用态标题文字 / 禁用按钮背景 */
+  --palette-neutral-70:  #888888;  /* 灰色计数文字 */
+  --palette-neutral-75:  #868685;  /* 占位/箭头 */
+  --palette-neutral-80:  #7a7b79;  /* 弱化变体：时间戳 */
+  --palette-neutral-85:  #5e5f5a;  /* 弱化标签 */
+  --palette-neutral-90:  #454745;  /* 次要文本 */
+  --palette-neutral-95:  #41493a;  /* 表单标签 */
+  --palette-neutral-100: #0e0f0c;  /* 主文本（近黑） */
+
+  /* ----- 品牌色（绿系）----- */
+  --palette-brand-base:      #2f6c00;  /* 主品牌绿 */
+  --palette-brand-dark:      #2e6900;  /* 品牌深绿 */
+  --palette-brand-darker:    #225100;  /* 品牌更深绿 */
+  --palette-brand-light:     #9fe870;  /* 品牌浅绿 */
+  --palette-brand-lightest:  #e8f5e0;  /* 品牌极浅绿 */
+  --palette-brand-selected:  #e2f6d5;  /* 选中态背景 */
+  --palette-brand-unread:    #f1f8e8;  /* 未读卡片背景 */
+
+  /* ----- 功能色 ----- */
+  --palette-success:   #2ead4b;  /* 成功绿 */
+  --palette-wechat:    #07c160;  /* 微信品牌绿 */
+  --palette-danger:    #d03238;  /* 危险红 */
+  --palette-form-error:#e5484d;  /* 表单错误红 */
+  --palette-error-text:#e8553a;  /* 错误提示橙红 */
+  --palette-warning:   #d97706;  /* 警告黄 */
+  --palette-link:      #0066cc;  /* 链接蓝 */
+  --palette-stripe-default: #e1e0da;  /* 卡片条纹默认 */
+  --palette-stripe-paused:  #4a4a4a;  /* 卡片条纹暂停 */
+}
+
+/* ==========================================================================
+ * 2) Semantic 语义令牌（业务代码唯一引用层）
+ * --------------------------------------------------------------------------
+ * 全部由 Palette 派生，业务页面/组件只使用 --color-*，不直接碰 --palette-*。
+ * 配色方案切换时本层名不变，仅底层 Palette 值被覆盖。
+ * ========================================================================== */
+:root,
+page {
   /* ----- 页面背景色 ----- */
-  /* 源自 Figma 设计稿 record 页（node-id=1-220）参考图采样 rgb(232, 235, 230)
-   * Figma MCP 报告的 frame 自身填充为白色，但实际画布背景为 #e8ebe6，
-   * 白色卡片悬浮于此背景之上。 */
-  --page-bg-color: #e8ebe6;
+  --page-bg-color: var(--palette-neutral-40);
 
   /* ----- 文本色 ----- */
-  --color-text-primary: #0e0f0c;    /* 主文本：标题、卡片正文 */
-  --color-text-secondary: #454745;  /* 次要文本：描述、辅助说明 */
-  --color-text-tertiary: #868685;   /* 占位/弱化文本：placeholder、箭头 */
-  --color-text-muted: #7a7b79;      /* 弱化文本变体：时间戳、徽标小字 */
-  --color-text-faded: #888888;      /* 灰色文字：计数、次要数值 */
-  --color-text-disabled: #9a9c99;   /* 禁用态标题文字 */
-  --color-text-disabled-subtle: #b3b5b2; /* 禁用态副标题文字 */
-  --color-label: #41493a;           /* 表单标签、胶囊徽标文字 */
-  --color-label-muted: #5e5f5a;     /* 弱化标签文字：联系页标签 */
-  --color-link: #0066cc;            /* 链接文字 */
-  --color-error-text: #e8553a;      /* 错误提示文字（列表态） */
-  --color-text-inverse: #ffffff;    /* 反色文字：品牌色/危险色等彩色背景上的白色文字与图标 */
+  --color-text-primary: var(--palette-neutral-100); /* 主文本：标题、卡片正文 */
+  --color-text-secondary: var(--palette-neutral-90); /* 次要文本：描述、辅助说明 */
+  --color-text-tertiary: var(--palette-neutral-75);  /* 占位/弱化文本：placeholder、箭头 */
+  --color-text-muted: var(--palette-neutral-80);     /* 弱化文本变体：时间戳、徽标小字 */
+  --color-text-faded: var(--palette-neutral-70);     /* 灰色文字：计数、次要数值 */
+  --color-text-disabled: var(--palette-neutral-65);  /* 禁用态标题文字 */
+  --color-text-disabled-subtle: var(--palette-neutral-60); /* 禁用态副标题文字 */
+  --color-label: var(--palette-neutral-95);          /* 表单标签、胶囊徽标文字 */
+  --color-label-muted: var(--palette-neutral-85);    /* 弱化标签文字：联系页标签 */
+  --color-link: var(--palette-link);                 /* 链接文字 */
+  --color-error-text: var(--palette-error-text);     /* 错误提示文字（列表态） */
+  --color-text-inverse: var(--palette-neutral-0);    /* 反色文字：彩色背景上的白字/图标 */
 
   /* ----- 品牌色 ----- */
-  --color-brand: #2f6c00;           /* 主品牌绿：主按钮、强调态 */
-  --color-brand-bg: #9fe870;        /* 品牌浅绿：次级按钮、激活徽章背景 */
-  --color-brand-dark: #2e6900;      /* 品牌深绿：徽标深色文字 */
-  --color-brand-darker: #225100;    /* 品牌更深绿：选中日文字 */
-  --color-brand-bg-light: #e8f5e0;  /* 品牌极浅绿：徽标浅色背景 */
-  --color-success: #2ead4b;         /* 成功绿：完成状态标识 */
-  --color-wechat: #07c160;          /* 微信品牌绿 */
-  --color-danger: #d03238;          /* 危险红：退出登录、删除等危险操作 */
-  --color-form-error: #e5484d;      /* 表单错误：输入框错误边框、错误提示文字 */
-  --color-warning: #d97706;         /* 警告：字符限制提示等 */
+  --color-brand: var(--palette-brand-base);          /* 主品牌绿：主按钮、强调态 */
+  --color-brand-bg: var(--palette-brand-light);      /* 品牌浅绿：次级按钮、激活徽章背景 */
+  --color-brand-dark: var(--palette-brand-dark);     /* 品牌深绿：徽标深色文字 */
+  --color-brand-darker: var(--palette-brand-darker); /* 品牌更深绿：选中日文字 */
+  --color-brand-bg-light: var(--palette-brand-lightest); /* 品牌极浅绿：徽标浅色背景 */
+  --color-success: var(--palette-success);           /* 成功绿：完成状态标识 */
+  --color-wechat: var(--palette-wechat);             /* 微信品牌绿 */
+  --color-danger: var(--palette-danger);             /* 危险红：退出登录、删除等 */
+  --color-form-error: var(--palette-form-error);     /* 表单错误：边框/提示 */
+  --color-warning: var(--palette-warning);           /* 警告：字符限制提示等 */
 
   /* ----- 卡片 / 容器 ----- */
-  --color-card-bg: #ffffff;
-  --color-card-bg-alt: #f9f9f9;     /* 输入框、次级容器背景 */
-  --color-border: #e8ebe6;          /* 卡片内描边、分隔线 */
-  --color-border-input: #c1cab5;    /* 输入框外描边 */
-  --color-border-card: #e2e2e2;     /* 卡片阴影描边（box-shadow 用） */
-  --color-separator: #f3f3f4;       /* 分组分隔线背景 */
-  --color-selected-bg: #e2f6d5;     /* 选中态背景 */
-  --color-surface-form: #fafafa;    /* 表单区域背景 */
-  --color-surface-hover: #f5f5f5;   /* 悬停/选项背景 */
-  --color-unread-bg: #f1f8e8;       /* 未读卡片背景 */
-  --color-card-disabled-bg: #f2f3f1; /* 禁用卡片背景 */
-  --color-btn-cancel-bg: #f0f0f0;   /* 取消按钮背景 */
-  --color-btn-disabled-bg: #8a8a8a; /* 禁用按钮背景 */
-  --color-dot-inactive: #dadada;    /* 未激活圆点背景 */
-  --color-stripe-default: #e1e0da;  /* 卡片条纹默认色 */
-  --color-stripe-paused: #4a4a4a;   /* 卡片条纹暂停色 */
+  --color-card-bg: var(--palette-neutral-0);         /* 卡片背景 */
+  --color-card-bg-alt: var(--palette-neutral-10);    /* 输入框、次级容器背景 */
+  --color-border: var(--palette-neutral-40);         /* 卡片内描边、分隔线 */
+  --color-border-input: var(--palette-neutral-55);   /* 输入框外描边 */
+  --color-border-card: var(--palette-neutral-45);    /* 卡片阴影描边 */
+  --color-separator: var(--palette-neutral-20);      /* 分组分隔线背景 */
+  --color-selected-bg: var(--palette-brand-selected); /* 选中态背景 */
+  --color-surface-form: var(--palette-neutral-5);    /* 表单区域背景 */
+  --color-surface-hover: var(--palette-neutral-15);  /* 悬停/选项背景 */
+  --color-unread-bg: var(--palette-brand-unread);    /* 未读卡片背景 */
+  --color-card-disabled-bg: var(--palette-neutral-25); /* 禁用卡片背景 */
+  --color-btn-cancel-bg: var(--palette-neutral-30);  /* 取消按钮背景 */
+  --color-btn-disabled-bg: var(--palette-neutral-65); /* 禁用按钮背景 */
+  --color-dot-inactive: var(--palette-neutral-50);   /* 未激活圆点背景 */
+  --color-stripe-default: var(--palette-stripe-default); /* 卡片条纹默认色 */
+  --color-stripe-paused: var(--palette-stripe-paused);   /* 卡片条纹暂停色 */
 
   /* ----- 阴影（box-shadow 偏移与模糊半径保留 px，视觉效果不应缩放）----- */
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);          /* 卡片默认阴影 */
+  --shadow-popup: 0 4px 6px -4px rgba(0, 0, 0, 0.1),        /* 弹层/悬浮卡阴影 */
+                  0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.15);           /* 高亮浮起阴影 */
+  --shadow-body-center: 0 0 12px rgba(0, 0, 0, 0.08);       /* H5 居中容器投影 */
+
+  /* ----- 遮罩（半透明黑，按透明度分档）----- */
+  --color-mask-40: rgba(0, 0, 0, 0.4);  /* 满屏遮罩（公告/首页） */
+  --color-mask-50: rgba(0, 0, 0, 0.5);  /* 中等遮罩（通知页） */
+  --color-mask-60: rgba(0, 0, 0, 0.6);  /* 深遮罩（引导蒙版） */
+
+  /* ----- 品牌绿光晕（品牌浅绿 #9fe870 / 选中背景 #e2f6d5 带 alpha）----- */
+  --color-brand-glow: rgba(159, 232, 112, 0.6);     /* 光晕标准档 */
+  --color-brand-glow-soft: rgba(159, 232, 112, 0.4);/* 光晕柔和档 */
+  --color-brand-glow-mid: rgba(159, 232, 112, 0.45);/* 光晕中档（渐变专用） */
+  --color-brand-glow-strong: rgba(159, 232, 112, 0.8); /* 光晕强档 */
+  --color-brand-glow-faint: rgba(226, 246, 213, 0.18); /* 光晕极淡档（渐变收尾） */
 }
+
+/* ==========================================================================
+ * 3) Scheme 配色方案（扩展点）
+ * --------------------------------------------------------------------------
+ * 默认即上面 light 方案（不写 data-theme 或 data-theme="light" 均生效）。
+ * 切换方式：在应用根节点（page / 根 view）设置 data-theme="dark" 等属性即可整站换肤。
+ * 新增一套配色方案：复制下方骨架，仅覆盖需要变化的 --palette-* 取值，
+ *   语义令牌与业务代码无需任何改动。
+ * ========================================================================== */
+/*
+[data-theme="dark"] {
+  :root,
+  page {
+    --palette-neutral-0:   #1a1a1a;  // 卡片背景 → 深色
+    --palette-neutral-40:  #121212;  // 页面背景 → 更深
+    --palette-neutral-100: #f5f5f5;  // 主文本 → 亮色
+    // …… 其余 --palette-* 按需覆盖
+  }
+}
+*/
 
 /* ==========================================================================
  * 复用工具类
@@ -107,12 +210,12 @@ page {
 /* #ifdef H5 */
 @media screen and (min-width: 768px) {
   html {
-    background-color: #e8ebe6;
+    background-color: var(--page-bg-color);
   }
   body {
     max-width: 480px;
     margin: 0 auto;
-    box-shadow: 0 0 12px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-body-center);
   }
 }
 /* #endif */

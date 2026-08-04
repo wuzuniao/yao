@@ -1033,7 +1033,7 @@ onUnmounted(() => {
   border-radius: 64rpx;
   background: var(--color-card-bg);
   /* 1px 内描边保留避免高分屏消失 */
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
   display: flex;
   flex-direction: column;
 }
@@ -1115,7 +1115,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   border-radius: 64rpx;
   background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
   display: flex;
   flex-direction: column;
 }
@@ -1225,7 +1225,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   border-radius: 64rpx;
   background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
   display: flex;
   flex-direction: column;
 }
@@ -1316,7 +1316,7 @@ onUnmounted(() => {
   border-radius: 64rpx;
   background: var(--color-card-bg);
   /* box-shadow 偏移/模糊保留 px（视觉特效不随屏缩放），1px 内描边保留 */
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
 }
 
 .index-page__primary-copy {
@@ -1461,7 +1461,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-mask-40);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1543,7 +1543,7 @@ onUnmounted(() => {
   border-radius: 9999px;
   background: var(--color-danger);
   /* box-shadow 偏移/模糊保留 px */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   align-items: center;

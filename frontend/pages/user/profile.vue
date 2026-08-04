@@ -283,12 +283,17 @@
         <!-- #ifdef APP-PLUS -->
         <view v-if="showBiometric" class="profile-page__group-item">
           <text class="profile-page__group-text">指纹登录</text>
-          <switch
+          <!-- 纯 CSS 手写开关：原生 switch 的 color 属性编译期取色、不支持 var()，
+               故手写以引用语义令牌 var(--color-wechat)，保持全局单一配色真源 -->
+          <view
             class="profile-page__biometric-switch"
-            :checked="biometricEnabled"
-            @change="toggleBiometric"
-            color="#07c160"
-          />
+            :class="{ 'profile-page__biometric-switch--on': biometricEnabled }"
+            role="switch"
+            :aria-checked="biometricEnabled"
+            @click="toggleBiometric"
+          >
+            <view class="profile-page__biometric-switch-knob" />
+          </view>
         </view>
         <!-- #endif -->
       </view>
@@ -933,7 +938,7 @@ function handleLogout() {
 .profile-page__group {
   border-radius: 48rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -968,10 +973,31 @@ function handleLogout() {
   color: var(--color-danger);
 }
 
-/* 指纹登录开关：行右侧 switch，与修改邮箱项同组视觉一致 */
+/* 指纹登录开关：纯 CSS 手写开关（替代原生 switch，以支持 var() 单一配色真源） */
 .profile-page__biometric-switch {
-  transform: scale(0.9);
-  transform-origin: right center;
+  position: relative;
+  width: 88rpx;
+  height: 48rpx;
+  border-radius: 9999px;
+  background: var(--color-border-input); /* 关态轨道色 */
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.profile-page__biometric-switch--on {
+  background: var(--color-wechat); /* 开态轨道色（微信绿，等价于原 #07c160） */
+}
+.profile-page__biometric-switch-knob {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: var(--color-text-inverse); /* 白色滑块 */
+  transition: transform 0.2s ease;
+}
+.profile-page__biometric-switch--on .profile-page__biometric-switch-knob {
+  transform: translateX(40rpx);
 }
 
 /* ===== 动态表单区域 ===== */

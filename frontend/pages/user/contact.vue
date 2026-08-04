@@ -101,7 +101,7 @@ useShare({ title: '联系我们' })
   box-sizing: border-box;
   background: var(--color-card-bg);
   border-radius: 48rpx;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   justify-content: center;

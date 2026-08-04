@@ -154,7 +154,7 @@ onUnmounted(() => {
   border-radius: 64rpx;
   background: var(--color-card-bg);
   /* 与首页任务卡一致的描边/阴影 */
-  box-shadow: inset 0 0 0 1px var(--color-border-card), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -227,7 +227,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-mask-40);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -248,7 +248,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   border-radius: 64rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   /* 卡片轻微缩放弹出 */

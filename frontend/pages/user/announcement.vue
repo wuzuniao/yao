@@ -671,7 +671,7 @@ async function handleUpdate(announcementId) {
   box-sizing: border-box;
   border-radius: 9999px;
   background: var(--color-brand);
-  box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-popup);
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -703,7 +703,7 @@ async function handleUpdate(announcementId) {
   box-sizing: border-box;
   border-radius: 24rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 

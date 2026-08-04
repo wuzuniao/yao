@@ -122,7 +122,7 @@
           },
           "styles": {
             "描述": "全局样式目录",
-            "global.scss": "全局样式文件，定义 CSS 设计令牌（文本色/品牌色/卡片色/阴影/圆角/页面间距等 CSS 变量）与 .u-arrow-right 右箭头工具类；H5 端用 /* #ifdef H5 */ 包裹 @media (min-width:768px) 媒体查询，限制 body max-width:480px 居中显示，html 背景色 #e8ebe6 避免两侧突兀，移动端 H5（<768px）不触发保持原始全屏自适应"
+            "global.scss": "全局样式文件，定义三层设计令牌（Design Tokens）与 .u-arrow-right 右箭头工具类，是全项目唯一配色真源。令牌分层：1) Palette 原始色板（--palette-*，按中性灰阶/品牌绿系/功能色分组，为配色方案唯一定义源）；2) Semantic 语义令牌（--color-*，业务代码唯一引用层，全部由 Palette 派生；含阴影 --shadow-*、遮罩 --color-mask-40/50/60、品牌绿光晕 --color-brand-glow-*）；3) Scheme 配色方案（通过 :root[data-theme]/page[data-theme] 切换，默认 light 已内联，文件末尾预留 [data-theme=\"dark\"] 骨架注释）。新增一套配色方案=在末尾追加一个 [data-theme] 块覆盖 --palette-*，业务代码零改动。令牌同时声明于 :root 与 page（page 承载微信小程序原生根），所有页面/组件的颜色 shadow/mask/glow 均引用语义令牌，无散落色值（仅 profile.vue 的 uni switch 原生 color 属性因不支持 var() 保留 #07c160 并注释等价于 --color-wechat）。H5 居中媒体查询 html 背景与 body 投影改用语义令牌跟随方案"
           }
         },
         "components": {
@@ -212,7 +212,7 @@
       "main.js": "应用入口文件",
       "manifest.json": "uni-app 多端配置文件：包含 mp-weixin（微信小程序：appid/urlCheck/usingComponents/lazyCodeLoading）、app-plus（App，appid __UNI__528E611，用于 HBuilderX 打包 Android/iOS；modules 开启 Push 模块，nativePlugins 已置空——友盟推送改由 uni_modules/xtf-umengpush 插件（已购普通授权版，绑定 __UNI__528E611 / 包名 com.wuzuniao.yao）集成，appKey/messageSecret 配置在插件自带 umeng-push-config.json 而非 manifest；android.permissions 增加 POST_NOTIFICATIONS/VIBRATE/RECEIVE_BOOT_COMPLETED 通知相关权限，android.packagename 为 com.wuzuniao.yao 与插件绑定包名一致，iOS 侧 appkey 留空待苹果开发者账号就绪后再填）、h5（H5 端：router.mode=history + router.base=/ + publicPath=/ + devServer.port=5173 + title，title 与 index.html 的 title 标签一致为 SEO 友好标题）等平台配置；vueVersion=3",
       "pages.json": "路由配置文件，pages(首页/记录/设置/通知方式/制定计划)与subPackages注册(用户分包：profile/login/register/contact/help/messages/privacy/forgot-password/announcement)；每个页面的 navigationBarTitleText 已优化为 SEO/GEO 友好描述性标题（如「打卡记录 - 日历查看与按月统计」），H5 端注入 document.title、微信搜一搜可用，不影响小程序 UI（navigationStyle 均为 custom）",
-      "uni.scss": "全局可用的SCSS变量",
+      "uni.scss": "uni-app 约定文件，编译期自动全局引入的 SCSS 变量层（$uni-*）。非项目配色真源——配色真源为 global.scss 的设计令牌。保留的 $uni-* 均为兼容兜底（当前未被任何业务代码引用），每行注释标明「对齐 --color-*」，取值与 global.scss 语义令牌一致；已删除三个零引用且与项目配色无关的 uni 颜色遗留变量（$uni-color-title/subtitle/paragraph）。新增配色方案只需改 global.scss，本文件无需改动",
       "index.html": "H5 端 HTML 入口文件：含 SEO 元信息（title/description/keywords/robots/author/theme-color/canonical）、Open Graph 与 Twitter Card 社交分享标签、SoftwareApplication 类型 JSON-LD 结构化数据（供搜索引擎与 AI 生成式引擎准确理解应用类型、功能与许可）；保留 uni-app SSR 占位符（preload-links/app-context/app-html 注释与 div）与 viewport 刘海屏兼容脚本；script src 指向 /main.js",
       "package.json": "npm依赖配置；scripts 经 scripts/run-uni.js 包装以设置 UNI_INPUT_DIR；新增 @noble/ciphers 与 @noble/hashes 依赖（App 端指纹登录本地加密存储 biometric_token 使用，纯 ESM、支持 AES-256-GCM）",
       "package-lock.json": "npm依赖锁定文件",

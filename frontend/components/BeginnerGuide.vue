@@ -302,7 +302,7 @@ const maskHoleStyle = computed(() => {
     width: b.R - b.L + 'px',
     height: b.B - b.T + 'px',
     borderRadius: b.cs + 'px',
-    boxShadow: `0 0 0 ${spreadPx.value}px rgba(0, 0, 0, 0.6)`
+    boxShadow: `0 0 0 ${spreadPx.value}px var(--color-mask-60)`
   }
 })
 
@@ -395,7 +395,7 @@ function handleSkip() {
 
 .beginner-guide__mask {
   position: fixed;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--color-mask-60);
   z-index: 9998;
 }
 
@@ -433,7 +433,7 @@ function handleSkip() {
 /* H5：使用 box-shadow 呼吸动画实现高亮边框（SVG mask 负责精确蒙版） */
 /* #ifdef H5 */
 .beginner-guide__highlight {
-  box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 20px rgba(159, 232, 112, 0.6);
+  box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 20px var(--color-brand-glow);
   animation: guide-pulse 1.8s ease-in-out infinite;
 }
 /* #endif */
@@ -442,17 +442,17 @@ function handleSkip() {
    避免微信小程序伪元素不尊重 pointer-events:none 而误拦目标点击） */
 /* #ifndef H5 */
 .beginner-guide__highlight {
-  box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 12px rgba(159, 232, 112, 0.4);
+  box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 12px var(--color-brand-glow-soft);
   animation: guide-pulse 1.8s ease-in-out infinite;
 }
 /* #endif */
 
 @keyframes guide-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 12px rgba(159, 232, 112, 0.4);
+    box-shadow: 0 0 0 2px var(--color-brand-bg), 0 0 12px var(--color-brand-glow-soft);
   }
   50% {
-    box-shadow: 0 0 0 4px var(--color-brand-bg), 0 0 28px rgba(159, 232, 112, 0.8);
+    box-shadow: 0 0 0 4px var(--color-brand-bg), 0 0 28px var(--color-brand-glow-strong);
   }
 }
 
@@ -463,7 +463,7 @@ function handleSkip() {
   box-sizing: border-box;
   border-radius: 24rpx;
   background: var(--color-card-bg);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-direction: column;
   gap: 12rpx;

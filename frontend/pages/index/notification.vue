@@ -548,7 +548,7 @@ const editEmailError = ref('')
 // 编辑表单SMTP服务器地址格式错误提示
 const editHostError = ref('')
 
-// 输入框 placeholder 聚焦交互：聚焦变浅灰 #c0c0c0，失焦恢复 placeholder-class 原始色
+// 输入框 placeholder 聚焦交互：聚焦变浅灰 var(--color-text-disabled)，失焦恢复 placeholder-class 原始色
 const { onFocus, onBlur, phStyle } = usePlaceholder()
 
 // 输入框字符限制（与后端字段限制严格匹配）
@@ -1537,7 +1537,7 @@ async function handleUpdateWechat() {
   box-sizing: border-box;
   border-radius: 9999px;
   background: var(--color-brand);
-  box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-popup);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1595,7 +1595,7 @@ async function handleUpdateWechat() {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-mask-50);
   display: flex;
   justify-content: center;
   align-items: center;
