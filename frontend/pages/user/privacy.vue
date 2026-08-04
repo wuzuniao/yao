@@ -157,7 +157,8 @@
           <text class="privacy-page__para">我们会在首页向全体用户展示由管理员发布的系统公告（如版本更新、服务调整、政策变更提示）。公告内容由我们统一编写，<text class="privacy-page__em">不含任何用户的个人信息</text>，也不针对特定用户投放。公告的"已读"状态仅记录在您的设备本地，不会上传服务器。</text>
 
           <text class="privacy-page__sub-title">8. 分享功能（仅微信小程序端）</text>
-          <text class="privacy-page__para">当您主动使用微信右上角菜单将本小程序页面「转发给朋友」或「分享到朋友圈」时，我们仅向微信提供页面标题、页面路径与一张固定的封面图。<text class="privacy-page__em">分享链接中不包含您的账号标识，也不携带您的任何计划、打卡记录或个人资料</text>。接收方打开后进入的是未登录状态的公共页面。分享行为本身由微信客户端完成，适用微信的相关规则。</text>
+          <text class="privacy-page__para">当您主动使用微信右上角菜单将本小程序页面「转发给朋友」或「分享到朋友圈」时，我们会向微信提供页面标题与页面路径。<text class="privacy-page__em">分享链接中不包含您的账号标识，也不携带您的任何计划、打卡记录或个人资料</text>。接收方打开后进入的是未登录状态的公共页面。</text>
+          <text class="privacy-page__para">需要特别说明的是：微信在生成分享卡片时，默认会截取分享时刻的<text class="privacy-page__em">当前页面画面作为封面快照</text>。由于本小程序所有含您个人数据的页面均需登录后方可查看，且分享链接本身进入的是未登录公共页面，因此该快照里出现的仅为页面自身的通用结构（如本政策页的条款文字、首页的引导卡片），不会出现您的账号、计划或打卡记录等个人数据。若您在被登录态下截取了含有个人内容的页面进行分享，该画面快照将随之被微信用于生成分享卡片封面。分享行为由微信客户端完成，适用微信的相关规则，您可随时在微信内删除已发出的分享。</text>
 
           <text class="privacy-page__sub-title">9. 个人资料完善（可选功能）</text>
           <view class="privacy-page__list">
@@ -832,8 +833,10 @@ useShare({ title: '隐私政策' })
 
 /* 列宽：第三方名称 114.48 / 涉及个人信息 266.95 / 使用目的 218.56（总宽 600） */
 .privacy-page__table-cell--name {
-  width: 228.96rpx;
+  width: 300rpx;
   flex-shrink: 0;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .privacy-page__table-cell--info {
@@ -927,7 +930,9 @@ useShare({ title: '隐私政策' })
     line-height: 24px;
   }
   .privacy-page__table-cell--name {
-    width: 114.48px;
+    width: 150px;
+    word-break: break-all;
+    overflow-wrap: anywhere;
   }
   .privacy-page__table-cell--info {
     width: 266.95px;
