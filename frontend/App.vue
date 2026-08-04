@@ -1,6 +1,7 @@
 <script>
 	import { useUserStore } from './store/modules/user'
 	import { useAppPush } from './composables/useAppPush'
+	import { useTokenRefresh } from './composables/useTokenRefresh'
 	export default {
 		onLaunch: function() {
 			// App 端：先初始化友盟推送 SDK，再注册通知栏点击跳转监听
@@ -15,6 +16,8 @@
 			if (userStore.userInfo && userStore.userInfo.status === 0) {
 				userStore.verifyUserExists()
 			}
+			// 已登录态临近过期时静默续期（多端一致，不跳页）
+			useTokenRefresh().tryRefresh()
 		},
 		onHide: function() {}
 	}

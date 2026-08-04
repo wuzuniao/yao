@@ -25,6 +25,28 @@
     </view>
     <!-- #endif -->
 
+    <!-- App 端指纹一键登录区（仅 App 端，设备支持指纹且本地存在凭证时展示） -->
+    <!-- #ifdef APP-PLUS -->
+    <view v-if="loginMode === 'fingerprint' && biometricVisible" class="login-page__wechat">
+      <text class="login-page__title">一键登录</text>
+      <view class="login-page__wechat-btn guide-target-fingerprint-login" @click="handleFingerprintLogin">
+        <image class="login-page__wechat-icon" :src="fingerprintIcon" mode="aspectFit" />
+      </view>
+      <!-- 指纹登录隐私勾选（与微信端对称） -->
+      <view class="login-page__remember login-page__remember--wechat" @click="toggleFingerprintAgree">
+        <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': fingerprintAgree }">
+          <view v-if="fingerprintAgree" class="login-page__checkmark"></view>
+        </view>
+        <text class="login-page__remember-text">查看并同意</text>
+        <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+      </view>
+      <!-- 切换到账号密码登录引导 -->
+      <view class="login-page__switch" @click="switchMode('normal')">
+        <text class="login-page__switch-text">账号密码登录</text>
+      </view>
+    </view>
+    <!-- #endif -->
+
     <!-- 主登录卡片（账号密码登录，H5 端默认展示；微信端切换或注册页跳转时展示） -->
     <view v-if="loginMode === 'normal'" class="login-page__card">
       <text class="login-page__title">欢迎回来</text>
@@ -144,10 +166,16 @@ import { useGuideStore } from '../../store/modules/guide'
 import PasswordEye from '../../components/PasswordEye.vue'
 import { useShare } from '../../composables/useShare'
 import { useGuideTarget } from '../../composables/useGuideTarget'
+import { biometricLogin } from '../../api/modules/user'
 // 微信一键登录相关（仅微信小程序端使用）
 // #ifdef MP-WEIXIN
 import { wechatLogin } from '../../api/modules/user'
 import wxIcon from '../../assets/images/dl_wx.png'
+// #endif
+// App 端生物识别（指纹）一键登录相关（仅 App 端使用）
+// #ifdef APP-PLUS
+import { useBiometric } from '../../composables/useBiometric'
+import fingerprintIcon from '../../assets/images/dl_fingerprint.png'
 // #endif
 
 useShare({ title: '登录' })
@@ -169,6 +197,13 @@ _defaultLoginMode = 'wechat'
 // #endif
 const loginMode = ref(_defaultLoginMode)
 
+// App 端指纹一键登录卡片是否可显示（设备支持指纹 + 本地存在已登录凭证）
+// 仅在 App 端使用，其他端恒为 false
+const biometricVisible = ref(false)
+// #ifdef APP-PLUS
+const biometric = useBiometric()
+// #endif
+
 onLoad((options = {}) => {
   if (options.mode === 'normal') {
     loginMode.value = 'normal'
@@ -176,8 +211,21 @@ onLoad((options = {}) => {
 })
 
 // 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
-onShow(() => {
+onShow(async () => {
   guideStore.onPageEnter('login')
+  // App 端：页面显示时检测指纹能力，决定是否默认展示指纹一键登录卡片
+  // 设备支持指纹且本地存在凭证 → 默认指纹卡片；否则默认账号密码登录
+  // 用户可临时切到账号密码（switchMode('normal')），下次回到本页仍按能力恢复默认
+  // #ifdef APP-PLUS
+  const ok = await biometric.isAvailable()
+  const hasToken = !!biometric.getBiometricToken()
+  biometricVisible.value = ok && hasToken
+  if (biometricVisible.value) {
+    loginMode.value = 'fingerprint'
+  } else {
+    loginMode.value = 'normal'
+  }
+  // #endif
 })
 
 // 切换登录方式（互斥显示对应卡片）
@@ -193,6 +241,11 @@ const userStore = useUserStore()
 // 微信登录独立隐私勾选（仅微信小程序端使用，与账号密码登录的 remember 分离）
 // #ifdef MP-WEIXIN
 const wechatAgree = ref(false)
+// #endif
+
+// App 端指纹登录独立隐私勾选（仅 App 端使用）
+// #ifdef APP-PLUS
+const fingerprintAgree = ref(false)
 // #endif
 
 // 各字段错误信息（失焦时实时校验并写入，输入时清空）
@@ -255,6 +308,13 @@ function toggleWechatAgree() {
 }
 // #endif
 
+// App 端指纹登录隐私勾选切换（仅 App 端使用）
+// #ifdef APP-PLUS
+function toggleFingerprintAgree() {
+  fingerprintAgree.value = !fingerprintAgree.value
+}
+// #endif
+
 // ===== 登录提交：前端校验 → 后端验证 → 写入状态 → 跳转 =====
 async function handleLogin() {
   if (submitting.value) return
@@ -288,12 +348,25 @@ async function handleLogin() {
   // 3. 调用后端登录接口
   submitting.value = true
   try {
+    // App 端传入 device_id，使后端下发生物识别（指纹）登录凭证
+    // #ifdef APP-PLUS
+    const deviceId = biometric.getDeviceId()
+    // #endif
     const res = await loginUser({
       username: form.username,
-      password: form.password
+      password: form.password,
+      // #ifdef APP-PLUS
+      device_id: deviceId
+      // #endif
     })
     // 4. 写入用户状态
     userStore.setUser(res.data)
+    // App 端：登录成功后若后端下发了生物识别凭证且用户已开启指纹，则本地加密存储
+    // #ifdef APP-PLUS
+    if (res.data && res.data.biometric_token && biometric.isEnabled()) {
+      biometric.storeBiometricToken(res.data.biometric_token)
+    }
+    // #endif
     uni.showToast({ title: '登录成功', icon: 'success' })
     // 5. 登录成功后跳转 settings.vue
     setTimeout(() => {
@@ -395,6 +468,64 @@ function handleWechatLogin() {
       submitting.value = false
     }
   })
+}
+// #endif
+
+// ===== App 端指纹一键登录（仅 App 端）：指纹验证 → 后端 biometric-login → 写入状态 → 跳转 =====
+// #ifdef APP-PLUS
+async function handleFingerprintLogin() {
+  if (submitting.value) return
+  // 隐私协议勾选校验（与微信登录对称）
+  if (!fingerprintAgree.value) {
+    uni.showModal({
+      title: '提示',
+      content: '请先查看并同意《隐私政策》',
+      confirmText: '确认',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          fingerprintAgree.value = true
+          handleFingerprintLogin()
+        }
+      }
+    })
+    return
+  }
+  const token = biometric.getBiometricToken()
+  if (!token) {
+    // 本地凭证缺失（如清缓存），回退账号密码登录
+    loginMode.value = 'normal'
+    return
+  }
+  submitting.value = true
+  uni.showLoading({ title: '指纹验证中...', mask: true })
+  try {
+    // 1. 系统级指纹验证（未通过不会返回成功）
+    await biometric.authenticate()
+    // 2. 用本地凭证 + 设备标识调用后端指纹登录
+    const res = await biometricLogin({
+      token,
+      device_id: biometric.getDeviceId()
+    })
+    uni.hideLoading()
+    userStore.setUser(res.data)
+    uni.showToast({ title: '登录成功', icon: 'success' })
+    setTimeout(() => {
+      uni.redirectTo({ url: '/pages/index/settings' })
+    }, 1500)
+  } catch (e) {
+    uni.hideLoading()
+    setTimeout(() => {
+      const errMsg = (e && e.errMsg) || ''
+      // 用户取消指纹验证（auth cancel）不提示错误，其余提示
+      if (!errMsg.includes('cancel') && !errMsg.includes('authenticate fail')) {
+        const msg = e.message || '指纹登录失败，请使用账号密码登录'
+        uni.showToast({ title: msg, icon: 'none' })
+      }
+    }, 200)
+  } finally {
+    submitting.value = false
+  }
 }
 // #endif
 

@@ -40,6 +40,9 @@ class LoginUser(BaseModel):
 
     password: str
 
+    # 设备标识（前端首次登录生成的 UUID），传入后下发生物识别登录凭证，用于 App 端指纹一键登录
+    device_id: str | None = None
+
     @field_validator("username")
     @classmethod
     def validate_username(cls, v: str) -> str:
@@ -67,6 +70,8 @@ class ResetPassword(BaseModel):
     email: EmailStr
     code: str
     new_password: str
+    # 设备标识（前端首次登录生成的 UUID），传入后下发生物识别登录凭证，用于 App 端指纹一键登录
+    device_id: str | None = None
 
     @field_validator("code")
     @classmethod
@@ -209,3 +214,30 @@ class BindEmail(BaseModel):
     @classmethod
     def validate_new_code(cls, v: str) -> str:
         return Security.validate_code(v)
+
+
+class BiometricLogin(BaseModel):
+    """生物识别（指纹）登录请求 Schema"""
+
+    token: str  # 前端本地解密出的生物识别登录凭证
+    device_id: str  # 设备标识（与凭证绑定）
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("生物识别凭证不能为空")
+        return v.strip()
+
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("设备标识不能为空")
+        return v.strip()
+
+
+class RefreshTokenReq(BaseModel):
+    """刷新令牌有效期请求 Schema（device_id 可选，用于同步续期生物识别凭证）"""
+
+    device_id: str | None = None

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,13 +11,16 @@ from ...core.rate_limit import (
     limit_send_code,
 )
 from ...core.security import Security
+from ...models.user import User as UserModel
 from ...models.user_miniapp_account import UserMiniappAccount
 from ...schemas.user import (
     BindEmail,
     BindWeChat,
+    BiometricLogin,
     ChangeEmail,
     ChangePassword,
     LoginUser,
+    RefreshTokenReq,
     RegisterUser,
     ResetPassword,
     ScheduleDeletion,
@@ -122,6 +125,7 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     用户登录接口
     - 支持用户名或邮箱 + 密码登录
     - 返回用户信息（id、username、signature、avatar_url）和 JWT access_token
+    - 若携带 device_id，额外下发生物识别登录凭证（biometric_token），供 App 端指纹一键登录
     """
     user_service = User(db)
     try:
@@ -132,10 +136,20 @@ async def login(payload: LoginUser, db: AsyncSession = Depends(get_db)):
     except ValueError as e:
         # 业务校验失败（用户不存在/密码错误）
         raise HTTPException(status_code=400, detail=str(e))
+    data = await _user_payload(db, db_user)
+    # 仅在 App 端传入 device_id 时下发指纹凭证（后端加密存储，前端二次加密存本地）
+    if payload.device_id:
+        try:
+            data["biometric_token"] = await user_service.issue_biometric_token(
+                db_user.id, payload.device_id
+            )
+        except ValueError:
+            # device_id 非法时不影响主登录流程
+            pass
     return {
         "code": 0,
         "msg": "登录成功",
-        "data": await _user_payload(db, db_user),
+        "data": data,
     }
 
 
@@ -173,10 +187,19 @@ async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+    data = await _user_payload(db, db_user)
+    # 重置密码等同重新认证，若携带 device_id 则下发生物识别登录凭证
+    if payload.device_id:
+        try:
+            data["biometric_token"] = await user_service.issue_biometric_token(
+                db_user.id, payload.device_id
+            )
+        except ValueError:
+            pass
     return {
         "code": 0,
         "msg": "密码重置成功",
-        "data": await _user_payload(db, db_user),
+        "data": data,
     }
 
 
@@ -545,5 +568,60 @@ async def bind_wechat(
     return {
         "code": 0,
         "msg": "微信绑定成功",
+        "data": await _user_payload(db, db_user),
+    }
+
+
+@router.post("/refresh-token")
+async def refresh_token(
+    payload: RefreshTokenReq,
+    authorization: str = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    刷新访问令牌有效期（静默续期，不要求重新登录）
+    - 复用 get_current_user_id 的校验逻辑（签名/过期/用户状态/token_invalid_before）
+    - 通过校验后用同一 user_id 重新签发一个有效期为 JWT_EXPIRE_DAYS 的新 token
+    - 若携带 device_id，同步顺延该设备的生物识别登录凭证有效期
+    - 不引入 refresh_token 概念，保持与现有 JWT 体系一致
+    """
+    user_id = await get_current_user_id(authorization=authorization, db=db)
+    # 重新查用户对象以拿到 role（与 _user_payload 一致）
+    result = await db.execute(select(UserModel).where(UserModel.id == user_id))
+    db_user = result.scalar_one_or_none()
+    if not db_user:
+        raise HTTPException(status_code=401, detail="用户不存在，请重新登录")
+    try:
+        new_token = Security.generate_token(db_user.id, role=db_user.role)
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    # 同步续期生物识别登录凭证（已登录续期时一并更新有效期）
+    if payload.device_id:
+        await User(db).refresh_biometric_token(user_id, payload.device_id)
+    return {
+        "code": 0,
+        "msg": "令牌已刷新",
+        "data": {"access_token": new_token},
+    }
+
+
+@router.post("/biometric-login", dependencies=[Depends(limit_login)])
+async def biometric_login(payload: BiometricLogin, db: AsyncSession = Depends(get_db)):
+    """
+    生物识别（指纹）登录接口
+    - 前端凭本地加密存储的生物识别凭证 + 设备标识调用
+    - 后端校验 token 有效（未过期）+ device_id 匹配后签发 JWT
+    - SOTER 指纹验证由 App 端系统层完成（未通过验证前端拿不到签名），后端聚焦凭证与设备绑定校验
+    - 返回的 JWT 与原登录流程一致，前端进入首页
+    """
+    user_service = User(db)
+    db_user = await user_service.verify_biometric_token(payload.token, payload.device_id)
+    if not db_user:
+        raise HTTPException(status_code=401, detail="指纹登录凭证无效或已失效，请使用账号密码登录")
+    if db_user.status not in (0, 1):
+        raise HTTPException(status_code=401, detail="账号已停用，请联系管理员")
+    return {
+        "code": 0,
+        "msg": "登录成功",
         "data": await _user_payload(db, db_user),
     }

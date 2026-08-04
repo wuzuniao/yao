@@ -278,6 +278,19 @@
             </view>
           </view>
         </view>
+
+        <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示，作为本组真正最后一项） -->
+        <!-- #ifdef APP-PLUS -->
+        <view v-if="showBiometric" class="profile-page__group-item">
+          <text class="profile-page__group-text">指纹登录</text>
+          <switch
+            class="profile-page__biometric-switch"
+            :checked="biometricEnabled"
+            @change="toggleBiometric"
+            color="#07c160"
+          />
+        </view>
+        <!-- #endif -->
       </view>
 
       <!-- 分组 2：退出登录 + 删除账号（危险操作，单独分组并使用红色文字提示） -->
@@ -333,6 +346,10 @@ import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
 import lanAvatar from '../../assets/images/touxiang/lan.png'
 import { useShare } from '../../composables/useShare'
+// App 端生物识别（指纹）登录开关（仅 App 端使用）
+// #ifdef APP-PLUS
+import { useBiometric } from '../../composables/useBiometric'
+// #endif
 
 useShare({ title: '个人信息' })
 
@@ -392,6 +409,18 @@ const hasPassword = computed(() => !!userStore.userInfo?.has_password)
 // 当前用户是否已绑定邮箱（微信登录用户可能无邮箱）
 const hasEmail = computed(() => !!userStore.userInfo?.email)
 
+// ===== App 端指纹登录开关（仅 App 端）=====
+// 显示条件：设备支持指纹 + 当前已登录
+// #ifdef APP-PLUS
+const biometric = useBiometric()
+const biometricSupported = ref(false)
+const biometricEnabled = ref(false)
+// #endif
+// #ifdef APP-PLUS
+// 指纹登录开关是否展示：设备支持指纹且页面处于已登录状态
+const showBiometric = computed(() => biometricSupported.value && !!userStore.userInfo?.id)
+// #endif
+
 const expandedSections = reactive({
   username: false,
   avatar: false,
@@ -405,6 +434,15 @@ onLoad((options) => {
   if (options && options.focus === 'email' && !isDeletionScheduled.value) {
     expandedSections.email = true
   }
+  // App 端：检测指纹能力并读取本地开关状态
+  // #ifdef APP-PLUS
+  biometric.isAvailable().then((ok) => {
+    biometricSupported.value = ok
+    if (ok) {
+      biometricEnabled.value = biometric.isEnabled()
+    }
+  })
+  // #endif
 })
 
 // ===== 修改用户名 =====
@@ -824,6 +862,31 @@ function handleDeletion() {
   }
 }
 
+// ===== App 端指纹登录开关切换（仅 App 端）=====
+// #ifdef APP-PLUS
+async function toggleBiometric() {
+  // 账号待删除状态下禁止操作
+  if (isDeletionScheduled.value) return
+  const next = !biometricEnabled.value
+  if (next) {
+    // 开启：若本地无凭证，提示用户先使用账号密码登录一次以生成凭证
+    const hasToken = !!biometric.getBiometricToken()
+    if (!hasToken) {
+      biometricEnabled.value = false
+      uni.showToast({ title: '请先用账号密码登录以开启指纹', icon: 'none' })
+      return
+    }
+    biometric.setEnabled(true)
+    biometricEnabled.value = true
+  } else {
+    // 关闭：清除本地凭证，但保留登录态（关闭指纹 ≠ 退出登录）
+    biometric.clearBiometricToken()
+    biometric.setEnabled(false)
+    biometricEnabled.value = false
+  }
+}
+// #endif
+
 // ===== 退出登录 =====
 function handleLogout() {
   uni.showModal({
@@ -903,6 +966,12 @@ function handleLogout() {
 
 .profile-page__group-text--danger {
   color: var(--color-danger);
+}
+
+/* 指纹登录开关：行右侧 switch，与修改邮箱项同组视觉一致 */
+.profile-page__biometric-switch {
+  transform: scale(0.9);
+  transform-origin: right center;
 }
 
 /* ===== 动态表单区域 ===== */

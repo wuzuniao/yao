@@ -12,6 +12,7 @@ from ..core.config import settings
 from ..core.security import Security
 from ..models.user import User as UserModel
 from ..models.user_miniapp_account import UserMiniappAccount
+from ..models.user_biometric_token import UserBiometricToken
 from ..models.notification_channel import NotificationChannel
 from ..models.plan import CheckinPlan, PlanNotificationTime, PlanNotificationChannel
 from ..models.checkin_record import CheckinRecord
@@ -32,6 +33,9 @@ _verification_codes: dict[str, tuple[str, float, int]] = {}
 CODE_EXPIRE_SECONDS: int = 300
 # 验证码连续失败次数上限（超过后销毁，要求用户重新获取）
 CODE_MAX_FAIL_COUNT: int = 5
+
+# 生物识别凭证有效期（天），与前端指纹登录有效期保持一致
+BIOMETRIC_TOKEN_EXPIRE_DAYS: int = 31
 
 
 class User:
@@ -192,6 +196,107 @@ class User:
         # 6. 返回用户对象（包含 username、signature、avatar_url）
         return user
 
+    # ===== 生物识别（指纹）登录凭证管理 =====
+
+    async def issue_biometric_token(self, user_id: int, device_id: str) -> str:
+        """
+        为用户签发生物识别登录凭证
+        - 生成高熵随机 token，绑定 user_id 与 device_id，默认 31 天有效
+        - 同一用户同一设备仅保留一条有效凭证（先作废旧凭证再写入新凭证）
+        :param user_id: 用户ID
+        :param device_id: 设备标识（前端首次登录生成的 UUID）
+        :return: 明文 token 字符串（前端加密存储）
+        :raises ValueError: device_id 非法
+        """
+        if not device_id or not isinstance(device_id, str) or len(device_id) > 64:
+            raise ValueError("设备标识不合法")
+        # 作废该设备已有凭证，避免无限累积
+        await self.db.execute(
+            delete(UserBiometricToken).where(
+                UserBiometricToken.user_id == user_id,
+                UserBiometricToken.device_id == device_id,
+            )
+        )
+        token = secrets.token_hex(32)
+        expire_at = now_shanghai() + timedelta(days=BIOMETRIC_TOKEN_EXPIRE_DAYS)
+        record = UserBiometricToken(
+            user_id=user_id,
+            token=token,
+            device_id=device_id,
+            expire_at=expire_at,
+        )
+        self.db.add(record)
+        await self.db.commit()
+        return token
+
+    async def refresh_biometric_token(self, user_id: int, device_id: str) -> None:
+        """
+        续期生物识别登录凭证（已登录状态调用）
+        - 若该用户在该设备已有未过期凭证，顺延其 expire_at 31 天
+        - 若无有效凭证，则新建一条（绑定当前 device_id）
+        :param user_id: 用户ID
+        :param device_id: 设备标识（前端首次登录生成的 UUID）
+        """
+        if not device_id or not isinstance(device_id, str) or len(device_id) > 64:
+            # device_id 缺失或非法时不阻断主流程，仅跳过续期
+            return
+        now = now_shanghai()
+        result = await self.db.execute(
+            select(UserBiometricToken).where(
+                UserBiometricToken.user_id == user_id,
+                UserBiometricToken.device_id == device_id,
+                UserBiometricToken.expire_at > now,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if record:
+            record.expire_at = now + timedelta(days=BIOMETRIC_TOKEN_EXPIRE_DAYS)
+        else:
+            record = UserBiometricToken(
+                user_id=user_id,
+                token=secrets.token_hex(32),
+                device_id=device_id,
+                expire_at=now + timedelta(days=BIOMETRIC_TOKEN_EXPIRE_DAYS),
+            )
+            self.db.add(record)
+        await self.db.commit()
+
+    async def revoke_biometric_tokens(self, user_id: int) -> None:
+        """
+        作废用户所有生物识别登录凭证
+        - 在改密码/退出登录/删除账号时调用，防止旧设备凭指纹继续登录
+        :param user_id: 用户ID
+        """
+        await self.db.execute(
+            delete(UserBiometricToken).where(UserBiometricToken.user_id == user_id)
+        )
+        await self.db.commit()
+
+    async def verify_biometric_token(
+        self, token: str, device_id: str
+    ) -> UserModel | None:
+        """
+        校验生物识别登录凭证
+        - 校验 token 存在、未过期、device_id 匹配
+        :param token: 明文 token
+        :param device_id: 设备标识
+        :return: 校验通过返回 UserModel，否则返回 None
+        """
+        if not token or not isinstance(token, str) or not device_id:
+            return None
+        now = now_shanghai()
+        result = await self.db.execute(
+            select(UserBiometricToken).where(
+                UserBiometricToken.token == token,
+                UserBiometricToken.device_id == device_id,
+                UserBiometricToken.expire_at > now,
+            )
+        )
+        record = result.scalar_one_or_none()
+        if not record:
+            return None
+        return await self.get_by_id(record.user_id)
+
     async def send_reset_code(self, email: str) -> str:
         """
         发送密码找回验证码
@@ -266,6 +371,8 @@ class User:
         # 3. 更新新密码并使旧 token 失效
         user.password_hash = Security.hash_password(new_password)
         user.token_invalid_before = now_shanghai()
+        # 改密码后作废所有生物识别登录凭证，防止旧设备凭指纹继续登录
+        await self.revoke_biometric_tokens(user_id)
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -353,6 +460,8 @@ class User:
             raise ValueError("用户不存在")
         user.status = 0
         user.token_invalid_before = now_shanghai()
+        # 删除账号时作废所有生物识别登录凭证
+        await self.revoke_biometric_tokens(user_id)
         await self.db.commit()
         await self.db.refresh(user)
         return user
@@ -383,6 +492,8 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         user.token_invalid_before = now_shanghai()
+        # 退出登录时作废所有生物识别登录凭证
+        await self.revoke_biometric_tokens(user_id)
         await self.db.commit()
 
     async def purge_expired_deletions(self) -> int:

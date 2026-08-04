@@ -34,11 +34,11 @@ export function registerUser({ username, password, email, code }) {
  * @param {string} param0.username 用户名或邮箱
  * @param {string} param0.password 密码
  */
-export function loginUser({ username, password }) {
+export function loginUser({ username, password, device_id }) {
   return request({
     url: '/api/v1/users/login',
     method: 'POST',
-    data: { username, password }
+    data: { username, password, device_id }
   })
 }
 
@@ -61,11 +61,11 @@ export function sendResetCode(email) {
  * @param {string} param0.code 验证码
  * @param {string} param0.new_password 新密码
  */
-export function resetPassword({ email, code, new_password }) {
+export function resetPassword({ email, code, new_password, device_id }) {
   return request({
     url: '/api/v1/users/reset-password',
     method: 'POST',
-    data: { email, code, new_password }
+    data: { email, code, new_password, device_id }
   })
 }
 
@@ -244,5 +244,33 @@ export function getUserInfo() {
   return request({
     url: '/api/v1/users/info',
     method: 'GET'
+  })
+}
+
+/**
+ * 刷新访问令牌有效期（静默续期，不要求重新登录）
+ * @param {Object} param0 续期参数
+ * @param {string} [param0.device_id] 设备标识，传入后后端同步顺延生物识别凭证有效期
+ */
+export function refreshToken({ device_id } = {}) {
+  return request({
+    url: '/api/v1/users/refresh-token',
+    method: 'POST',
+    data: { device_id }
+  })
+}
+
+/**
+ * 生物识别（指纹）登录
+ * @param {Object} param0 指纹登录参数
+ * @param {string} param0.token 本地解密出的生物识别凭证
+ * @param {string} param0.device_id 设备标识（与凭证绑定）
+ */
+export function biometricLogin({ token, device_id }) {
+  return request({
+    url: '/api/v1/users/biometric-login',
+    method: 'POST',
+    data: { token, device_id },
+    timeout: 10000
   })
 }
