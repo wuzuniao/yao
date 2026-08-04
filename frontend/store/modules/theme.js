@@ -24,10 +24,28 @@ export const useThemeStore = defineStore('theme', () => {
   // 默认主题为青绿（green），优先读取本地持久化值
   const current = ref(uni.getStorageSync(THEME_STORAGE_KEY) || 'green')
 
+  // H5 端：将当前主题同步到 <html> 的 data-theme 属性。
+  // 原因：H5 端页面根 view（带 data-theme）只覆盖内容区；<html>/<body> 背景（页面外区域，
+  // 尤其 PC 浏览器两侧留白）由 :root/html 的 background-color: var(--page-bg-color) 承载，
+  // 而 html 本身不带 data-theme，故取默认绿主题值、不随主题切换。给 html 设 data-theme 后，
+  // html[data-theme="x"] 命中 global.scss 方案块，页面外背景随主题切换。
+  // 小程序/App 端 html 概念不适用，用 #ifdef H5 隔离避免报错。
+  function syncHtmlTheme(key) {
+    /* #ifdef H5 */
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.theme = key
+    }
+    /* #endif */
+  }
+
+  // 初始化时同步一次（首屏避免页面外背景闪现默认绿）
+  syncHtmlTheme(current.value)
+
   // 切换并持久化主题（仅写入 key，具体配色由 global.scss 的 [data-theme] 方案块决定）
   function setTheme(key) {
     if (!THEME_LIST.some((t) => t.key === key)) return
     current.value = key
+    syncHtmlTheme(key)
     try {
       uni.setStorageSync(THEME_STORAGE_KEY, key)
     } catch (e) {
