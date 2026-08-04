@@ -1,10 +1,11 @@
 import json
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.notification_channel import NotificationChannel
+from ..models.plan import PlanNotificationChannel
 from ..schemas.notification_channel import (
     CHANNEL_TYPE_APP_PUSH,
     CHANNEL_TYPE_EMAIL,
@@ -182,6 +183,8 @@ class NotificationChannelService:
         """
         删除通知渠道
         - 站内信渠道不允许删除
+        - 同步删除引用该渠道的计划-渠道关联（plan_notification_channels），
+          不影响计划本身
         """
         channel = await self.get_by_id(channel_id)
         if not channel:
@@ -190,6 +193,12 @@ class NotificationChannelService:
             raise ValueError("无权操作该通知渠道")
         if channel.channel_type == CHANNEL_TYPE_ZNX:
             raise ValueError("站内信通知方式不允许删除")
+        # 先清理计划-渠道关联（plan_notification_channels.channel_id 无物理外键约束）
+        await self.db.execute(
+            delete(PlanNotificationChannel).where(
+                PlanNotificationChannel.channel_id == channel_id
+            )
+        )
         await self.db.delete(channel)
         await self.db.commit()
 
@@ -280,7 +289,7 @@ class NotificationChannelService:
 
     # ------------------------------------------------------------------
     # App 推送渠道（友盟+ U-Push）
-    # 每用户仅一行（channel_type='app_push'），多设备共存于 channel_value 数组中
+    # 每用户仅一行（channel_type=CHANNEL_TYPE_APP_PUSH 即 'App推送'），多设备共存于 channel_value 数组中
     # channel_value 结构：
     #   {"device_tokens": [{"token": "...", "platform": "android|ios", "fail_count": 0}]}
     #   token：友盟 SDK 返回的设备唯一标识（device_token）

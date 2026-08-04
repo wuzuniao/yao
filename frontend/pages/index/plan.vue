@@ -424,6 +424,9 @@ useGuideTarget('new-plan', '.guide-target-new-plan')
 // 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
 onShow(() => {
   guideStore.onPageEnter('plan')
+  // 每次进入页面刷新通知渠道列表：覆盖从通知方式页添加/修改渠道后返回的场景
+  // （App 端页面常驻栈内、onMounted 仅首次触发，不刷新会导致新渠道不出现在选项中）
+  loadChannels()
 })
 
 // 已有计划列表（从数据库加载，后端已按 status>priority>created_at 排序）
@@ -558,12 +561,15 @@ function handleDeletePlan(planId) {
 }
 
 // 点击已有计划卡片：就地展开/收起编辑表单
-function toggleEditPlan(plan) {
+async function toggleEditPlan(plan) {
   if (editingPlanId.value === plan.id) {
     // 再次点击同一卡片：收起编辑表单
     editingPlanId.value = null
     return
   }
+  // 展开前先刷新通知渠道列表，确保用户在通知方式页新添加的渠道（如 App推送）
+  // 能立即出现在编辑表单的可选项中（App 端页面常驻栈内、onMounted 不重跑，不刷新会看不到）
+  await loadChannels()
   // 展开新卡片：填充编辑表单数据
   editingPlanId.value = plan.id
   showForm.value = false  // 隐藏新建表单
@@ -576,8 +582,12 @@ function toggleEditPlan(plan) {
     : [getCurrentTime()]
   editingForm.priority = plan.priority != null ? plan.priority : 3
   editingForm.status = plan.status != null ? plan.status : 1
-  // 设置已选中的通知渠道
-  editingSelectedChannelIds.value = plan.channel_ids ? [...plan.channel_ids] : []
+  // 设置已选中的通知渠道：保留旧计划中仍有效的渠道，剔除已删除/失效的关联
+  // （用户在通知方式页删过某方式后，旧计划的 channel_ids 可能含已不存在的 id，
+  //  直接提交会被后端校验拒绝导致报错；此处仅保留当前 availableChannels 内存在的 id）
+  const validIds = new Set(availableChannels.value.map(c => c.id))
+  const baseIds = (plan.channel_ids || []).filter(id => validIds.has(id))
+  editingSelectedChannelIds.value = baseIds
   // 确保站内信默认勾选（如果存在且未包含）
   const znxChannel = availableChannels.value.find(c => c.channel_type === '站内信')
   if (znxChannel && !editingSelectedChannelIds.value.includes(znxChannel.id)) {
