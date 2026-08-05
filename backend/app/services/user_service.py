@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import secrets
 import time
 from datetime import timedelta
@@ -36,6 +37,16 @@ CODE_MAX_FAIL_COUNT: int = 5
 
 # 生物识别凭证有效期（天），与前端指纹登录有效期保持一致
 BIOMETRIC_TOKEN_EXPIRE_DAYS: int = 31
+
+# device_id UUID v4 格式校验（与 schemas/user.py 保持一致，服务层二次防御）
+_DEVICE_ID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+
+
+def _is_valid_device_id(device_id: str | None) -> bool:
+    """device_id 合法性校验：非空且为合法 UUID v4 格式"""
+    return bool(device_id) and isinstance(device_id, str) and bool(_DEVICE_ID_RE.match(device_id))
 
 
 class User:
@@ -208,7 +219,7 @@ class User:
         :return: 明文 token 字符串（前端加密存储）
         :raises ValueError: device_id 非法
         """
-        if not device_id or not isinstance(device_id, str) or len(device_id) > 64:
+        if not _is_valid_device_id(device_id):
             raise ValueError("设备标识不合法")
         # 作废该设备已有凭证，避免无限累积
         await self.db.execute(
@@ -237,8 +248,8 @@ class User:
         :param user_id: 用户ID
         :param device_id: 设备标识（前端首次登录生成的 UUID）
         """
-        if not device_id or not isinstance(device_id, str) or len(device_id) > 64:
-            # device_id 缺失或非法时不阻断主流程，仅跳过续期
+        if not _is_valid_device_id(device_id):
+            # device_id 缺失或格式非法时不阻断主流程，仅跳过续期
             return
         now = now_shanghai()
         result = await self.db.execute(
@@ -272,28 +283,66 @@ class User:
         )
         await self.db.commit()
 
+    async def revoke_biometric_token(self, user_id: int, device_id: str) -> bool:
+        """
+        作废指定用户指定设备的生物识别登录凭证（单设备撤销）
+        - 用户在个人信息页关闭指纹登录时调用，立即作废服务端凭证
+        :param user_id: 用户ID
+        :param device_id: 设备标识
+        :return: 是否删除了记录
+        """
+        if not _is_valid_device_id(device_id):
+            return False
+        result = await self.db.execute(
+            delete(UserBiometricToken).where(
+                UserBiometricToken.user_id == user_id,
+                UserBiometricToken.device_id == device_id,
+            )
+        )
+        await self.db.commit()
+        return (result.rowcount or 0) > 0
+
+    async def purge_expired_biometric_tokens(self) -> int:
+        """
+        清理已过期的生物识别登录凭证记录
+        - 由定时任务调度（每 30 分钟一次），避免过期行永久滞留
+        - 用户换 device_id（重装清缓存）产生的旧记录也会被清理
+        :return: 已删除的记录数
+        """
+        now = now_shanghai()
+        result = await self.db.execute(
+            delete(UserBiometricToken).where(UserBiometricToken.expire_at <= now)
+        )
+        await self.db.commit()
+        return result.rowcount or 0
+
     async def verify_biometric_token(
         self, token: str, device_id: str
     ) -> UserModel | None:
         """
         校验生物识别登录凭证
         - 校验 token 存在、未过期、device_id 匹配
+        - token 比对使用 secrets.compare_digest 恒定时间比较，防御理论时序攻击
         :param token: 明文 token
         :param device_id: 设备标识
         :return: 校验通过返回 UserModel，否则返回 None
         """
-        if not token or not isinstance(token, str) or not device_id:
+        if not token or not isinstance(token, str) or not _is_valid_device_id(device_id):
             return None
         now = now_shanghai()
+        # 先按 device_id + 未过期取出候选记录，再用恒定时间比对 token
+        # （避免 SQL = 在 DB 内部因短路返回造成理论时序差异）
         result = await self.db.execute(
             select(UserBiometricToken).where(
-                UserBiometricToken.token == token,
                 UserBiometricToken.device_id == device_id,
                 UserBiometricToken.expire_at > now,
             )
         )
         record = result.scalar_one_or_none()
         if not record:
+            return None
+        # 恒定时间比对：长度不同时 compare_digest 立即返回 False，仍为常量时间
+        if not secrets.compare_digest(record.token, token):
             return None
         return await self.get_by_id(record.user_id)
 

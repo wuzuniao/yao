@@ -378,7 +378,10 @@ import {
   updateUsername,
   setPassword,
   bindEmail,
-  getUserInfo
+  getUserInfo,
+  // #ifdef APP-PLUS
+  revokeBiometric,
+  // #endif
 } from '../../api/modules/user'
 import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
@@ -957,10 +960,20 @@ async function toggleBiometric() {
     biometric.setEnabled(true)
     biometricEnabled.value = true
   } else {
-    // 关闭：清除本地凭证，但保留登录态（关闭指纹 ≠ 退出登录）
+    // 关闭：清除本地凭证 + 通知服务端作废本设备凭证（保留登录态，关闭指纹 ≠ 退出登录）
+    // 服务端 revoke 后即使本地有 token 副本也无法换 JWT，缩短风险窗口
+    const deviceId = biometric.getDeviceId()
     biometric.clearBiometricToken()
     biometric.setEnabled(false)
     biometricEnabled.value = false
+    if (deviceId) {
+      try {
+        await revokeBiometric({ device_id: deviceId })
+      } catch (e) {
+        // 后端 revoke 失败不阻断本地关闭（本地凭证已清，凭证最长 31 天后自然过期）
+        console.warn('服务端撤销指纹凭证失败', e)
+      }
+    }
   }
 }
 // #endif

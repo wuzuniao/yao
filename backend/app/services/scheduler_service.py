@@ -8,6 +8,7 @@
 1. 账号清理循环（每 30 秒）：清理 status=0 且超时的删除计划账号
 2. 计划自动关闭循环（每 30 分钟）：将 end_date<today 的进行中计划置为已结束
 3. 定时通知派发循环（每 60 秒）：根据打卡计划提醒时间发送站内信/邮件通知
+4. 生物识别凭证清理循环（每 30 分钟）：删除已过期的 user_biometric_tokens 记录
 
 通知派发逻辑：
 - 准时触发（trigger_type=0）：到达提醒时间，且该提醒时间对应匹配区间内无打卡记录时发送
@@ -69,6 +70,7 @@ from .notification_channel_service import NotificationChannelService
 INTERVAL_PURGE: int = 30        # 账号清理：每 30 秒
 INTERVAL_PLAN_CLOSE: int = 1800  # 计划关闭：每 30 分钟
 INTERVAL_NOTIFICATION: int = 60   # 通知派发：每 60 秒
+INTERVAL_BIOMETRIC_PURGE: int = 1800  # 生物识别凭证清理：每 30 分钟
 
 
 class SchedulerService:
@@ -83,8 +85,9 @@ class SchedulerService:
             asyncio.create_task(self._loop_purge_deletions()),
             asyncio.create_task(self._loop_close_expired_plans()),
             asyncio.create_task(self._loop_dispatch_notifications()),
+            asyncio.create_task(self._loop_purge_expired_biometric_tokens()),
         ]
-        logger.info("定时任务调度服务已启动：账号清理/计划关闭/通知派发")
+        logger.info("定时任务调度服务已启动：账号清理/计划关闭/通知派发/生物识别凭证清理")
 
     async def stop_all(self) -> None:
         """停止全部后台循环任务（由 main.py lifespan 调用）"""
@@ -131,6 +134,18 @@ class SchedulerService:
             except Exception:
                 logger.exception("定时通知派发任务异常")
             await asyncio.sleep(INTERVAL_NOTIFICATION)
+
+    async def _loop_purge_expired_biometric_tokens(self) -> None:
+        """循环：定期清理已过期的生物识别登录凭证（委托 User 服务）"""
+        while True:
+            try:
+                async with AsyncSessionLocal() as session:
+                    count = await User(session).purge_expired_biometric_tokens()
+                    if count > 0:
+                        logger.info(f"已清理 {count} 条过期生物识别凭证")
+            except Exception:
+                logger.exception("清理过期生物识别凭证任务异常")
+            await asyncio.sleep(INTERVAL_BIOMETRIC_PURGE)
 
 
 class NotificationDispatcher:

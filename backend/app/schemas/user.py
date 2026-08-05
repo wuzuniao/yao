@@ -1,6 +1,27 @@
+import re
+
 from pydantic import BaseModel, EmailStr, field_validator
 
 from ..core.security import Security
+
+
+# device_id UUID v4 格式校验正则（前端 getDeviceId 生成标准 UUID v4）
+# 校验目的：拒绝任意短串/非 UUID，降低伪造与脏数据风险
+_DEVICE_ID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+
+
+def _validate_device_id(v: str | None) -> str | None:
+    """device_id 校验：None 跳过（非必填），非空必须为合法 UUID v4 格式"""
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if not _DEVICE_ID_RE.match(v):
+        raise ValueError("设备标识格式不合法")
+    return v
 
 
 class RegisterUser(BaseModel):
@@ -57,6 +78,11 @@ class LoginUser(BaseModel):
             raise ValueError("请输入密码")
         return v
 
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, v: str | None) -> str | None:
+        return _validate_device_id(v)
+
 
 class SendResetCode(BaseModel):
     """发送密码找回验证码请求 Schema"""
@@ -82,6 +108,11 @@ class ResetPassword(BaseModel):
     @classmethod
     def validate_new_password(cls, v: str) -> str:
         return Security.validate_password(v)
+
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, v: str | None) -> str | None:
+        return _validate_device_id(v)
 
 
 class UpdateSignature(BaseModel):
@@ -232,12 +263,36 @@ class BiometricLogin(BaseModel):
     @field_validator("device_id")
     @classmethod
     def validate_device_id(cls, v: str) -> str:
-        if not v or not v.strip():
+        v = v.strip() if v else ""
+        if not v:
             raise ValueError("设备标识不能为空")
-        return v.strip()
+        if not _DEVICE_ID_RE.match(v):
+            raise ValueError("设备标识格式不合法")
+        return v
+
+
+class BiometricRevoke(BaseModel):
+    """撤销生物识别（指纹）登录凭证请求 Schema（单设备撤销）"""
+
+    device_id: str  # 设备标识（与凭证绑定）
+
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, v: str) -> str:
+        v = v.strip() if v else ""
+        if not v:
+            raise ValueError("设备标识不能为空")
+        if not _DEVICE_ID_RE.match(v):
+            raise ValueError("设备标识格式不合法")
+        return v
 
 
 class RefreshTokenReq(BaseModel):
     """刷新令牌有效期请求 Schema（device_id 可选，用于同步续期生物识别凭证）"""
 
     device_id: str | None = None
+
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, v: str | None) -> str | None:
+        return _validate_device_id(v)

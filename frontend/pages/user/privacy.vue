@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view :data-theme="themeKey" class="privacy-page">
     <!-- 顶部返回按钮（次级页面统一返回组件） -->
     <BackButton />
@@ -100,14 +100,14 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">生物识别登录凭证（biometric token）：一串由服务端生成的高熵随机字符串，有效期 31 天，与您的账号和上述设备标识绑定。该凭证在本机以 AES-256-GCM 算法加密后存储于应用私有存储区，密钥由 PBKDF2（12 万次迭代）从设备标识与机型信息派生，不使用硬编码密钥；</text>
+              <text class="privacy-page__list-text">生物识别登录凭证（biometric token）：一串由服务端生成的高熵随机字符串，有效期 31 天，与您的账号和上述设备标识绑定，存储于本应用私有存储区（应用沙箱），其他应用通常无法访问；该凭证同时与设备标识绑定，仅在本设备有效，复制到其他设备无法使用；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">机型与系统版本：仅在本机参与上述密钥派生，不上传服务器。</text>
+              <text class="privacy-page__list-text">机型与系统版本：不上传服务器。</text>
             </view>
           </view>
-          <text class="privacy-page__para">您可随时在个人信息页关闭指纹登录，关闭后本地加密凭证将被立即清除。退出登录或注销账号时，服务端会一并作废您全部设备的生物识别凭证。</text>
+          <text class="privacy-page__para">您可随时在个人信息页关闭指纹登录，关闭后本地凭证将被立即清除，同时通知服务端作废本设备的凭证记录。退出登录或注销账号时，服务端会一并作废您全部设备的生物识别凭证。</text>
 
           <text class="privacy-page__sub-title">4. 打卡计划与打卡记录（核心功能）</text>
           <text class="privacy-page__para">为实现按时提醒与记录，我们会收集并存储由您主动填写与产生的以下内容：</text>

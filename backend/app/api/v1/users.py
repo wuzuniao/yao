@@ -17,6 +17,7 @@ from ...schemas.user import (
     BindEmail,
     BindWeChat,
     BiometricLogin,
+    BiometricRevoke,
     ChangeEmail,
     ChangePassword,
     LoginUser,
@@ -625,3 +626,18 @@ async def biometric_login(payload: BiometricLogin, db: AsyncSession = Depends(ge
         "msg": "登录成功",
         "data": await _user_payload(db, db_user),
     }
+
+
+@router.post("/biometric-revoke")
+async def biometric_revoke(
+    payload: BiometricRevoke,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    撤销当前用户当前设备的生物识别登录凭证（单设备撤销）
+    - 用户在个人信息页关闭指纹登录时调用，立即作废服务端凭证
+    - 关闭后本设备无法再使用指纹一键登录，需重新账号密码登录下发新凭证
+    """
+    await User(db).revoke_biometric_token(user_id, payload.device_id)
+    return {"code": 0, "msg": "已关闭指纹登录"}

@@ -274,3 +274,16 @@ export function biometricLogin({ token, device_id }) {
     timeout: 10000
   })
 }
+
+/**
+ * 撤销当前设备生物识别登录凭证（关闭指纹登录时调用）
+ * @param {Object} param0 撤销参数
+ * @param {string} param0.device_id 设备标识（与凭证绑定）
+ */
+export function revokeBiometric({ device_id }) {
+  return request({
+    url: '/api/v1/users/biometric-revoke',
+    method: 'POST',
+    data: { device_id }
+  })
+}
