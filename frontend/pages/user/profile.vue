@@ -281,7 +281,7 @@
 
         <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示，作为本组真正最后一项） -->
         <!-- #ifdef APP-PLUS -->
-        <view v-if="showBiometric" class="profile-page__group-item">
+        <view v-if="showBiometric" class="profile-page__group-item profile-page__group-item--bordered">
           <text class="profile-page__group-text">指纹登录</text>
           <!-- 纯 CSS 手写开关：原生 switch 的 color 属性编译期取色、不支持 var()，
                故手写以引用语义令牌 var(--color-wechat)，保持全局单一配色真源 -->

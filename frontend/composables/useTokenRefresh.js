@@ -12,9 +12,30 @@ import { refreshToken as refreshTokenApi } from '../api/modules/user'
 const REFRESH_THRESHOLD_SECONDS = 1 * 24 * 3600 // 剩余不足 1 天续期
 
 // 解码 JWT payload 的 exp（不校验签名，仅读声明）
+// 兼容 App 端（5+ 引擎可能缺失 atob）：优先用全局 atob，否则回退 uni.base64ToArrayBuffer
 function getTokenExp(token) {
+  if (!token || typeof token !== 'string') return 0
+  const parts = token.split('.')
+  if (parts.length < 2) return 0
   try {
-    const payload = JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1]))))
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const pad = b64.length % 4
+    if (pad) b64 += '='.repeat(4 - pad)
+    let json
+    if (typeof atob === 'function') {
+      json = decodeURIComponent(escape(atob(b64)))
+    } else {
+      // App 端无 atob：用 uni.base64ToArrayBuffer 解码为字节再转字符串
+      const bytes = new Uint8Array(uni.base64ToArrayBuffer(b64))
+      let s = ''
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i])
+      try {
+        json = decodeURIComponent(escape(s))
+      } catch (e) {
+        json = s
+      }
+    }
+    const payload = JSON.parse(json)
     return payload.exp || 0
   } catch (e) {
     return 0

@@ -220,12 +220,13 @@ onLoad((options = {}) => {
 onShow(async () => {
   guideStore.onPageEnter('login')
   // App 端：页面显示时检测指纹能力，决定是否默认展示指纹一键登录卡片
-  // 设备支持指纹且本地存在凭证 → 默认指纹卡片；否则默认账号密码登录
-  // 用户可临时切到账号密码（switchMode('normal')），下次回到本页仍按能力恢复默认
+  // 三者同时满足才默认指纹卡片：设备支持指纹 + 本地存在凭证 + 用户已开启指纹开关
+  // 否则默认账号密码登录；用户可临时切到指纹（switchMode('fingerprint')）
   // #ifdef APP-PLUS
   const ok = await biometric.isAvailable()
   const hasToken = !!biometric.getBiometricToken()
-  biometricVisible.value = ok && hasToken
+  const enabled = biometric.isEnabled()
+  biometricVisible.value = ok && hasToken && enabled
   if (biometricVisible.value) {
     loginMode.value = 'fingerprint'
   } else {
@@ -367,10 +368,36 @@ async function handleLogin() {
     })
     // 4. 写入用户状态
     userStore.setUser(res.data)
-    // App 端：登录成功后若后端下发了生物识别凭证且用户已开启指纹，则本地加密存储
+    // App 端：登录成功后若后端下发了生物识别凭证，则本地存储。
+    // 凭证存储不依赖开关状态（isEnabled），避免「未开启→不下发→开启时取不到凭证」死锁；
+    // 是否默认弹出指纹一键登录由 onShow 的 isEnabled() 判定。
     // #ifdef APP-PLUS
-    if (res.data && res.data.biometric_token && biometric.isEnabled()) {
+    if (res.data && res.data.biometric_token) {
       biometric.storeBiometricToken(res.data.biometric_token)
+    }
+    // 引导开启指纹登录：设备支持指纹且本地未开启时，弹窗询问是否开启
+    // 用户确认 → 置位开关，下次进登录页默认显示指纹一键登录
+    // 用户取消 → 仅提示登录成功，凭证已存、可在 profile 页随时开启
+    const _bioSupported = await biometric.isAvailable()
+    if (_bioSupported && !biometric.isEnabled()) {
+      uni.showModal({
+        title: '开启指纹登录',
+        content: '是否开启指纹登录，下次免密一键登录？',
+        confirmText: '开启',
+        cancelText: '暂不',
+        success: (r) => {
+          if (r.confirm) {
+            biometric.setEnabled(true)
+            uni.showToast({ title: '已开启指纹登录', icon: 'success' })
+          } else {
+            uni.showToast({ title: '登录成功', icon: 'success' })
+          }
+          setTimeout(() => {
+            uni.redirectTo({ url: '/pages/index/settings' })
+          }, 1500)
+        }
+      })
+      return
     }
     // #endif
     uni.showToast({ title: '登录成功', icon: 'success' })

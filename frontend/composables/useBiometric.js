@@ -4,28 +4,18 @@
  * --------------------------------------------------------------------------
  * - 设备指纹能力检测：checkIsSupportSoterAuthentication + checkIsSoterEnrolledInDevice
  * - 指纹验证：uni.startSoterAuthentication（authContent 文案已确认为「指纹验证已登录」）
- * - 本地凭证安全存储：PBKDF2 派生 AES-256-GCM 密钥，加密 biometric_token 后存本地
- *   · 密钥派生材料来自设备指纹（首次登录生成的 UUID + 机型/系统版本），不使用硬编码密钥
- *   · 仅 App 端引入 @noble/ciphers（纯 ESM，支持 AES-256-GCM）
+ * - 本地凭证存储：biometric_token 直接存本地（高熵随机串 + 绑定 device_id，泄露仅限本机可用）
+ *   · biometric_token 由后端 secrets.token_hex(32) 生成（256-bit 熵），本身已是安全凭证
+ *   · 后端校验 token 与 device_id 绑定关系，跨设备无法复用
+ *   · uni storage 在 App 端为应用沙箱，其他应用无法访问
+ *   · 此前用 PBKDF2+AES-256-GCM 加密存储，但 @noble/ciphers 在 App 端 5+ 引擎静默失败，
+ *     try-catch 吞异常导致凭证从未写入，指纹登录闭环断裂；改用直接存储确保可用
  * - 注意：device_id 由本地生成并持久化，登录/续期/指纹登录时一并传给后端做绑定校验
  */
-import { gcm } from '@noble/ciphers/aes'
-import { pbkdf2 } from '@noble/hashes/pbkdf2'
-import { sha256 } from '@noble/hashes/sha256'
 
 const DEVICE_ID_KEY = 'biometricDeviceId'
-const TOKEN_ENC_KEY = 'biometricTokenEnc'
+const TOKEN_KEY = 'biometricToken'
 const BIO_ENABLED_KEY = 'biometricEnabled'
-
-// 派生密钥用的设备信息盐（非敏感，仅增加跨设备派生差异）
-function getDeviceSalt() {
-  try {
-    const info = uni.getSystemInfoSync()
-    return `${info.model || ''}|${info.system || ''}|${info.platform || ''}`
-  } catch (e) {
-    return 'default-salt'
-  }
-}
 
 // 生成或读取本地设备 UUID（首次登录时生成并持久化）
 function getDeviceId() {
@@ -67,60 +57,6 @@ function getDeviceId() {
     }
   }
   return id
-}
-
-// PBKDF2 高迭代派生 AES-256 密钥（32 字节）
-function deriveKey(passphrase) {
-  const salt = new TextEncoder().encode(`yao-bio-${getDeviceSalt()}`)
-  return pbkdf2(sha256, passphrase, salt, { c: 120000, dkLen: 32 })
-}
-
-// base64 编解码（兼容 App 端 uni 环境）
-function b64encode(bytes) {
-  let bin = ''
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
-  return btoa(bin)
-}
-function b64decode(str) {
-  const bin = atob(str)
-  const out = new Uint8Array(bin.length)
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
-  return out
-}
-
-// 加密 biometric_token 为 base64 字符串（iv + ciphertext+tag）
-function encryptToken(plainToken) {
-  const key = deriveKey(getDeviceId())
-  const nonce = new Uint8Array(12)
-  try {
-    const cryptoObj = (typeof crypto !== 'undefined' && crypto) || (typeof globalThis !== 'undefined' && globalThis.crypto)
-    if (cryptoObj && cryptoObj.getRandomValues) cryptoObj.getRandomValues(nonce)
-    else for (let i = 0; i < nonce.length; i++) nonce[i] = (Math.random() * 256) | 0
-  } catch (e) {
-    for (let i = 0; i < nonce.length; i++) nonce[i] = (Math.random() * 256) | 0
-  }
-  const pt = new TextEncoder().encode(plainToken)
-  const cipher = gcm(key, nonce).encrypt(pt)
-  // nonce(12) + cipher
-  const merged = new Uint8Array(nonce.length + cipher.length)
-  merged.set(nonce, 0)
-  merged.set(cipher, nonce.length)
-  return b64encode(merged)
-}
-
-// 解密 base64 字符串还原 biometric_token（失败返回空串）
-function decryptToken(encStr) {
-  try {
-    const merged = b64decode(encStr)
-    const nonce = merged.slice(0, 12)
-    const ct = merged.slice(12)
-    const key = deriveKey(getDeviceId())
-    const pt = gcm(key, nonce).decrypt(ct)
-    return new TextDecoder().decode(pt)
-  } catch (e) {
-    console.warn('解密生物识别凭证失败', e)
-    return ''
-  }
 }
 
 export function useBiometric() {
@@ -173,11 +109,11 @@ export function useBiometric() {
     }
   }
 
-  // 加密并存储后端下发的 biometric_token
+  // 存储后端下发的 biometric_token（直接存储，高熵随机串 + device_id 绑定）
   function storeBiometricToken(token) {
     if (!token) return false
     try {
-      uni.setStorageSync(TOKEN_ENC_KEY, encryptToken(token))
+      uni.setStorageSync(TOKEN_KEY, token)
       return true
     } catch (e) {
       console.warn('存储生物识别凭证失败', e)
@@ -185,12 +121,10 @@ export function useBiometric() {
     }
   }
 
-  // 读取并解密本地 biometric_token（无则返回空串）
+  // 读取本地 biometric_token（无则返回空串）
   function getBiometricToken() {
     try {
-      const enc = uni.getStorageSync(TOKEN_ENC_KEY)
-      if (!enc) return ''
-      return decryptToken(enc)
+      return uni.getStorageSync(TOKEN_KEY) || ''
     } catch (e) {
       return ''
     }
@@ -199,7 +133,7 @@ export function useBiometric() {
   // 清除本地 biometric_token（关闭开关时调用，不退出登录）
   function clearBiometricToken() {
     try {
-      uni.removeStorageSync(TOKEN_ENC_KEY)
+      uni.removeStorageSync(TOKEN_KEY)
     } catch (e) {
       console.warn('清除生物识别凭证失败', e)
     }
