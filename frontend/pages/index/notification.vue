@@ -475,7 +475,7 @@ const { requestSubscribe, isSubscribeSilentRejected } = useWechatSubscribe()
 
 // App 推送设备登记（仅在 App 端生效）
 // #ifdef APP-PLUS
-const { reportDeviceToken, requestPermission } = useAppPush()
+const { reportDeviceToken, requestPermission, openNotificationSettings } = useAppPush()
 // #endif
 
 // 用户的通知渠道列表（从数据库加载）
@@ -901,9 +901,24 @@ async function handleEnableAppPush() {
     uni.showToast({ title: '请先登录', icon: 'none' })
     return
   }
-  uni.showLoading({ title: '开启中...' })
-  // 用户主动添加 App 推送时才申请系统通知权限（避免 App 启动即弹授权打扰）
-  requestPermission()
+  // 用户主动添加 App 推送时才申请系统通知权限（避免 App 启动即弹授权打扰）；
+  // 已开启时 requestPermission 内部直接返回 true，不重复弹窗
+  const granted = await requestPermission()
+  if (!granted) {
+    // 用户拒绝或系统通知总开关关闭：登记设备也收不到提醒，引导去系统设置开启
+    uni.showModal({
+      title: '需要通知权限',
+      content: '系统通知权限未开启，开启后才能收到打卡提醒。是否前往系统设置开启？',
+      confirmText: '去设置',
+      cancelText: '暂不',
+      success: (res) => {
+        if (res.confirm) openNotificationSettings()
+      }
+    })
+    return
+  }
+  // 首次注册需联网向友盟取设备标识，耗时可达数秒，loading 文案明确告知用户
+  uni.showLoading({ title: '正在注册设备...', mask: true })
   const ok = await reportDeviceToken({ createIfMissing: true, silent: false })
   uni.hideLoading()
   if (!ok) return
