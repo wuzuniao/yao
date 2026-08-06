@@ -854,7 +854,7 @@ async function handleCheckin() {
       }
       // App 端打卡成功后刷新设备标识（设备重装/卸载重装会换 token）
       // 仅刷新已有的 App 推送通知方式，未添加时后端静默跳过（须先去通知方式页添加）
-      // #ifdef APP-PLUS
+      // #ifdef APP
       await reportDeviceToken({ createIfMissing: false, silent: true })
       // #endif
     }

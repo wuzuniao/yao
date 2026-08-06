@@ -28,7 +28,7 @@
     <!-- #endif -->
 
     <!-- App 端指纹一键登录区（仅 App 端，设备支持指纹且本地存在凭证时展示） -->
-    <!-- #ifdef APP-PLUS -->
+    <!-- #ifdef APP -->
     <view v-if="loginMode === 'fingerprint' && biometricVisible" class="login-page__wechat">
       <text class="login-page__title">一键登录</text>
       <view class="login-page__wechat-btn guide-target-fingerprint-login" @click="handleFingerprintLogin">
@@ -179,7 +179,7 @@ import { wechatLogin } from '../../api/modules/user'
 import wxIcon from '../../assets/images/dl_wx.png'
 // #endif
 // App 端生物识别（指纹）一键登录相关（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 import { useBiometric } from '../../composables/useBiometric'
 import fingerprintIcon from '../../assets/images/dl_fingerprint.png'
 // #endif
@@ -206,7 +206,7 @@ const loginMode = ref(_defaultLoginMode)
 // App 端指纹一键登录卡片是否可显示（设备支持指纹 + 本地存在已登录凭证）
 // 仅在 App 端使用，其他端恒为 false
 const biometricVisible = ref(false)
-// #ifdef APP-PLUS
+// #ifdef APP
 const biometric = useBiometric()
 // #endif
 
@@ -222,7 +222,7 @@ onShow(async () => {
   // App 端：页面显示时检测指纹能力，决定是否默认展示指纹一键登录卡片
   // 三者同时满足才默认指纹卡片：设备支持指纹 + 本地存在凭证 + 用户已开启指纹开关
   // 否则默认账号密码登录；用户可临时切到指纹（switchMode('fingerprint')）
-  // #ifdef APP-PLUS
+  // #ifdef APP
   const ok = await biometric.isAvailable()
   const hasToken = !!biometric.getBiometricToken()
   const enabled = biometric.isEnabled()
@@ -251,7 +251,7 @@ const wechatAgree = ref(false)
 // #endif
 
 // App 端指纹登录独立隐私勾选（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 const fingerprintAgree = ref(false)
 // #endif
 
@@ -316,7 +316,7 @@ function toggleWechatAgree() {
 // #endif
 
 // App 端指纹登录隐私勾选切换（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 function toggleFingerprintAgree() {
   fingerprintAgree.value = !fingerprintAgree.value
 }
@@ -356,13 +356,13 @@ async function handleLogin() {
   submitting.value = true
   try {
     // App 端传入 device_id，使后端下发生物识别（指纹）登录凭证
-    // #ifdef APP-PLUS
+    // #ifdef APP
     const deviceId = biometric.getDeviceId()
     // #endif
     const res = await loginUser({
       username: form.username,
       password: form.password,
-      // #ifdef APP-PLUS
+      // #ifdef APP
       device_id: deviceId
       // #endif
     })
@@ -371,7 +371,7 @@ async function handleLogin() {
     // App 端：登录成功后若后端下发了生物识别凭证，则本地存储。
     // 凭证存储不依赖开关状态（isEnabled），避免「未开启→不下发→开启时取不到凭证」死锁；
     // 是否默认弹出指纹一键登录由 onShow 的 isEnabled() 判定。
-    // #ifdef APP-PLUS
+    // #ifdef APP
     if (res.data && res.data.biometric_token) {
       biometric.storeBiometricToken(res.data.biometric_token)
     }
@@ -505,7 +505,7 @@ function handleWechatLogin() {
 // #endif
 
 // ===== App 端指纹一键登录（仅 App 端）：指纹验证 → 后端 biometric-login → 写入状态 → 跳转 =====
-// #ifdef APP-PLUS
+// #ifdef APP
 async function handleFingerprintLogin() {
   if (submitting.value) return
   // 隐私协议勾选校验（与微信登录对称）

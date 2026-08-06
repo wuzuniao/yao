@@ -83,6 +83,9 @@
             }
         }
     },
+    "app-harmony" : {
+        "bundleName" : "com.wuzuniao.yao"
+    },
     "quickapp" : {},
     "mp-weixin" : {
         "appid" : "wx3101dc47c535111e",

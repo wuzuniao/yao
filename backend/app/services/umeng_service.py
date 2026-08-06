@@ -36,6 +36,9 @@ class UmengService:
         if platform == "ios":
             app_key = settings.UMENG_IOS_APP_KEY
             master_secret = settings.UMENG_IOS_MASTER_SECRET
+        elif platform == "harmony":
+            app_key = settings.UMENG_HARMONY_APP_KEY
+            master_secret = settings.UMENG_HARMONY_MASTER_SECRET
         else:
             app_key = settings.UMENG_ANDROID_APP_KEY
             master_secret = settings.UMENG_ANDROID_MASTER_SECRET
@@ -45,7 +48,11 @@ class UmengService:
 
     @staticmethod
     def _build_payload(platform: str, title: str, content: str, extra: dict[str, str]) -> dict[str, Any]:
-        """构造不同平台的 payload 段（Android 通知栏消息 / iOS APNs 消息）"""
+        """构造不同平台的 payload 段（Android / Harmony 通知栏消息 / iOS APNs 消息）
+
+        鸿蒙在友盟为独立应用但复用同一 unicast 接口，payload 与 Android 同源
+        （均为 display_type=notification + body），故共用同一分支，仅密钥区分。
+        """
         if platform == "ios":
             return {
                 "aps": {
@@ -89,7 +96,7 @@ class UmengService:
         :param device_token: 友盟 SDK 返回的设备唯一标识
         :param title: 通知标题
         :param content: 通知正文
-        :param platform: 设备平台（android / ios），决定使用哪套密钥与 payload 结构
+        :param platform: 设备平台（android / ios / harmony），决定使用哪套密钥与 payload 结构
         :param extra: 附加字段（如 page 跳转路径），随通知透传给客户端
         :return: 友盟接口原始响应
         :raises UmengPushError: 密钥未配置、网络异常或友盟返回非 SUCCESS 时抛出

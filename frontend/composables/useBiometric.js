@@ -1,7 +1,12 @@
-// #ifdef APP-PLUS
+// #ifdef APP
 /**
- * 生物识别（指纹）登录 composable（仅 App 端）
+ * 生物识别（指纹）登录 composable（仅 App 端，含 Android / iOS / HarmonyOS）
  * --------------------------------------------------------------------------
+ * 平台宏用 APP 而非 APP-PLUS：APP-PLUS 不含鸿蒙，用它会导致鸿蒙端整个模块被剔除。
+ * 鸿蒙端 Soter 三接口自 HBuilderX 4.31 起原生支持（supportMode 同样返回 fingerPrint），
+ * 但必须在 harmony-configs/entry/src/main/module.json5 声明 ohos.permission.ACCESS_BIOMETRIC，
+ * 否则接口调用直接失败（鸿蒙权限不写在 manifest.json，写在 harmony-configs 增量配置目录）。
+ * Android 端另需在 manifest.json 的 app-plus.distribute.android 勾选指纹权限。
  * - 设备指纹能力检测：checkIsSupportSoterAuthentication + checkIsSoterEnrolledInDevice
  * - 指纹验证：uni.startSoterAuthentication（authContent 文案已确认为「指纹验证已登录」）
  * - 本地凭证存储：biometric_token 直接存本地（高熵随机串 + 绑定 device_id，泄露仅限本机可用）

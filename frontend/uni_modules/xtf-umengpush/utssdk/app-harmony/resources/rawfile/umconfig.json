@@ -1,8 +1,8 @@
 {
-  "bundleName": "uni.app.xxxx",
-  "appName": "REPLACE_WITH_HARMONY_APP_NAME",
+  "bundleName": "com.wuzuniao.yao",
+  "appName": "无足鸟按时吃药打卡h",
   "channel": "official",
-  "appKey": "xxxx",
-  "appMessageSecret": "xxxx",
-  "debug": true
+  "appKey": "6a749da74825f25084b67a58",
+  "appMessageSecret": "REPLACE_WITH_UMENG_MESSAGE_SECRET",
+  "debug": false
 }

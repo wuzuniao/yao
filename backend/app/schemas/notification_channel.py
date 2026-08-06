@@ -9,7 +9,7 @@ from ..core.security import Security
 CHANNEL_TYPE_ZNX = "站内信"
 CHANNEL_TYPE_EMAIL = "邮件"
 CHANNEL_TYPE_WECHAT = "微信"
-# App 推送（友盟+ U-Push），仅 App 端（#ifdef APP-PLUS）可添加，小程序端不展示
+# App 推送（友盟+ U-Push），仅 App 端（#ifdef APP，含 Android/iOS/鸿蒙）可添加，小程序端不展示
 CHANNEL_TYPE_APP_PUSH = "App推送"
 
 # App 推送设备 token 累计失败上限：连续失败达到该次数即从数组中剔除该 token
@@ -126,7 +126,7 @@ class AppPushDeviceToken(BaseModel):
     """App 推送渠道 channel_value 中单个设备 token 的结构"""
 
     token: str
-    platform: Literal["android", "ios"]
+    platform: Literal["android", "ios", "harmony"]
     fail_count: int = 0
 
     @field_validator("token")
@@ -161,7 +161,7 @@ class UpsertAppPushChannel(BaseModel):
     """
 
     device_token: str
-    platform: Literal["android", "ios"]
+    platform: Literal["android", "ios", "harmony"]
     create_if_missing: bool = False
 
     @field_validator("device_token")

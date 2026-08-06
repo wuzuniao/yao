@@ -280,7 +280,7 @@
         </view>
 
         <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示，作为本组真正最后一项） -->
-        <!-- #ifdef APP-PLUS -->
+        <!-- #ifdef APP -->
         <view v-if="showBiometric" class="profile-page__group-item profile-page__group-item--bordered">
           <text class="profile-page__group-text">指纹登录</text>
           <!-- 纯 CSS 手写开关：原生 switch 的 color 属性编译期取色、不支持 var()，
@@ -379,7 +379,7 @@ import {
   setPassword,
   bindEmail,
   getUserInfo,
-  // #ifdef APP-PLUS
+  // #ifdef APP
   revokeBiometric,
   // #endif
 } from '../../api/modules/user'
@@ -388,7 +388,7 @@ import hongAvatar from '../../assets/images/touxiang/hong.png'
 import lanAvatar from '../../assets/images/touxiang/lan.png'
 import { useShare } from '../../composables/useShare'
 // App 端生物识别（指纹）登录开关（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 import { useBiometric } from '../../composables/useBiometric'
 // #endif
 
@@ -457,12 +457,12 @@ const showTheme = computed(() => (userStore.userInfo?.role ?? 0) > 1)
 
 // ===== App 端指纹登录开关（仅 App 端）=====
 // 显示条件：设备支持指纹 + 当前已登录
-// #ifdef APP-PLUS
+// #ifdef APP
 const biometric = useBiometric()
 const biometricSupported = ref(false)
 const biometricEnabled = ref(false)
 // #endif
-// #ifdef APP-PLUS
+// #ifdef APP
 // 指纹登录开关是否展示：设备支持指纹且页面处于已登录状态
 const showBiometric = computed(() => biometricSupported.value && !!userStore.userInfo?.id)
 // #endif
@@ -497,7 +497,7 @@ onLoad((options) => {
       .catch((e) => console.warn('获取用户信息失败', e))
   }
   // App 端：检测指纹能力并读取本地开关状态
-  // #ifdef APP-PLUS
+  // #ifdef APP
   biometric.isAvailable().then((ok) => {
     biometricSupported.value = ok
     if (ok) {
@@ -944,7 +944,7 @@ function handleDeletion() {
 }
 
 // ===== App 端指纹登录开关切换（仅 App 端）=====
-// #ifdef APP-PLUS
+// #ifdef APP
 async function toggleBiometric() {
   // 账号待删除状态下禁止操作
   if (isDeletionScheduled.value) return

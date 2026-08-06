@@ -20,15 +20,16 @@
  */
 
 // 后端 API 基础地址
-// App 端（Android/iOS）恒定使用生产 HTTPS 域名，原因：
+// App 端（Android/iOS/HarmonyOS）恒定使用生产 HTTPS 域名，原因：
 //   1. HBuilderX「运行到手机」时 NODE_ENV 为 development，若沿用 localhost，
 //      真机上 localhost 指向手机自身，所有接口必然失败。
-//   2. Android 9+ 与 iOS ATS 默认禁止明文 HTTP，局域网 IP 亦需额外放行配置。
-// 如需 App 端连本地后端联调，把下方 APP_PLUS 判断临时改为局域网 IP，
+//   2. Android 9+、iOS ATS 与鸿蒙默认禁止明文 HTTP，局域网 IP 亦需额外放行配置。
+// 如需 App 端连本地后端联调，把下方 IS_APP 判断临时改为局域网 IP，
 // 并在 manifest.json 的 app-plus.distribute.android 开启 usesCleartextTraffic。
-// UNI_PLATFORM 由 uni-app 编译期静态替换为字符串字面量（如 'app-plus'），单分支声明避免重复导出。
-const APP_PLUS = process.env.UNI_PLATFORM === 'app-plus'
-export const API_BASE_URL = APP_PLUS
+// UNI_PLATFORM 由 uni-app 编译期静态替换为字符串字面量（Android/iOS 为 'app-plus'，
+// 鸿蒙为 'app-harmony'），两者都属 App 端，单分支声明避免重复导出。
+const IS_APP = process.env.UNI_PLATFORM === 'app-plus' || process.env.UNI_PLATFORM === 'app-harmony'
+export const API_BASE_URL = IS_APP
   ? 'https://yao.wuzuniao.com'
   : (process.env.NODE_ENV === 'production'
       ? 'https://yao.wuzuniao.com'

@@ -291,7 +291,7 @@ class NotificationChannelService:
     # App 推送渠道（友盟+ U-Push）
     # 每用户仅一行（channel_type=CHANNEL_TYPE_APP_PUSH 即 'App推送'），多设备共存于 channel_value 数组中
     # channel_value 结构：
-    #   {"device_tokens": [{"token": "...", "platform": "android|ios", "fail_count": 0}]}
+    #   {"device_tokens": [{"token": "...", "platform": "android|ios|harmony", "fail_count": 0}]}
     #   token：友盟 SDK 返回的设备唯一标识（device_token）
     #   platform：设备平台，决定派发时使用哪套友盟应用密钥
     #   fail_count：连续下发失败次数，成功即归零，累计满 3 次剔除该 token

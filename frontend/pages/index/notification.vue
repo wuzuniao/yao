@@ -187,7 +187,7 @@
         </view>
         <!-- #endif -->
 
-        <!-- #ifdef APP-PLUS -->
+        <!-- #ifdef APP -->
         <!-- App 推送卡片（仅 App 端显示；点击卡片展开启用状态修改表单，含删除图标） -->
         <view v-if="hasAppPush">
           <view class="notification-page__card" :class="{ 'notification-page__card--disabled': appPushChannel && !appPushChannel.enabled }" @click="toggleAppPushEdit">
@@ -267,7 +267,7 @@
                 <text class="notification-page__radio-text">微信</text>
               </view>
               <!-- #endif -->
-              <!-- #ifdef APP-PLUS -->
+              <!-- #ifdef APP -->
               <view class="notification-page__radio-item" @click="selectType('App推送')">
                 <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === 'App推送' }">
                   <view v-if="formType === 'App推送'" class="notification-page__radio-dot"></view>
@@ -285,7 +285,7 @@
           </template>
           <!-- #endif -->
 
-          <!-- #ifdef APP-PLUS -->
+          <!-- #ifdef APP -->
           <!-- App 推送说明（仅"App推送"类型时显示，使用默认文字样式） -->
           <template v-if="formType === 'App推送'">
             <text>点击下方「开启推送」后，打卡时间到达时将通过系统通知栏提醒您，App 退出后依然可以收到。多台设备可分别开启，点击通知栏消息会自动跳转到首页打卡。</text>
@@ -442,7 +442,7 @@ import { updateWechatChannel } from '../../api/modules/notification'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 // #endif
 // App 推送相关（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 import { useAppPush } from '../../composables/useAppPush'
 // #endif
 import znxIcon from '../../assets/images/tz_znx.png'
@@ -474,7 +474,7 @@ const { requestSubscribe, isSubscribeSilentRejected } = useWechatSubscribe()
 // #endif
 
 // App 推送设备登记（仅在 App 端生效）
-// #ifdef APP-PLUS
+// #ifdef APP
 const { reportDeviceToken, requestPermission, openNotificationSettings } = useAppPush()
 // #endif
 
@@ -489,7 +489,7 @@ let _defaultFormType = '邮件'
 // #ifdef MP-WEIXIN
 _defaultFormType = '微信'
 // #endif
-// #ifdef APP-PLUS
+// #ifdef APP
 _defaultFormType = 'App推送'
 // #endif
 const formType = ref(_defaultFormType)
@@ -524,7 +524,7 @@ const wechatEditForm = reactive({
 // #endif
 
 // App 推送启用状态修改表单（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 // App 推送启用状态修改表单是否展开（点击 App 推送卡片切换）
 const appPushEditExpanded = ref(false)
 // App 推送启用状态修改表单（仅 enabled 字段）
@@ -581,7 +581,7 @@ const wechatRemaining = computed(() => {
 // #endif
 
 // 计算属性：App 推送渠道相关（仅 App 端使用）
-// #ifdef APP-PLUS
+// #ifdef APP
 // 计算属性：是否已配置 App 推送渠道（每用户仅一行，多设备共存于该行）
 const hasAppPush = computed(() => channels.value.some(ch => ch.channel_type === 'App推送'))
 // 计算属性：App 推送渠道对象
@@ -603,7 +603,7 @@ const canSave = computed(() => {
     return true
   }
   // #endif
-  // #ifdef APP-PLUS
+  // #ifdef APP
   if (formType.value === 'App推送') {
     return true
   }
@@ -616,7 +616,7 @@ const saveButtonText = computed(() => {
   // #ifdef MP-WEIXIN
   if (formType.value === '微信') return '授权订阅提醒'
   // #endif
-  // #ifdef APP-PLUS
+  // #ifdef APP
   if (formType.value === 'App推送') return '开启推送'
   // #endif
   return '保存通知'
@@ -712,10 +712,10 @@ function handleAdd() {
   // #ifdef MP-WEIXIN
   formType.value = '微信'
   // #endif
-  // #ifdef APP-PLUS
+  // #ifdef APP
   formType.value = 'App推送'
   // #endif
-  // #ifndef MP-WEIXIN || APP-PLUS
+  // #ifndef MP-WEIXIN || APP
   formType.value = '邮件'
   // #endif
   form.smtp_host = ''
@@ -744,7 +744,7 @@ async function handleSave() {
     return
   }
   // #endif
-  // #ifdef APP-PLUS
+  // #ifdef APP
   if (formType.value === 'App推送') {
     await handleEnableAppPush()
     return
@@ -894,7 +894,7 @@ async function handleDeleteEmail(channelId) {
   })
 }
 
-// #ifdef APP-PLUS
+// #ifdef APP
 // 开启 App 推送：登记本机设备标识到后端（渠道不存在时新建，已存在则追加/刷新本机设备）
 async function handleEnableAppPush() {
   if (!userStore.userInfo) {
