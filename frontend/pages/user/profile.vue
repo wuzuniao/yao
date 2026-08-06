@@ -279,6 +279,21 @@
           </view>
         </view>
 
+        <!-- 语言切换（默认简体中文，点击开关切到 English；本期仅做按钮功能，不翻译界面） -->
+        <view class="profile-page__group-item profile-page__group-item--bordered">
+          <text class="profile-page__group-text">语言</text>
+          <!-- 复用指纹登录同款纯 CSS 手写开关，引用语义令牌保持单一配色真源 -->
+          <view
+            class="profile-page__biometric-switch"
+            :class="{ 'profile-page__biometric-switch--on': languageIsEnglish }"
+            role="switch"
+            :aria-checked="languageIsEnglish"
+            @click="toggleLanguage"
+          >
+            <view class="profile-page__biometric-switch-knob" />
+          </view>
+        </view>
+
         <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示，作为本组真正最后一项） -->
         <!-- #ifdef APP -->
         <view v-if="showBiometric" class="profile-page__group-item profile-page__group-item--bordered">
@@ -366,6 +381,7 @@ import PasswordEye from '../../components/PasswordEye.vue'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
 import { useThemeStore, THEME_LIST } from '../../store/modules/theme'
+import { useLanguageStore } from '../../store/modules/language'
 import {
   updateSignature,
   changePassword,
@@ -396,6 +412,9 @@ useShare({ title: '个人信息' })
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
+// 语言偏好（默认简体中文，本次仅做按钮切换，不接入翻译）
+const languageStore = useLanguageStore()
+const languageIsEnglish = computed(() => languageStore.current === 'en')
 // 主题清单（与 global.scss 的 [data-theme] 方案一一对应，按代表色命名）
 const themeList = THEME_LIST
 
@@ -941,6 +960,12 @@ function handleDeletion() {
       }
     })
   }
+}
+
+// ===== 语言切换（仅按钮功能，暂不翻译界面）=====
+function toggleLanguage() {
+  // 在简体中文（zh-CN）与 English（en）之间切换，持久化到本地
+  languageStore.setLanguage(languageIsEnglish.value ? 'zh-CN' : 'en')
 }
 
 // ===== App 端指纹登录开关切换（仅 App 端）=====
