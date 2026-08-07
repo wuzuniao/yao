@@ -282,15 +282,17 @@
         <!-- 语言切换（默认简体中文，点击开关切到 English；本期仅做按钮功能，不翻译界面） -->
         <view class="profile-page__group-item profile-page__group-item--bordered">
           <text class="profile-page__group-text">语言</text>
-          <!-- 复用指纹登录同款纯 CSS 手写开关，引用语义令牌保持单一配色真源 -->
+          <!-- 纯 CSS 手写开关（独立类，区别于指纹开关）：旋钮滑动指示状态，
+               开关内居中显示当前语言名，引用语义令牌保持单一配色真源 -->
           <view
-            class="profile-page__biometric-switch"
-            :class="{ 'profile-page__biometric-switch--on': languageIsEnglish }"
+            class="profile-page__lang-switch"
+            :class="{ 'profile-page__lang-switch--on': languageIsEnglish }"
             role="switch"
             :aria-checked="languageIsEnglish"
             @click="toggleLanguage"
           >
-            <view class="profile-page__biometric-switch-knob" />
+            <view class="profile-page__lang-knob" />
+            <text class="profile-page__lang-text">{{ languageIsEnglish ? 'English' : '简体中文' }}</text>
           </view>
         </view>
 
@@ -395,9 +397,6 @@ import {
   setPassword,
   bindEmail,
   getUserInfo,
-  // #ifdef APP
-  revokeBiometric,
-  // #endif
 } from '../../api/modules/user'
 import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
@@ -970,7 +969,7 @@ function toggleLanguage() {
 
 // ===== App 端指纹登录开关切换（仅 App 端）=====
 // #ifdef APP
-async function toggleBiometric() {
+function toggleBiometric() {
   // 账号待删除状态下禁止操作
   if (isDeletionScheduled.value) return
   const next = !biometricEnabled.value
@@ -985,20 +984,11 @@ async function toggleBiometric() {
     biometric.setEnabled(true)
     biometricEnabled.value = true
   } else {
-    // 关闭：清除本地凭证 + 通知服务端作废本设备凭证（保留登录态，关闭指纹 ≠ 退出登录）
-    // 服务端 revoke 后即使本地有 token 副本也无法换 JWT，缩短风险窗口
-    const deviceId = biometric.getDeviceId()
-    biometric.clearBiometricToken()
+    // 关闭：仅切换本地开关标记，不清理本地凭证、不撤销服务端凭证
+    // 用户主动关闭/打开指纹登录不主动清理本地信息，便于再次打开时无需重新账号密码登录；
+    // 退出登录时同样保留凭证，真正的凭证清理仅在注销账号时统一处理（关闭指纹 ≠ 退出登录）
     biometric.setEnabled(false)
     biometricEnabled.value = false
-    if (deviceId) {
-      try {
-        await revokeBiometric({ device_id: deviceId })
-      } catch (e) {
-        // 后端 revoke 失败不阻断本地关闭（本地凭证已清，凭证最长 31 天后自然过期）
-        console.warn('服务端撤销指纹凭证失败', e)
-      }
-    }
   }
 }
 // #endif
@@ -1109,6 +1099,53 @@ function handleLogout() {
 }
 .profile-page__biometric-switch--on .profile-page__biometric-switch-knob {
   transform: translateX(40rpx);
+}
+
+/* 语言切换开关：纯 CSS 手写开关（独立于指纹开关，开关内居中显示当前语言名）
+   旋钮滑动指示状态，文字随状态切换颜色，引用语义令牌保持单一配色真源 */
+.profile-page__lang-switch {
+  position: relative;
+  width: 176rpx;
+  height: 56rpx;
+  border-radius: 9999px;
+  background: var(--color-border-input); /* 关态轨道色（简体中文） */
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.profile-page__lang-switch--on {
+  background: var(--color-wechat); /* 开态轨道色（随主题代表色，English） */
+}
+.profile-page__lang-knob {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: var(--color-text-inverse); /* 白色滑块 */
+  transition: transform 0.2s ease;
+  z-index: 0;
+}
+.profile-page__lang-switch--on .profile-page__lang-knob {
+  transform: translateX(120rpx);
+}
+.profile-page__lang-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--color-text-secondary); /* 关态文字色（简体中文） */
+  transition: color 0.2s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+.profile-page__lang-switch--on .profile-page__lang-text {
+  color: var(--color-text-inverse); /* 开态文字色（English，白字） */
 }
 
 /* ===== 动态表单区域 ===== */
@@ -1365,6 +1402,27 @@ function handleLogout() {
   .profile-page__group-item {
     padding: 12px 16px;
     height: 49px;
+  }
+
+  /* 语言切换开关（平板锁定，避免 rpx 过度放大） */
+  .profile-page__lang-switch {
+    width: 88px;
+    height: 28px;
+  }
+
+  .profile-page__lang-knob {
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .profile-page__lang-switch--on .profile-page__lang-knob {
+    transform: translateX(60px);
+  }
+
+  .profile-page__lang-text {
+    font-size: 12px;
   }
 
   /* 主文字字号 */

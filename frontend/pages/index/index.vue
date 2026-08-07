@@ -385,8 +385,8 @@ let longPressTimer = null
 const longPressCountdown = ref(0)
 // 长按倒计时 interval
 let longPressInterval = null
-// 打卡防抖时间戳：同一任务3秒内只允许点击一次
-let lastCheckinTime = 0
+// 打卡防抖时间戳（按计划ID记录）：同一任务3秒内只允许点击一次，切换到其他任务可立即打卡
+const lastCheckinTimeMap = {}
 
 // ===== 计算属性 =====
 
@@ -820,10 +820,11 @@ async function handleCheckin() {
   const timeId = checkinState.value.timeId
   if (!primaryPlan.value || !isLoggedIn.value || !timeId) return
 
-  // 防抖：3秒内只允许一次打卡
+  // 防抖：同一任务3秒内只允许一次打卡（按计划ID区分，切换到其他任务可立即打卡）
+  const planId = primaryPlan.value.id
   const nowMs = Date.now()
-  if (nowMs - lastCheckinTime < 3000) return
-  lastCheckinTime = nowMs
+  if (nowMs - (lastCheckinTimeMap[planId] || 0) < 3000) return
+  lastCheckinTimeMap[planId] = nowMs
 
   try {
     // 构造本地时间字符串（无时区后缀），避免 toISOString() 转为 UTC 导致时区偏差

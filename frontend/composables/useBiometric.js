@@ -135,7 +135,10 @@ export function useBiometric() {
     }
   }
 
-  // 清除本地 biometric_token（关闭开关时调用，不退出登录）
+  // 清除本地 biometric_token（供需要清理本地凭证的场景调用，不退出登录；
+  // 注意：用户在 profile 页主动关闭指纹登录时不再调用本方法，仅切换开关标记，
+  // 以便再次打开时无需重新账号密码登录。退出登录时也保留本地凭证，便于下次指纹一键登录；
+  // 真正清理仅在注销账号时统一处理）
   function clearBiometricToken() {
     try {
       uni.removeStorageSync(TOKEN_KEY)

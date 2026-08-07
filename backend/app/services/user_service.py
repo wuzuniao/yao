@@ -275,7 +275,7 @@ class User:
     async def revoke_biometric_tokens(self, user_id: int) -> None:
         """
         作废用户所有生物识别登录凭证
-        - 在改密码/退出登录/删除账号时调用，防止旧设备凭指纹继续登录
+        - 在改密码/删除账号时调用，防止旧设备凭指纹继续登录（退出登录时保留凭证，便于下次指纹一键登录）
         :param user_id: 用户ID
         """
         await self.db.execute(
@@ -534,6 +534,7 @@ class User:
         """
         退出登录：设置 token_invalid_before 使当前 token 立即失效
         - 用户需重新登录获取新 token
+        - 不作废生物识别登录凭证，便于用户下次使用指纹一键登录（凭证仅在注销账号/改密码时作废）
         :param user_id: 用户ID
         :raises ValueError: 用户不存在
         """
@@ -541,8 +542,6 @@ class User:
         if not user:
             raise ValueError("用户不存在")
         user.token_invalid_before = now_shanghai()
-        # 退出登录时作废所有生物识别登录凭证
-        await self.revoke_biometric_tokens(user_id)
         await self.db.commit()
 
     async def purge_expired_deletions(self) -> int:
