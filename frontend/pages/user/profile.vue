@@ -187,8 +187,8 @@
           </view>
         </view>
 
-        <!-- 修改邮箱 / 绑定邮箱（无邮箱用户显示"绑定邮箱"） -->
-        <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('email')">
+        <!-- 修改邮箱 / 绑定邮箱（无邮箱用户显示"绑定邮箱"），作为分组1最后一项无需下边框 -->
+        <view class="profile-page__group-item" @click="toggleSection('email')">
           <text class="profile-page__group-text">{{ hasEmail ? '修改邮箱' : '绑定邮箱' }}</text>
           <view class="u-arrow-right"></view>
         </view>
@@ -279,6 +279,8 @@
           </view>
         </view>
 
+      <!-- 分组 1.5：偏好设置（语言 / 指纹登录 / 主题，独立成区） -->
+      <view class="profile-page__group">
         <!-- 语言切换（默认简体中文，点击开关切到 English；本期仅做按钮功能，不翻译界面） -->
         <view class="profile-page__group-item profile-page__group-item--bordered">
           <text class="profile-page__group-text">语言</text>
@@ -296,7 +298,7 @@
           </view>
         </view>
 
-        <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示，作为本组真正最后一项） -->
+        <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示） -->
         <!-- #ifdef APP -->
         <view v-if="showBiometric" class="profile-page__group-item profile-page__group-item--bordered">
           <text class="profile-page__group-text">指纹登录</text>
@@ -316,7 +318,7 @@
 
         <!-- 主题切换：仅 role>1 用户显示（进入页面时已查询数据库刷新 role） -->
         <template v-if="showTheme">
-          <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('theme')">
+          <view class="profile-page__group-item" @click="toggleSection('theme')">
             <text class="profile-page__group-text">主题</text>
             <view class="u-arrow-right"></view>
           </view>
@@ -1101,8 +1103,8 @@ function handleLogout() {
   transform: translateX(40rpx);
 }
 
-/* 语言切换开关：纯 CSS 手写开关（独立于指纹开关，开关内居中显示当前语言名）
-   旋钮滑动指示状态，文字随状态切换颜色，引用语义令牌保持单一配色真源 */
+/* 语言切换开关：纯 CSS 手写开关（独立于指纹开关）
+   旋钮滑动指示状态，文字显示在旋钮对侧（避免被白色圆点遮挡），引用语义令牌保持单一配色真源 */
 .profile-page__lang-switch {
   position: relative;
   width: 176rpx;
@@ -1135,7 +1137,9 @@ function handleLogout() {
   inset: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end; /* 关态旋钮在左，文字靠右避开圆点 */
+  padding-right: 16rpx;
+  box-sizing: border-box;
   font-size: 24rpx;
   line-height: 1;
   font-weight: 500;
@@ -1145,6 +1149,9 @@ function handleLogout() {
   pointer-events: none;
 }
 .profile-page__lang-switch--on .profile-page__lang-text {
+  justify-content: flex-start; /* 开态旋钮在右，文字靠左避开圆点 */
+  padding-right: 0;
+  padding-left: 16rpx;
   color: var(--color-text-inverse); /* 开态文字色（English，白字） */
 }
 
@@ -1423,6 +1430,12 @@ function handleLogout() {
 
   .profile-page__lang-text {
     font-size: 12px;
+    padding-right: 8px;
+  }
+
+  .profile-page__lang-switch--on .profile-page__lang-text {
+    padding-right: 0;
+    padding-left: 8px;
   }
 
   /* 主文字字号 */
