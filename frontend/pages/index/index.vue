@@ -37,9 +37,9 @@
             <view class="index-page__intro-section">
               <text class="index-page__intro-section-title">主要功能</text>
               <text class="index-page__intro-p"><text class="index-page__intro-label">制定打卡计划：</text>设置计划内容、持续周期、每日提醒时间、通知方式等。到达提醒时间后，系统会自动发送通知进行提醒。</text>
-              <text class="index-page__intro-p"><text class="index-page__intro-label">多途径通知：</text>支持<text class="index-page__intro-em">站内信、微信、邮件</text>等多种通知渠道。</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-label">多途径通知：</text>支持<text class="index-page__intro-em">站内信、微信消息订阅、邮件、APP推送</text>等多种通知渠道。</text>
               <!-- #ifdef H5 -->
-              <text class="index-page__intro-p">无足鸟是免费开源的按时吃药、吃药提醒与通用打卡计划软件，支持微信小程序、H5 网页与 App。适用于长期服药、每日打卡、健身打卡、学习打卡、喝水提醒、定时提醒等场景，提供打卡日历与按月统计，数据加密存储可自部署。</text>
+              <text class="index-page__intro-p">无足鸟是免费开源的按时吃药、吃药提醒与通用打卡计划软件，支持QQ、微信小程序、H5 网页与 App。适用于长期服药、每日打卡、健身打卡、学习打卡、喝水提醒、定时提醒等场景，提供打卡日历与按月统计，数据加密存储可自部署。</text>
               <!-- #endif -->
             </view>
             <view class="index-page__intro-section">

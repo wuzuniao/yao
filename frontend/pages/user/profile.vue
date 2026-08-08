@@ -362,6 +362,11 @@
           </text>
           <view class="u-arrow-right"></view>
         </view>
+        <!-- 免登录账号删除说明入口（满足 Google Play 网页删除入口要求） -->
+        <view class="profile-page__group-item profile-page__group-item--hint" @click="goDeleteAccountHelp">
+          <text class="profile-page__group-text profile-page__group-text--hint">了解账号删除与数据说明</text>
+          <view class="u-arrow-right"></view>
+        </view>
       </view>
     </view>
   </view>
@@ -997,6 +1002,11 @@ function toggleBiometric() {
 }
 // #endif
 
+// ===== 跳转免登录账号删除说明页 =====
+function goDeleteAccountHelp() {
+  uni.navigateTo({ url: '/pages/user/delete-account' })
+}
+
 // ===== 退出登录 =====
 function handleLogout() {
   uni.showModal({
@@ -1076,6 +1086,15 @@ function handleLogout() {
 
 .profile-page__group-text--danger {
   color: var(--color-danger);
+}
+
+/* 免登录账号删除说明入口（弱提示样式，区别于危险操作） */
+.profile-page__group-item--hint {
+  border-top: 1px solid var(--color-separator);
+}
+
+.profile-page__group-text--hint {
+  color: var(--color-brand);
 }
 
 /* 指纹登录开关：纯 CSS 手写开关（替代原生 switch，以支持 var() 单一配色真源） */

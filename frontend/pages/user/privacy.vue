@@ -11,11 +11,11 @@
 
       <!-- 前言 -->
       <view class="privacy-page__intro">
-        <text class="privacy-page__intro-text">欢迎您使用「无足鸟按时吃药打卡」（以下简称"本产品"或"我们"）。本产品是一款通用打卡计划提醒与记录工具，提供微信小程序、Android/iOS App 及网页（H5）版本。我们深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。
+        <text class="privacy-page__intro-text">欢迎您使用「无足鸟按时吃药打卡」（以下简称"本产品"或"我们"）。本产品是一款通用打卡计划提醒与记录工具，提供微信小程序、Android App、iOS App、HarmonyOS App 及网页（H5）版本。我们深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。
 
 请您在使用本产品前，仔细阅读并充分理解本《隐私政策》全文，特别是以深色加粗字体标识的条款。您在注册或登录页勾选同意本政策，或继续使用本产品，即表示您已充分理解并同意我们按照本政策处理您的个人信息。如您不同意本政策的任何内容，请立即停止使用本产品。
 
-本政策适用于本产品的全部客户端形态。因平台能力差异，部分条款仅适用于特定端（已在文中注明）。</text>
+本政策适用于本产品的全部客户端形态。因平台能力差异，部分条款仅适用于特定端（已在文中注明）。<text class="privacy-page__em">本产品的服务器位于中华人民共和国境内；若您在中国境外使用本产品，请特别阅读第九条「中国境外用户特别说明」。</text></text>
       </view>
 
       <!-- 主内容卡片 -->
@@ -31,7 +31,11 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">Android / iOS 移动应用（包名 com.wuzuniao.yao）；</text>
+              <text class="privacy-page__list-text">Android 与 iOS 移动应用（应用包名 com.wuzuniao.yao）；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">HarmonyOS（鸿蒙）移动应用（应用包名 com.wuzuniao.yao）；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
@@ -81,18 +85,18 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">指纹一键登录（仅 App 端，可选）：详见本条第 3 项。</text>
+              <text class="privacy-page__list-text">指纹（生物识别）一键登录（仅 App 端，含 Android／iOS／HarmonyOS，可选）：详见本条第 3 项。</text>
             </view>
           </view>
           <text class="privacy-page__para">登录成功后，我们会向您的设备下发一个有效期 7 天的登录令牌（JWT Access Token），保存在设备本地，用于免除重复登录。当令牌剩余有效期不足 1 天且您仍在活跃使用时，客户端会自动为其静默续期，以免您在使用过程中被中断。您主动退出登录、修改密码、重置密码或申请注销账号时，服务端将使您全部设备上的既有令牌立即失效。</text>
           <text class="privacy-page__para">在您成功登录并同意本政策之前，我们不会向服务器发送除登录请求本身以外的任何个人信息。</text>
 
-          <text class="privacy-page__sub-title">3. 指纹（生物识别）一键登录（仅 App 端，可选功能）</text>
-          <text class="privacy-page__para">若您的手机支持指纹识别且已在系统中录入指纹，您可自主开启指纹一键登录。开启后：</text>
+          <text class="privacy-page__sub-title">3. 指纹（生物识别）一键登录（仅 App 端，含 Android／iOS／HarmonyOS，可选功能）</text>
+          <text class="privacy-page__para">若您的设备支持生物识别（Android／HarmonyOS 指纹、iOS Touch ID／Face ID）且已在系统中录入，您可自主开启一键登录。开启后：</text>
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text"><text class="privacy-page__em">指纹本身由您的手机操作系统在设备安全区域内完成采集、存储与比对，我们既不采集、也不接触、更不会上传或存储您的任何指纹特征数据。</text>我们仅通过系统接口获知"本次验证是否通过"这一结果；</text>
+              <text class="privacy-page__list-text"><text class="privacy-page__em">生物特征本身由您的设备操作系统在安全区域内完成采集、存储与比对，我们既不采集、也不接触、更不会上传或存储您的任何生物特征数据。</text>我们仅通过系统接口获知"本次验证是否通过"这一结果；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
@@ -145,7 +149,7 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">App 推送通知（仅 App 端）：需您在通知方式页主动添加。届时我们会收集由推送服务生成的<text class="privacy-page__em">设备推送标识（Device Token）</text>及设备平台类型（android/ios），用于将提醒定向下发到您的这台设备。详见本政策第三条。</text>
+              <text class="privacy-page__list-text">App 推送通知（仅 App 端，含 Android／iOS／HarmonyOS）：需您在通知方式页主动添加。届时我们会收集由推送服务生成的<text class="privacy-page__em">设备推送标识（Device Token）</text>及设备平台类型（android／ios／harmony），用于将提醒定向下发到您的这台设备。详见本政策第三条与第五条。</text>
             </view>
           </view>
           <text class="privacy-page__para">您可随时在「设置 - 通知方式」中新增、修改或删除除站内信外的任一渠道；删除后对应配置信息（含加密的邮箱密码、设备推送标识）将从我们的服务器一并删除。</text>
@@ -264,12 +268,23 @@
                 <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">重启后需手动打开一次 App 才能恢复推送</text>
               </view>
               <view class="privacy-page__table-row">
+                <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">WAKE_LOCK 保持唤醒</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">由推送 SDK 声明，接收提醒时短暂唤醒设备以完成消息处理</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">息屏状态下提醒可能延迟</text>
+              </view>
+              <view class="privacy-page__table-row">
+                <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">C2DM_RECEIVE / 魅族 PUSH 接收</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">由推送 SDK 声明，用于接收系统级推送消息</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">对应通道不可用，可改用其他提醒渠道</text>
+              </view>
+              <view class="privacy-page__table-row">
                 <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">指纹识别（系统生物识别）</text>
                 <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">您主动开启指纹一键登录时调用系统验证</text>
                 <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">无法使用指纹登录，可改用账号密码登录</text>
               </view>
             </view>
           </scroll-view>
+          <text class="privacy-page__para">其中 WAKE_LOCK、C2DM_RECEIVE、魅族 PUSH 三项由推送 SDK 在打包时自动合并声明，<text class="privacy-page__em">仅服务于提醒消息的接收，不会用于任何其他目的</text>。</text>
 
           <text class="privacy-page__sub-title">2. iOS 端申请的权限</text>
           <view class="privacy-page__list">
@@ -287,7 +302,27 @@
             </view>
           </view>
 
-          <text class="privacy-page__sub-title">3. 我们明确不会调用的权限与能力</text>
+          <text class="privacy-page__sub-title">3. HarmonyOS（鸿蒙）端申请的权限</text>
+          <view class="privacy-page__list">
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">ohos.permission.ACCESS_BIOMETRIC（生物识别）：仅在您主动开启指纹一键登录时调用，用途说明为"用于指纹快速登录，验证您的身份"；拒绝后可改用账号密码登录；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">ohos.permission.INTERNET（网络访问）与 ohos.permission.GET_NETWORK_INFO（网络状态）：与服务器通信、判断网络连通性；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">ohos.permission.APP_TRACKING_CONSENT（广告标识符 OAID）：由推送 SDK 声明并自动合并，用于推送消息的设备标识与统计分析；<text class="privacy-page__em">您可在系统设置中随时关闭，关闭不影响提醒功能的正常使用</text>；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">通知权限：用于在通知栏展示打卡提醒，由系统在首次需要时询问。</text>
+            </view>
+          </view>
+
+          <text class="privacy-page__sub-title">4. 我们明确不会调用的权限与能力</text>
           <text class="privacy-page__para">经全面核查，本产品<text class="privacy-page__em">不会</text>申请或调用以下权限与能力：</text>
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
@@ -397,7 +432,7 @@
               <view class="privacy-page__table-row">
                 <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">友盟+ U-Push 消息推送 SDK
 （友盟同欣（北京）科技有限公司）
-仅 App 端且您开启 App 推送后</text>
+仅 App 端（Android／iOS／HarmonyOS）且您开启 App 推送后</text>
                 <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">设备信息（Android ID、IDFA、IDFV、OAID、OpenUDID、GUID，可选 IMEI/IMSI/ICCID/MAC）、网络信息、IP 地址、设备推送标识（Device Token）</text>
                 <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">生成并维护设备推送标识，将打卡提醒定向下发到您的设备。我们已关闭其位置信息与应用列表采集。隐私政策：umeng.com/page/policy</text>
               </view>
@@ -421,9 +456,16 @@
               </view>
               <view class="privacy-page__table-row">
                 <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">手机厂商推送通道
-（华为/小米/OPPO/vivo/魅族等）</text>
-                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">当前版本<text class="privacy-page__em">未启用</text>，不共享任何信息</text>
-                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">如后续版本启用，我们将更新本政策并另行告知</text>
+（华为/荣耀/小米/OPPO/vivo/魅族）
+仅 Android 端</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">当前版本<text class="privacy-page__em">未配置启用，不向厂商通道下发消息、不共享任何信息</text></text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">相关代码虽随推送 SDK 一并集成于安装包内，但因未配置厂商密钥而不会运行。如后续版本启用，我们将更新本政策并另行告知</text>
+              </view>
+              <view class="privacy-page__table-row">
+                <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">Google Firebase 云消息（FCM）
+仅 Android 端</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">设备实例标识、网络与设备基础信息</text>
+                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">随推送 SDK 集成于安装包，但本产品<text class="privacy-page__em">未配置启用且已关闭其自动初始化</text>，不会向境外 Google 服务器传输任何信息。隐私政策：firebase.google.com/support/privacy</text>
               </view>
             </view>
           </scroll-view>
@@ -439,7 +481,9 @@
           <text class="privacy-page__section-title">六、我们如何存储和保护您的信息</text>
 
           <text class="privacy-page__sub-title">1. 存储地点</text>
-          <text class="privacy-page__para">您的个人信息存储于中华人民共和国境内的服务器。我们<text class="privacy-page__em">不会向境外提供</text>您的个人信息。如未来因业务需要确需跨境提供，我们将另行取得您的单独同意，并履行法律法规规定的安全评估或认证程序。</text>
+          <text class="privacy-page__para">本产品的服务器与数据库<text class="privacy-page__em">均位于中华人民共和国境内</text>。无论您身处何地，您的账号信息、打卡计划与打卡记录等个人信息都将存储和处理于中国境内。</text>
+          <text class="privacy-page__para"><text class="privacy-page__em">若您在中国境外使用本产品（包括通过 Google Play 下载的版本），请您在使用前特别注意：</text>您的个人信息将被传输至中国境内并在中国境内接受处理，中国的数据保护法律制度可能与您所在国家或地区的法律制度存在差异。<text class="privacy-page__em">您继续注册与使用本产品，即表示您已知悉并同意这一跨境传输安排</text>。如您不接受，请勿注册或使用本产品。</text>
+          <text class="privacy-page__para">我们不会主动将您的个人信息传输至中国境外的第三方。Android 端集成的 Google Firebase 云消息（FCM）推送通道<text class="privacy-page__em">未启用</text>（相关密钥为空，且我们已在应用内关闭其自动初始化），因此不会向境外 Google 服务器传输任何设备标识或个人信息。如未来因业务需要确需向境外提供个人信息，我们将事先取得您的单独同意，并履行相关法律法规规定的安全评估、认证或合同备案等程序。</text>
 
           <text class="privacy-page__sub-title">2. 存储期限</text>
           <text class="privacy-page__para">我们仅在实现本政策所述目的所必需的最短期间内保留您的个人信息：</text>
@@ -462,11 +506,15 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">您注销账号后：我们将在 24 小时内彻底删除您的全部数据（详见第七条第 5 项）；</text>
+              <text class="privacy-page__list-text">您注销账号后：我们将在 24 小时冷静期届满后彻底删除您的全部数据（详见第七条第 5 项）；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">法律法规另有强制保存期限规定的，从其规定；超出期限后我们将删除或进行匿名化处理。</text>
+              <text class="privacy-page__list-text">访问日志：服务器在处理请求时会记录访问 IP 与时间，用于安全防护与故障排查；用于接口频率限制的 IP 记录仅在内存中保留 60 秒，不写入数据库；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">法律法规另有强制保存期限规定的，从其规定；超出保存期限后我们将予以删除。</text>
             </view>
           </view>
 
@@ -509,7 +557,7 @@
           <text class="privacy-page__para">您有权知悉并决定我们对您个人信息的处理方式，有权限制或者拒绝他人对您个人信息的处理。您可以随时通过本页面查阅本政策全文。</text>
 
           <text class="privacy-page__sub-title">2. 查阅与复制</text>
-          <text class="privacy-page__para">您可以在「设置 - 个人信息」中查看您的用户名、邮箱、签名与头像；在「制定计划」中查看全部计划配置；在「打卡记录」中按日历查看全部历史打卡；在「站内信」中查看历史提醒记录。如您需要以副本形式获取上述信息，可通过文末邮箱联系我们。</text>
+          <text class="privacy-page__para">您可以在「设置 - 个人信息」中查看您的用户名、邮箱、签名与头像；在「制定计划」中查看全部计划配置；在「打卡记录」中按日历查看全部历史打卡；在「站内信」中查看历史提醒记录。本产品暂未提供一键导出功能；如您需要以副本形式获取上述信息，请通过文末邮箱联系我们，我们将在核验身份后于十五个工作日内以电子文件形式向您提供。</text>
 
           <text class="privacy-page__sub-title">3. 更正与补充</text>
           <view class="privacy-page__list">
@@ -534,20 +582,35 @@
           <text class="privacy-page__sub-title">4. 删除</text>
           <text class="privacy-page__para">您可以在产品内自行删除单个打卡计划（同时删除其提醒时间点与渠道绑定）、删除通知渠道配置、清空或标记站内信。在处理目的已实现、我们停止提供服务、您撤回同意或我们违法处理个人信息等情形下，您有权要求我们删除您的个人信息；我们未删除的，您可以请求删除。</text>
 
-          <text class="privacy-page__sub-title">5. 注销账号</text>
-          <text class="privacy-page__para">您可以在「设置 - 个人信息」中自助申请注销账号。申请提交后：</text>
+          <text class="privacy-page__sub-title">5. 注销账号与删除数据</text>
+          <text class="privacy-page__para">您可以通过以下<text class="privacy-page__em">任一途径</text>自助申请注销账号并删除全部数据，两条途径效果完全相同：</text>
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">您的账号将立即被冻结，全部登录令牌与生物识别凭证立即失效；</text>
+              <text class="privacy-page__list-text"><text class="privacy-page__em">应用内：</text>打开本产品，进入「设置 - 个人信息」页面，点击底部的「删除账号」；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">系统提供 24 小时冷静期，期间您可以重新登录并撤销注销申请；</text>
+              <text class="privacy-page__list-text"><text class="privacy-page__em">网页端：</text>无需安装应用，直接访问 yao.wuzuniao.com/pages/user/profile ，登录后点击「删除账号」即可。关于账号删除与数据处理的详细说明（含免登录访问）见 yao.wuzuniao.com/pages/user/delete-account 。</text>
+            </view>
+          </view>
+          <text class="privacy-page__para">申请提交后：</text>
+          <view class="privacy-page__list">
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">您的账号立即被冻结，全部登录令牌立即失效，服务端的<text class="privacy-page__em">生物识别登录凭证当即被删除</text>；</text>
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">冷静期届满后，后台任务将<text class="privacy-page__em">彻底删除</text>您的账号记录、微信绑定关系、生物识别凭证、全部打卡计划及其提醒时间点、通知渠道配置（含加密的邮箱密码与设备推送标识）、全部打卡记录与通知发送记录，且不可恢复。</text>
+              <text class="privacy-page__list-text">系统提供 <text class="privacy-page__em">24 小时冷静期</text>，期间您可以重新登录并撤销注销申请，撤销后账号恢复正常；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">冷静期届满后，后台任务将从数据库中<text class="privacy-page__em">物理删除</text>以下全部数据且不可恢复：账号主记录（用户名、邮箱、密码哈希、个性签名、头像标识）、微信绑定关系（OpenID）、全部打卡计划及其提醒时间点与渠道绑定、全部打卡记录、全部通知渠道配置（含加密的邮箱密码与设备推送标识）、全部通知发送记录；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">删除为直接物理删除，<text class="privacy-page__em">我们不保留您数据的备份副本或匿名化残留</text>；仅服务器访问日志中可能残留请求 IP 与时间戳，该日志不含您的账号内容。</text>
             </view>
           </view>
 
@@ -589,27 +652,47 @@
             </view>
             <view class="privacy-page__list-item">
               <text class="privacy-page__bullet">·</text>
-              <text class="privacy-page__list-text">若您是监护人，且发现我们在未取得您同意的情况下收集了未满 14 周岁未成年人的个人信息，请通过文末邮箱联系我们，我们将核实后及时删除。</text>
+              <text class="privacy-page__list-text">若您位于中国境外，适用您所在国家或地区法律规定的最低同意年龄（例如欧洲经济区为 16 周岁或成员国另行规定的 13 至 16 周岁，美国为 13 周岁）；低于该年龄的，须经父母或监护人同意后方可使用；</text>
+            </view>
+            <view class="privacy-page__list-item">
+              <text class="privacy-page__bullet">·</text>
+              <text class="privacy-page__list-text">我们不会有意收集低于前述年龄用户的个人信息。若您是监护人，且发现我们在未取得您同意的情况下收集了相关未成年人的个人信息，请通过文末邮箱联系我们，我们将核实后及时删除。</text>
             </view>
           </view>
         </view>
 
-        <!-- 九、开源与自建部署说明 -->
+        <!-- 九、中国境外用户特别说明 -->
         <view class="privacy-page__section">
-          <text class="privacy-page__section-title">九、开源与自建部署说明</text>
+          <text class="privacy-page__section-title">九、中国境外用户特别说明</text>
+          <text class="privacy-page__para">本产品面向全球用户提供，并通过 Google Play 等应用商店分发。<text class="privacy-page__em">我们的服务器与数据库位于中华人民共和国境内</text>，因此若您在中国境外使用本产品，您的个人信息将被传输至中国境内并在中国境内存储和处理。</text>
+
+          <text class="privacy-page__sub-title">1. 跨境传输的法律依据</text>
+          <text class="privacy-page__para">我们处理您个人信息的法律依据是<text class="privacy-page__em">履行与您之间的服务合同所必需</text>（提供打卡提醒与记录服务），以及在您主动开启邮件提醒、App 推送等可选功能时您所给予的<text class="privacy-page__em">明确同意</text>。您在注册时勾选同意本政策，即构成对上述跨境传输安排的知情同意。</text>
+          <text class="privacy-page__para">您理解并知悉：中国的数据保护法律制度可能与您所在国家或地区（例如欧洲经济区、英国、美国等）的法律制度存在差异，中国目前<text class="privacy-page__em">未被欧盟委员会认定为具有充分保护水平的国家</text>。尽管如此，我们仍按照本政策第六条所述的加密传输、加密存储、访问隔离与最小化收集等措施保护您的个人信息。</text>
+
+          <text class="privacy-page__sub-title">2. 您可行使的权利</text>
+          <text class="privacy-page__para">无论您身处何地，您均可行使本政策第七条所列的全部权利，包括查阅、复制、更正、删除个人信息，撤回同意，以及<text class="privacy-page__em">随时自助注销账号并彻底删除全部数据</text>。若您位于欧洲经济区或英国，您还享有数据可携权，以及向您所在国家/地区数据保护监管机构投诉的权利。行使方式与响应时限见第七条。</text>
+
+          <text class="privacy-page__sub-title">3. 如您不接受跨境传输</text>
+          <text class="privacy-page__para">个人信息传输并存储至中国境内是本产品运行所必需，我们目前<text class="privacy-page__em">无法提供境外本地化存储的替代方案</text>。如您不接受这一安排，请勿注册或使用本产品；您也可以基于本项目的开源代码自行部署到您所在地区的服务器（详见第十条）。</text>
+        </view>
+
+        <!-- 十、开源与自建部署说明 -->
+        <view class="privacy-page__section">
+          <text class="privacy-page__section-title">十、开源与自建部署说明</text>
           <text class="privacy-page__para">本产品为开源项目。本政策仅适用于由「无足鸟」团队官方运营的服务实例。若第三方基于本项目源代码自行部署、修改并对外提供服务，其个人信息处理行为由该第三方独立负责，与我们无关，亦不适用本政策，请您以该服务提供者公示的隐私政策为准。</text>
         </view>
 
-        <!-- 十、本政策的更新 -->
+        <!-- 十一、本政策的更新 -->
         <view class="privacy-page__section">
-          <text class="privacy-page__section-title">十、本政策的更新</text>
+          <text class="privacy-page__section-title">十一、本政策的更新</text>
           <text class="privacy-page__para">我们可能适时修订本政策。未经您明确同意，我们不会削减您按照本政策所应享有的权利。</text>
           <text class="privacy-page__para">对于重大变更（例如：服务模式发生重大变化；个人信息的收集范围、处理目的、使用方式发生变化；共享的第三方发生变更；您行使权利的方式发生重大变化；个人信息安全负责人及联系方式变更等），我们将通过应用内的显著弹窗、公告或站内信等方式向您显著告知，并在必要时重新征求您的同意。您继续使用本产品即视为接受修订后的政策。</text>
         </view>
 
-        <!-- 十一、如何联系我们 -->
+        <!-- 十二、如何联系我们 -->
         <view class="privacy-page__section">
-          <text class="privacy-page__section-title">十一、如何联系我们</text>
+          <text class="privacy-page__section-title">十二、如何联系我们</text>
           <text class="privacy-page__para">如您对本政策有任何疑问、意见、建议或投诉，或需要行使个人信息相关权利，请通过以下方式联系我们：</text>
           <view class="privacy-page__list">
             <view class="privacy-page__list-item">
@@ -621,7 +704,7 @@
               <text class="privacy-page__list-text">其他联系方式（微信公众号、QQ 交流群）详见「设置 - 联系我们」页面。</text>
             </view>
           </view>
-          <text class="privacy-page__para">我们将在十五个工作日内回复您的问题。如您对我们的回复不满意，特别是认为我们的个人信息处理行为损害了您的合法权益，您还可以向网信、电信、公安及市场监管等主管部门投诉举报，或向有管辖权的人民法院提起诉讼。</text>
+          <text class="privacy-page__para">我们将在十五个工作日内回复您的问题。如您对我们的回复不满意，特别是认为我们的个人信息处理行为损害了您的合法权益，您可以向网信、电信、公安及市场监管等主管部门投诉举报，或向有管辖权的人民法院提起诉讼；<text class="privacy-page__em">若您位于中国境外</text>，您还可以向您所在国家或地区的数据保护监管机构投诉。</text>
           <text class="privacy-page__para privacy-page__para--footer">本政策自公示之日起生效。</text>
         </view>
       </view>
@@ -633,12 +716,16 @@
 /**
  * 隐私政策页（privacy.vue）
  * --------------------------------------------------------------------------
- * 功能：展示应用隐私政策全文（覆盖微信小程序 / App / H5 三端）
+ * 功能：展示应用隐私政策全文
+ *  - 覆盖端：微信小程序 / H5 / App（Android、iOS、HarmonyOS）共 5 个发行版本
  *  - 标题区 + 前言（同意机制说明）
- *  - 政策正文共 11 章：适用范围与处理者、信息收集与使用（12 小节）、
- *    设备权限（含 Android 权限表格、不调用权限清单）、本地存储与同类技术（表格）、
+ *  - 政策正文共 12 章：适用范围与处理者、信息收集与使用（12 小节）、
+ *    设备权限（Android/iOS/HarmonyOS 三端 + 不调用权限清单）、本地存储与同类技术（表格）、
  *    共享转让公开披露（第三方 SDK 表格）、存储与保护、您的权利、未成年人保护、
+ *    中国境外用户特别说明（跨境传输，面向 Google Play 等境外分发）、
  *    开源与自建部署说明、政策更新、联系我们
+ *  - 合规基线：数据存储于中国境内；注销账号提供「应用内 + 网页端」双入口
+ *    （Google Play 账号删除政策要求），24 小时冷静期后物理删除
  *  - 纯展示页面，无交互逻辑（除三处表格横向滚动外）
  *  - 重点条款用嵌套 <text class="privacy-page__em"> 加粗强调
  *    （微信小程序不支持 HTML 加粗标签，故不使用 <b>/<strong>）

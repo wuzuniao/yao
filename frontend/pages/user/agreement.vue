@@ -11,7 +11,7 @@
 
       <!-- 前言 -->
       <view class="privacy-page__intro">
-        <text class="privacy-page__intro-text">欢迎您使用「无足鸟按时吃药打卡」（以下简称"本服务"或"我们"）。<text class="privacy-page__em">本服务是一款通用的打卡、提醒与记录工具</text>，提供微信小程序、Android/iOS App 及网页（H5）版本；"按时吃药打卡"仅为众多适用场景之一，您也可用于任何需要定时提醒与记录的日常计划。在您注册、登录及使用本服务前，请仔细阅读并充分理解本协议全文，特别是以深色加粗字体标识的条款。
+        <text class="privacy-page__intro-text">欢迎您使用「无足鸟按时吃药打卡」（以下简称"本服务"或"我们"）。<text class="privacy-page__em">本服务是一款通用的打卡、提醒与记录工具</text>，提供微信小程序、Android App、iOS App、HarmonyOS App 及网页（H5）版本；"按时吃药打卡"仅为众多适用场景之一，您也可用于任何需要定时提醒与记录的日常计划。在您注册、登录及使用本服务前，请仔细阅读并充分理解本协议全文，特别是以深色加粗字体标识的条款。
 
 您点击注册或登录页的同意按钮，或开始使用本服务，即<text class="privacy-page__em">表示您已阅读、理解并同意接受本协议全部条款，本协议在您与我们之间成立并生效</text>。如您不同意本协议的任何内容，请勿注册或使用本服务。
 
@@ -51,7 +51,7 @@
         <!-- 三、服务内容与形式 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">三、服务内容与形式</text>
-          <text class="privacy-page__para">本服务是一款<text class="privacy-page__em">通用的打卡、提醒与记录工具</text>，核心能力包括：创建计划、设置提醒时间、接收提醒通知（站内信、邮件、微信订阅消息、App 推送）、记录打卡与查看历史。前述能力适用于各类需要定时提醒与记录的场景，例如按时吃药、饮水、运动、学习等，"按时吃药打卡"仅是其中一项适用场景，而非本服务的全部或主要限定用途。</text>
+          <text class="privacy-page__para">本服务是一款<text class="privacy-page__em">通用的打卡、提醒与记录工具</text>，核心能力包括：创建计划、设置提醒时间、接收提醒通知（站内信、邮件、微信订阅消息、App 推送）、记录打卡与查看历史。部分功能受平台能力限制，仅在特定端可用：微信一键登录与微信订阅消息仅微信小程序端提供，指纹（生物识别）登录与 App 推送通知仅 App 端（Android／iOS／HarmonyOS）提供。前述能力适用于各类需要定时提醒与记录的场景，例如按时吃药、饮水、运动、学习等，"按时吃药打卡"仅是其中一项适用场景，而非本服务的全部或主要限定用途。</text>
           <text class="privacy-page__para">我们可能根据运营需要，对服务功能、界面、资费（如有）进行调整、优化或终止部分功能，并在合理范围内提前通知。重大调整将以公告或应用内提示方式告知。</text>
           <text class="privacy-page__para"><text class="privacy-page__em">重要提示：</text>本服务仅提供通用的提醒与记录功能，<text class="privacy-page__em">不构成任何专业领域的建议或指导</text>（包括但不限于医疗、健康、法律、财务等）。如您将本服务用于用药等健康相关场景，相关方案请以医生或专业医疗人员的指导为准，我们对您依据提醒所做的任何安排不承担责任。</text>
         </view>
@@ -111,12 +111,13 @@
           <text class="privacy-page__section-title">九、服务的变更、中断与终止</text>
           <text class="privacy-page__para">为维护服务安全与质量，我们可能定期进行系统维护或升级，由此造成的临时性服务中断，我们将尽力提前告知并尽快恢复。</text>
           <text class="privacy-page__para">出现下列情形之一时，我们<text class="privacy-page__em">有权终止向您提供部分或全部服务</text>：您主动注销账号；您严重违反本协议；法律法规或监管要求；其他依约定或法律应终止的情形。服务终止后，我们将依照《隐私政策》处理您的个人信息。</text>
+          <text class="privacy-page__para">您有权随时主动终止本协议：在应用内「设置 - 个人信息」页点击「删除账号」，或直接访问网页版 yao.wuzuniao.com/pages/user/profile 登录后操作。关于账号删除与数据处理的免登录说明详见 yao.wuzuniao.com/pages/user/delete-account 。<text class="privacy-page__em">经 24 小时冷静期后，您的账号与全部数据将被彻底删除且不可恢复</text>，具体删除范围详见《隐私政策》第七条第 5 项。</text>
         </view>
 
         <!-- 十、第三方服务 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">十、第三方服务</text>
-          <text class="privacy-page__para">为向您提供提醒通知等功能，本服务可能接入第三方服务（如邮件服务商、微信开放平台、推送服务商的 SDK）。您使用相关功能即视为同意相关第三方按其规则处理必要信息，具体以保护政策为准。我们对第三方服务的<text class="privacy-page__em">可用性及数据保护不承担责任</text>。</text>
+          <text class="privacy-page__para">为向您提供提醒通知等功能，本服务接入了必要的第三方服务，包括 DCloud uni-app 运行框架、友盟+ U-Push 消息推送 SDK（仅 App 端）、微信开放平台（仅微信小程序端）以及邮件服务商。您使用相关功能即视为同意相关第三方按其规则处理必要信息，各第三方收集的信息类型与用途<text class="privacy-page__em">详见《隐私政策》第五条</text>。我们对第三方服务的<text class="privacy-page__em">可用性及数据保护不承担责任</text>。</text>
         </view>
 
         <!-- 十一、协议变更 -->
@@ -128,7 +129,8 @@
         <!-- 十二、争议解决与管辖 -->
         <view class="privacy-page__section">
           <text class="privacy-page__section-title">十二、争议解决与管辖</text>
-          <text class="privacy-page__para">本协议的订立、效力、解释、履行及争议解决<text class="privacy-page__em">均适用中华人民共和国法律</text>。因本协议引起的或与本协议有关的任何争议，双方应友好协商解决；协商不成的，<text class="privacy-page__em">任一方均可向有管辖权的人民法院提起诉讼</text>。</text>
+          <text class="privacy-page__para">本协议的订立、效力、解释、履行及争议解决<text class="privacy-page__em">均适用中华人民共和国法律</text>（不含冲突法规则）。因本协议引起的或与本协议有关的任何争议，双方应友好协商解决；协商不成的，<text class="privacy-page__em">任一方均可向有管辖权的人民法院提起诉讼</text>。</text>
+          <text class="privacy-page__para">若您在中国境外使用本服务，<text class="privacy-page__em">您所在国家或地区法律赋予您的强制性消费者权利不受本条影响</text>。本服务的服务器位于中国境内，跨境传输相关说明详见《隐私政策》第九条。</text>
         </view>
 
         <!-- 十三、联系我们 -->
@@ -157,6 +159,7 @@
  * 服务协议页面（agreement.vue）
  * --------------------------------------------------------------------------
  * 功能：展示《服务协议》全文，与隐私政策页（privacy.vue）布局完全一致。
+ *  - 覆盖端：微信小程序 / H5 / App（Android、iOS、HarmonyOS）共 5 个发行版本
  *  - 标题区 + 前言（同意机制说明）
  *  - 协议正文共 13 章：协议确认与接纳、账号注册与使用资格、服务内容与形式、
  *    用户行为规范、知识产权、个人信息保护、免责声明、违约处理、
