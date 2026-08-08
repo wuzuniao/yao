@@ -10,7 +10,7 @@
         :src="active === 'home' ? homeActiveIcon : homeInactiveIcon" 
         mode="aspectFit" 
       />
-      <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'home' }">首页</text>
+      <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'home' }">{{ $t('nav.home') }}</text>
     </view>
 
     <view 
@@ -23,7 +23,7 @@
         :src="active === 'record' ? recordActiveIcon : recordInactiveIcon" 
         mode="aspectFit" 
       />
-      <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'record' }">记录</text>
+      <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'record' }">{{ $t('nav.record') }}</text>
     </view>
 
     <view
@@ -36,7 +36,7 @@
         :src="active === 'settings' ? settingsActiveIcon : settingsInactiveIcon"
         mode="aspectFit"
       />
-      <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'settings' }">设置</text>
+      <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'settings' }">{{ $t('nav.settings') }}</text>
     </view>
   </view>
 </template>

@@ -42,8 +42,8 @@
       @touchmove.stop
     >
       <view class="beginner-guide__card-header">
-        <text class="beginner-guide__step-badge">第 {{ guideStore.displayStepNumber }} 步 / 共 {{ guideStore.displayTotalSteps }} 步</text>
-        <text class="beginner-guide__skip" @click.stop="handleSkip">{{ skipText }}</text>
+        <text class="beginner-guide__step-badge">{{ $t('guide.badge', { current: guideStore.displayStepNumber, total: guideStore.displayTotalSteps }) }}</text>
+        <text class="beginner-guide__skip" @click.stop="handleSkip">{{ $t('guide.skip') }}</text>
       </view>
       <text class="beginner-guide__card-title">{{ stepData.title }}</text>
       <text class="beginner-guide__card-desc">{{ stepData.description }}</text>
@@ -371,9 +371,6 @@ const cardStyle = computed(() => {
 
 // 当前是否为内部步骤数组的最后一步
 const isLastInternalStep = computed(() => guideStore.currentStep === guideStore.steps.length - 1)
-
-// 跳过按钮文本：最后一步显示「完成」，其余显示「跳过」
-const skipText = computed(() => (isLastInternalStep.value ? '完成' : '跳过'))
 
 // 跳过引导：普通步骤结束引导；带 skipTo 的步骤跳转到指定后续步骤（支持可选分支）
 function handleSkip() {

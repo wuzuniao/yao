@@ -8,20 +8,20 @@
       <view class="register-page__card guide-target-register-card">
         <!-- 标题区 -->
         <view class="register-page__header">
-          <text class="register-page__title">注册账号</text>
-          <text class="register-page__subtitle">加入我们，开始您的健康之旅。</text>
+          <text class="register-page__title">{{ $t('auth.registerTitle') }}</text>
+          <text class="register-page__subtitle">{{ $t('auth.registerSubtitle') }}</text>
         </view>
 
         <!-- 注册表单 -->
         <view class="register-page__form">
           <!-- 用户名 -->
           <view class="register-page__field">
-            <text class="register-page__label">用户名</text>
+            <text class="register-page__label">{{ $t('auth.usernameOrEmail') }}</text>
             <input
               class="register-page__input"
               :class="{ 'register-page__input--error': errors.username }"
               v-model="form.username"
-              placeholder="请输入用户名"
+              :placeholder="$t('validate.usernamePlaceholder')"
               placeholder-class="register-page__placeholder"
               :placeholder-style="phStyle('username')"
               :maxlength="usernameLimit.max"
@@ -30,12 +30,12 @@
               @blur="handleBlur('username')"
             />
             <text v-if="errors.username" class="register-page__error-text">{{ errors.username }}</text>
-            <text v-if="usernameLimit.limitReached && usernameLimit.limitHint && usernameLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ usernameLimit.limitHint }}</text>
+            <text v-if="usernameLimit.limitReached" class="register-page__limit-text">{{ usernameLimit.limitHint }}</text>
           </view>
 
           <!-- 密码 -->
           <view class="register-page__field">
-            <text class="register-page__label">密码</text>
+            <text class="register-page__label">{{ $t('auth.password') }}</text>
             <view
               class="register-page__password-row"
               :class="{ 'register-page__password-row--error': errors.password }"
@@ -45,7 +45,7 @@
                 v-model="form.password"
                 :password="!showPassword"
                 :key="'reg-pwd-' + showPassword"
-                placeholder="请设置强密码"
+                :placeholder="$t('auth.passwordPlaceholder')"
                 placeholder-class="register-page__placeholder"
                 :placeholder-style="phStyle('password')"
                 :maxlength="passwordLimit.max"
@@ -58,12 +58,12 @@
               </view>
             </view>
             <text v-if="errors.password" class="register-page__error-text">{{ errors.password }}</text>
-            <text v-if="passwordLimit.limitReached && passwordLimit.limitHint && passwordLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ passwordLimit.limitHint }}</text>
+            <text v-if="passwordLimit.limitReached" class="register-page__limit-text">{{ passwordLimit.limitHint }}</text>
           </view>
 
           <!-- 确认密码 -->
           <view class="register-page__field">
-            <text class="register-page__label">确认密码</text>
+            <text class="register-page__label">{{ $t('auth.confirmPassword') }}</text>
             <view
               class="register-page__password-row"
               :class="{ 'register-page__password-row--error': errors.confirmPassword }"
@@ -73,7 +73,7 @@
                 v-model="form.confirmPassword"
                 :password="!showConfirmPassword"
                 :key="'reg-cpwd-' + showConfirmPassword"
-                placeholder="请再次输入密码"
+                :placeholder="$t('auth.confirmPasswordPlaceholder')"
                 placeholder-class="register-page__placeholder"
                 :placeholder-style="phStyle('confirmPassword')"
                 :maxlength="confirmPwdLimit.max"
@@ -86,17 +86,17 @@
               </view>
             </view>
             <text v-if="errors.confirmPassword" class="register-page__error-text">{{ errors.confirmPassword }}</text>
-            <text v-if="confirmPwdLimit.limitReached && confirmPwdLimit.limitHint && confirmPwdLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
+            <text v-if="confirmPwdLimit.limitReached" class="register-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
 
           <!-- 电子邮箱 -->
           <view class="register-page__field">
-            <text class="register-page__label">电子邮箱</text>
+            <text class="register-page__label">{{ $t('auth.email') }}</text>
             <input
               class="register-page__input"
               :class="{ 'register-page__input--error': errors.email }"
               v-model="form.email"
-              placeholder="请输入邮箱地址"
+              :placeholder="$t('auth.emailPlaceholder')"
               placeholder-class="register-page__placeholder"
               :placeholder-style="phStyle('email')"
               :maxlength="emailLimit.max"
@@ -105,18 +105,18 @@
               @blur="handleBlur('email')"
             />
             <text v-if="errors.email" class="register-page__error-text">{{ errors.email }}</text>
-            <text v-if="emailLimit.limitReached && emailLimit.limitHint && emailLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ emailLimit.limitHint }}</text>
+            <text v-if="emailLimit.limitReached" class="register-page__limit-text">{{ emailLimit.limitHint }}</text>
           </view>
 
           <!-- 验证码 -->
           <view class="register-page__field">
-            <text class="register-page__label">验证码</text>
+            <text class="register-page__label">{{ $t('auth.code') }}</text>
             <view class="register-page__code-row">
               <input
                 class="register-page__code-input"
                 :class="{ 'register-page__code-input--error': errors.code }"
                 v-model="form.code"
-                placeholder="请输入验证码"
+                :placeholder="$t('auth.codePlaceholder')"
                 placeholder-class="register-page__placeholder"
                 :placeholder-style="phStyle('code')"
                 :maxlength="codeLimit.max"
@@ -133,7 +133,7 @@
               </view>
             </view>
             <text v-if="errors.code" class="register-page__error-text">{{ errors.code }}</text>
-            <text v-if="codeLimit.limitReached && codeLimit.limitHint && codeLimit.limitHint.includes('已达')" class="register-page__limit-text">{{ codeLimit.limitHint }}</text>
+            <text v-if="codeLimit.limitReached" class="register-page__limit-text">{{ codeLimit.limitHint }}</text>
           </view>
 
           <!-- 协议勾选 -->
@@ -141,23 +141,23 @@
             <view class="register-page__checkbox" :class="{ 'register-page__checkbox--checked': agreed }">
               <view v-if="agreed" class="register-page__checkmark"></view>
             </view>
-            <text class="register-page__agree-text">查看并同意</text>
-            <text class="register-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
-            <text class="register-page__agree-text">和</text>
-            <text class="register-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+            <text class="register-page__agree-text">{{ $t('auth.agreePrefix') }}</text>
+            <text class="register-page__agree-link" @click.stop="goAgreement">{{ $t('auth.agreementName') }}</text>
+            <text class="register-page__agree-text">{{ $t('auth.and') }}</text>
+            <text class="register-page__agree-link" @click.stop="goPrivacy">{{ $t('auth.privacyName') }}</text>
           </view>
 
           <!-- 注册按钮 -->
           <view class="register-page__submit guide-target-register-submit" @click="handleRegister">
-            <text class="register-page__submit-text">注册</text>
+            <text class="register-page__submit-text">{{ $t('auth.register') }}</text>
           </view>
         </view>
       </view>
 
       <!-- 底部登录链接（仅“去登录”可点击） -->
       <view class="register-page__footer">
-        <text class="register-page__footer-text">已有账号？</text>
-        <text class="register-page__footer-link" @click="goLogin">去登录</text>
+        <text class="register-page__footer-text">{{ $t('auth.hasAccount') }}</text>
+        <text class="register-page__footer-link" @click="goLogin">{{ $t('auth.goLogin') }}</text>
       </view>
     </view>
   </view>
@@ -192,8 +192,9 @@ import { sendRegisterCode, registerUser } from '../../api/modules/user'
 import { useShare } from '../../composables/useShare'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 import { useGuideStore } from '../../store/modules/guide'
+import { t } from '../../locale'
 
-useShare({ title: '注册账号' })
+useShare({ title: t('share.register') })
 
 const guideStore = useGuideStore()
 
@@ -219,7 +220,7 @@ const errors = reactive({
 })
 
 const agreed = ref(false)
-const codeText = ref('获取验证码')
+const codeText = ref(t('auth.codeGet'))
 const counting = ref(false)
 const isSending = ref(false)
 const submitting = ref(false)
@@ -251,33 +252,33 @@ function toggleConfirmPassword() {
 
 // ===== 前端输入校验（与后端规则保持一致）=====
 function validateUsername(v) {
-  if (!v) return '请输入用户名'
-  if (v.length < 2 || v.length > 15) return '用户名长度需为 2-15 个字符'
-  if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(v)) return '用户名仅允许中文、英文及数字字符'
+  if (!v) return t('validate.usernameRequired')
+  if (v.length < 2 || v.length > 15) return t('validate.usernameLength')
+  if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(v)) return t('validate.usernameFormat')
   return ''
 }
 
 function validatePassword(v) {
-  if (!v) return '请设置密码'
-  if (v.length < 8 || v.length > 20) return '密码长度需为 8-20 位'
+  if (!v) return t('validate.passwordRequired')
+  if (v.length < 8 || v.length > 20) return t('validate.passwordLength')
   let categories = 0
   if (/[a-z]/.test(v)) categories++
   if (/[A-Z]/.test(v)) categories++
   if (/[0-9]/.test(v)) categories++
   if (/[^a-zA-Z0-9]/.test(v)) categories++
-  if (categories < 3) return '密码需包含大小写字母、数字、特殊符号中的至少三种'
+  if (categories < 3) return t('validate.passwordStrength')
   return ''
 }
 
 function validateConfirmPassword(v) {
-  if (!v) return '请再次输入密码'
-  if (v !== form.password) return '两次密码不一致'
+  if (!v) return t('validate.confirmPasswordRequired')
+  if (v !== form.password) return t('validate.confirmPasswordMismatch')
   return ''
 }
 
 function validateEmail(v) {
-  if (!v) return '请输入邮箱地址'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return '邮箱格式不正确'
+  if (!v) return t('validate.emailRequired')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return t('validate.emailFormat')
   return ''
 }
 
@@ -288,7 +289,7 @@ function validateField(field) {
     password: validatePassword,
     confirmPassword: validateConfirmPassword,
     email: validateEmail,
-    code: (v) => (!v ? '请输入验证码' : '')
+    code: (v) => (!v ? t('validate.codeRequired') : '')
   }
   errors[field] = map[field](form[field])
 }
@@ -328,21 +329,21 @@ async function handleGetCode() {
 // 网络错误时提供重试机制：modal 提示原因，确认则重试
 async function requestCode() {
   isSending.value = true
-  codeText.value = '发送中...'
+  codeText.value = t('auth.codeSending')
   try {
     await sendRegisterCode(form.email)
-    uni.showToast({ title: '验证码已发送', icon: 'none' })
+    uni.showToast({ title: t('auth.codeSent'), icon: 'none' })
     startCountdown()
   } catch (e) {
     // 发送失败恢复按钮，允许用户立即重试
-    codeText.value = '获取验证码'
+    codeText.value = t('auth.codeGet')
     if (e.isNetworkError) {
       // 网络错误：弹窗提示原因并提供重试入口
       uni.showModal({
-        title: '发送失败',
+        title: t('auth.sendFailed'),
         content: e.message,
-        confirmText: '重试',
-        cancelText: '取消',
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
         success: (res) => {
           if (res.confirm) requestCode()
         }
@@ -365,7 +366,7 @@ function startCountdown() {
     if (sec <= 0) {
       clearInterval(timer)
       counting.value = false
-      codeText.value = '获取验证码'
+      codeText.value = t('auth.codeGet')
     } else {
       codeText.value = `${sec}s`
     }
@@ -393,10 +394,10 @@ function handleRegister() {
   // 2. 隐私政策同意机制
   if (!agreed.value) {
     uni.showModal({
-      title: '提示',
-      content: '请先查看并同意《隐私政策》',
-      confirmText: '确认',
-      cancelText: '取消',
+      title: t('common.tip'),
+      content: t('auth.agreePrivacyOnly'),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       success: (res) => {
         // 用户点击「确认」：自动勾选并提交表单
         if (res.confirm) {
@@ -422,7 +423,7 @@ async function submitForm() {
       email: form.email,
       code: form.code
     })
-    uni.showToast({ title: '注册成功', icon: 'success' })
+    uni.showToast({ title: t('auth.registerSuccess'), icon: 'success' })
     // 注册成功后推进新手引导（离开注册卡片步骤，避免回登录页时残留引导）
     guideStore.nextStep()
     // 注册成功后跳转登录页（带 mode=normal 直接展示账号密码登录卡片）
@@ -431,7 +432,7 @@ async function submitForm() {
     }, 1500)
   } catch (e) {
     // 验证码错误时统一提示"请输入正确验证码"
-    const msg = /验证码/.test(e.message) ? '请输入正确验证码' : e.message
+    const msg = /验证码/.test(e.message) ? t('auth.codeIncorrectHint') : e.message
     uni.showToast({ title: msg, icon: 'none' })
   } finally {
     submitting.value = false
@@ -455,7 +456,7 @@ function goPrivacy() {
   uni.navigateTo({
     url: '/pages/user/privacy',
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }
@@ -464,7 +465,7 @@ function goAgreement() {
   uni.navigateTo({
     url: '/pages/user/agreement',
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }

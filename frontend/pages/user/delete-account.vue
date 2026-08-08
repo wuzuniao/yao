@@ -5,51 +5,51 @@
 
     <view class="delete-account-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 contact/help 等页面保持一致） -->
-      <PageHeader title="账号删除与数据说明" desc="了解如何删除您的账号及与之相关的数据处理方式。本说明页无需登录即可访问。" />
+      <PageHeader :title="$t('deleteAccount.title')" :desc="$t('deleteAccount.desc')" />
 
       <!-- 白色卡片：说明正文 -->
       <view class="delete-account-page__card">
         <view class="delete-account-page__list">
           <!-- 1. 两种删除途径 -->
           <view class="delete-account-page__item">
-            <text class="delete-account-page__item-title">一、如何删除账号</text>
-            <text class="delete-account-page__item-text">您可以通过以下任一途径自助申请注销账号并删除全部数据，两条途径效果完全相同：</text>
+            <text class="delete-account-page__item-title">{{ $t('deleteAccount.s1Title') }}</text>
+            <text class="delete-account-page__item-text">{{ $t('deleteAccount.s1Text') }}</text>
             <view class="delete-account-page__sub">
-              <text class="delete-account-page__sub-label">应用内：</text>
-              <text class="delete-account-page__sub-text">打开本产品，进入「设置 - 个人信息」页面，点击底部的「删除账号」。</text>
+              <text class="delete-account-page__sub-label">{{ $t('deleteAccount.s1InAppLabel') }}</text>
+              <text class="delete-account-page__sub-text">{{ $t('deleteAccount.s1InAppText') }}</text>
             </view>
             <view class="delete-account-page__sub">
-              <text class="delete-account-page__sub-label">网页端：</text>
-              <text class="delete-account-page__sub-text">访问 yao.wuzuniao.com/pages/user/profile ，登录后点击「删除账号」即可。</text>
+              <text class="delete-account-page__sub-label">{{ $t('deleteAccount.s1WebLabel') }}</text>
+              <text class="delete-account-page__sub-text">{{ $t('deleteAccount.s1WebText') }}</text>
             </view>
             <view class="delete-account-page__btn" @click="goLogin">
-              <text class="delete-account-page__btn-text">前往网页端登录后删除</text>
+              <text class="delete-account-page__btn-text">{{ $t('deleteAccount.s1Btn') }}</text>
             </view>
           </view>
 
           <!-- 2. 冷静期 -->
           <view class="delete-account-page__item">
-            <text class="delete-account-page__item-title">二、24 小时冷静期</text>
-            <text class="delete-account-page__item-text">申请提交后，您的账号立即被冻结、全部登录令牌立即失效。系统提供 24 小时冷静期，期间您可以重新登录并撤销注销申请，撤销后账号恢复正常。冷静期届满后，系统将自动彻底删除您的数据且不可恢复。</text>
+            <text class="delete-account-page__item-title">{{ $t('deleteAccount.s2Title') }}</text>
+            <text class="delete-account-page__item-text">{{ $t('deleteAccount.s2Text') }}</text>
           </view>
 
           <!-- 3. 删除范围 -->
           <view class="delete-account-page__item">
-            <text class="delete-account-page__item-title">三、将被删除的数据</text>
-            <text class="delete-account-page__item-text">冷静期届满后，以下数据将被物理删除且不可恢复：账号主记录（用户名、邮箱、密码哈希、个性签名、头像标识）、微信绑定关系（OpenID）、全部打卡计划及其提醒时间点与渠道绑定、全部打卡记录、全部通知渠道配置（含加密的邮箱密码与设备推送标识）、全部通知发送记录。</text>
-            <text class="delete-account-page__item-text">删除为直接物理删除，我们不保留您数据的备份副本或匿名化残留；仅服务器访问日志中可能残留请求 IP 与时间戳，该日志不含您的账号内容。</text>
+            <text class="delete-account-page__item-title">{{ $t('deleteAccount.s3Title') }}</text>
+            <text class="delete-account-page__item-text">{{ $t('deleteAccount.s3Text1') }}</text>
+            <text class="delete-account-page__item-text">{{ $t('deleteAccount.s3Text2') }}</text>
           </view>
 
           <!-- 4. 不可删除的部分 -->
           <view class="delete-account-page__item">
-            <text class="delete-account-page__item-title">四、依法须保留的部分</text>
-            <text class="delete-account-page__item-text">如法律法规另有强制保存期限规定，超出前述删除范围的部分将在法定期限届满后再行删除，期间依法限制其使用。</text>
+            <text class="delete-account-page__item-title">{{ $t('deleteAccount.s4Title') }}</text>
+            <text class="delete-account-page__item-text">{{ $t('deleteAccount.s4Text') }}</text>
           </view>
 
           <!-- 5. 其他权利 -->
           <view class="delete-account-page__item">
-            <text class="delete-account-page__item-title">五、其他个人信息权利</text>
-            <text class="delete-account-page__item-text">除删除账号外，您还享有查阅、复制、更正、补充个人信息以及撤回同意等权利。如需通过邮件行使上述权利，请发送邮件至 xpg@wuzuniao.com，我们将在核验身份后于十五个工作日内响应。更多说明详见《隐私政策》与《服务协议》。</text>
+            <text class="delete-account-page__item-title">{{ $t('deleteAccount.s5Title') }}</text>
+            <text class="delete-account-page__item-text">{{ $t('deleteAccount.s5Text') }}</text>
           </view>
         </view>
       </view>
@@ -70,8 +70,9 @@
 import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '账号删除与数据说明' })
+useShare({ title: t('share.deleteAccount') })
 
 function goLogin() {
   uni.navigateTo({ url: '/pages/user/login' })

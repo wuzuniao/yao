@@ -5,7 +5,7 @@
 
     <view class="contact-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="联系我们" desc="如果您在使用过程中遇到任何问题，欢迎随时联系我们。" />
+      <PageHeader :title="$t('contact.title')" :desc="$t('contact.desc')" />
 
       <!-- 白色卡片：联系方式列表 -->
       <view class="contact-page__card">
@@ -13,7 +13,7 @@
           <!-- 客服邮箱 -->
           <view class="contact-page__item">
             <view class="contact-page__item-info">
-              <text class="contact-page__item-label">客服邮箱</text>
+              <text class="contact-page__item-label">{{ $t('contact.email') }}</text>
               <text class="contact-page__item-value">xpg@wuzuniao.com</text>
             </view>
           </view>
@@ -21,8 +21,8 @@
           <!-- 微信公众号 -->
           <view class="contact-page__item">
             <view class="contact-page__item-info">
-              <text class="contact-page__item-label">微信公众号</text>
-              <text class="contact-page__item-value">无足鸟ICT</text>
+              <text class="contact-page__item-label">{{ $t('contact.wechatOfficial') }}</text>
+              <text class="contact-page__item-value">{{ $t('contact.wechatName') }}</text>
               <view class="contact-page__qr-wrap">
                 <view class="contact-page__qr-bg">
                   <image class="contact-page__qr-img" :src="wxIcon" mode="aspectFit" />
@@ -34,7 +34,7 @@
           <!-- QQ群 -->
           <view class="contact-page__item">
             <view class="contact-page__item-info">
-              <text class="contact-page__item-label">QQ群</text>
+              <text class="contact-page__item-label">{{ $t('contact.qqGroup') }}</text>
               <text class="contact-page__item-value">278634838</text>
               <view class="contact-page__qr-wrap">
                 <view class="contact-page__qr-bg">
@@ -64,8 +64,9 @@ import PageHeader from '../../components/PageHeader.vue'
 import wxIcon from '../../assets/images/ewm_wx.png'
 import qqIcon from '../../assets/images/ewm_qq.png'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '联系我们' })
+useShare({ title: t('share.contact') })
 </script>
 
 <style lang="scss">

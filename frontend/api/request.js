@@ -10,6 +10,7 @@
  * - 网络失败（fail 回调）：保留微信小程序 errMsg 诊断信息，针对域名未配置场景给出明确指引
  */
 import { API_BASE_URL } from '../config/env'
+import { t } from '../locale'
 
 const BASE_URL = API_BASE_URL
 
@@ -49,7 +50,7 @@ function _handleUnauthorized() {
     console.warn('清除本地登录态失败', e)
   }
   if (hadToken) {
-    uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
+    uni.showToast({ title: t('request.sessionExpired'), icon: 'none' })
   }
   setTimeout(() => {
     uni.reLaunch({ url: LOGIN_PAGE, complete: () => { _isHandling401 = false } })
@@ -74,7 +75,7 @@ export function request({ url, method = 'GET', data, header, timeout }) {
         // 401 未授权：token 失效或缺失，触发统一登录态清理与跳转
         if (res.statusCode === 401) {
           _handleUnauthorized()
-          reject(new Error('登录已过期，请重新登录'))
+          reject(new Error(t('request.sessionExpired')))
           return
         }
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -82,13 +83,13 @@ export function request({ url, method = 'GET', data, header, timeout }) {
           return
         }
         // 解析错误信息
-        let msg = '请求失败'
+        let msg = t('request.failed')
         const detail = res.data && res.data.detail
         if (typeof detail === 'string') {
           msg = detail
         } else if (Array.isArray(detail)) {
           // Pydantic 校验错误：[{ msg: '...' }, ...]
-          msg = detail.map((e) => e.msg).join('；')
+          msg = detail.map((e) => e.msg).join(t('request.errorSeparator'))
         }
         reject(new Error(msg))
       },
@@ -99,23 +100,23 @@ export function request({ url, method = 'GET', data, header, timeout }) {
         // 微信小程序端错误文案（开发期常见原因：未在开发者工具勾选「不校验合法域名」）
         // #ifdef MP-WEIXIN
         if (errMsg.includes('domain') || errMsg.includes('url not in')) {
-          msg = '请求域名未配置：请在微信开发者工具 → 详情 → 本地设置，勾选「不校验合法域名、web-view、TLS 版本以及 HTTPS 证书」'
+          msg = t('request.domainNotConfigured')
         } else if (errMsg.includes('timeout')) {
-          msg = '请求超时，请检查后端服务是否启动'
+          msg = t('request.timeout')
         } else if (errMsg.includes('refused') || errMsg.includes('ECONNREFUSED')) {
-          msg = '无法连接后端服务，请确认后端已启动（localhost:8000）'
+          msg = t('request.connectRefusedMp')
         } else if (errMsg) {
-          msg = `网络请求失败：${errMsg}`
+          msg = t('request.networkFailedDetail', { detail: errMsg })
         }
         // #endif
         // H5 端错误文案（浏览器 fetch/XHR 错误）
         // #ifndef MP-WEIXIN
         if (errMsg.includes('timeout')) {
-          msg = '请求超时，请检查后端服务是否启动'
+          msg = t('request.timeout')
         } else if (errMsg.includes('Network Error') || errMsg.includes('Failed to fetch')) {
-          msg = '无法连接后端服务，请确认后端已启动或网络正常'
+          msg = t('request.connectRefusedH5')
         } else if (errMsg) {
-          msg = `网络请求失败：${errMsg}`
+          msg = t('request.networkFailedDetail', { detail: errMsg })
         }
         // #endif
         const e = new Error(msg)

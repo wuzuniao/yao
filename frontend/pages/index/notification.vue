@@ -12,7 +12,7 @@
 
     <view class="notification-page__main">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/profile 等页面保持一致） -->
-      <PageHeader title="通知方式" desc="管理您的提醒接收渠道，确保不错过任何重要提醒。" />
+      <PageHeader :title="$t('notification.title')" :desc="$t('notification.desc')" />
 
       <!-- 通知方式列表（动态从数据库加载，仅展示用户已配置的通知方式） -->
       <view class="notification-page__section" v-if="channels.length > 0">
@@ -21,8 +21,8 @@
           <view class="notification-page__card-info">
             <image class="notification-page__card-icon" :src="znxIcon" mode="aspectFit" />
             <view class="notification-page__card-text">
-              <text class="notification-page__card-title">站内信</text>
-              <text class="notification-page__card-subtitle">系统内置通知</text>
+              <text class="notification-page__card-title">{{ $t('notification.inApp') }}</text>
+              <text class="notification-page__card-subtitle">{{ $t('notification.inAppDesc') }}</text>
             </view>
           </view>
         </view>
@@ -33,8 +33,8 @@
             <view class="notification-page__card-info">
               <image class="notification-page__card-icon" :src="yxIcon" mode="aspectFit" />
               <view class="notification-page__card-text">
-                <text class="notification-page__card-title">邮件</text>
-                <text class="notification-page__card-subtitle">{{ ch.email_config?.email || '点击查看配置' }}</text>
+                <text class="notification-page__card-title">{{ $t('notification.email') }}</text>
+                <text class="notification-page__card-subtitle">{{ ch.email_config?.email || $t('notification.emailPlaceholder') }}</text>
               </view>
             </view>
             <view class="notification-page__card-delete" @click.stop="handleDeleteEmail(ch.id)">
@@ -45,89 +45,89 @@
           <!-- 邮件配置表单（点击卡片展开，含 SMTP/端口/邮箱/密码/是否启用 + 提交按钮） -->
           <view v-if="expandedEmailId === ch.id" class="notification-page__email-form">
             <view class="notification-page__field">
-              <text class="notification-page__label">SMTP服务器地址</text>
+              <text class="notification-page__label">{{ $t('notification.smtpHost') }}</text>
               <input
                 class="notification-page__input"
                 :class="{ 'notification-page__input--error': editHostError }"
                 v-model="editForm.smtp_host"
-                placeholder="例如：smtp.exmail.qq.com"
+                :placeholder="$t('notification.smtpHostPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editHostLimit.max"
                 @input="e => editForm.smtp_host = editHostLimit.handleInput(e)"
                 @blur="editHostError = validateHost(editForm.smtp_host)"
               />
               <text v-if="editHostError" class="notification-page__error-text">{{ editHostError }}</text>
-              <text v-if="editHostLimit.limitReached && editHostLimit.limitHint && editHostLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editHostLimit.limitHint }}</text>
+              <text v-if="editHostLimit.limitReached" class="notification-page__limit-text">{{ editHostLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
-              <text class="notification-page__label">SMTP服务器端口</text>
+              <text class="notification-page__label">{{ $t('notification.smtpPort') }}</text>
               <input
                 class="notification-page__input"
                 :class="{ 'notification-page__input--error': editPortError }"
                 v-model="editForm.smtp_port"
                 type="number"
-                placeholder="例如：465"
+                :placeholder="$t('notification.smtpPortPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editPortLimit.max"
                 @input="e => { const raw = e.detail.value || ''; const filtered = editPortLimit.handleInput(e); editForm.smtp_port = filtered; editPortHasNonDigit = raw !== filtered }"
                 @focus="editPortError = ''"
-                @blur="editPortError = editPortHasNonDigit ? '请输入有效的数字' : validatePort(editForm.smtp_port)"
+                @blur="editPortError = editPortHasNonDigit ? $t('validate.numberOnly') : validatePort(editForm.smtp_port)"
               />
               <text v-if="editPortError" class="notification-page__error-text">{{ editPortError }}</text>
-              <text v-if="editPortLimit.limitReached && editPortLimit.limitHint && editPortLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editPortLimit.limitHint }}</text>
+              <text v-if="editPortLimit.limitReached" class="notification-page__limit-text">{{ editPortLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
-              <text class="notification-page__label">发件邮箱地址</text>
+              <text class="notification-page__label">{{ $t('notification.senderEmail') }}</text>
               <input
                 class="notification-page__input"
                 :class="{ 'notification-page__input--error': editEmailError }"
                 v-model="editForm.email"
-                placeholder="例如：user@example.com"
+                :placeholder="$t('notification.senderEmailPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editEmailLimit.max"
                 @input="e => editForm.email = editEmailLimit.handleInput(e)"
                 @blur="editEmailError = validateEmail(editForm.email)"
               />
               <text v-if="editEmailError" class="notification-page__error-text">{{ editEmailError }}</text>
-              <text v-if="editEmailLimit.limitReached && editEmailLimit.limitHint && editEmailLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editEmailLimit.limitHint }}</text>
+              <text v-if="editEmailLimit.limitReached" class="notification-page__limit-text">{{ editEmailLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
-              <text class="notification-page__label">客户端专用密码</text>
+              <text class="notification-page__label">{{ $t('notification.clientPassword') }}</text>
               <input
                 class="notification-page__input"
                 v-model="editForm.password"
                 :password="true"
-                placeholder="留空表示不修改，重新输入请填写"
+                :placeholder="$t('notification.clientPasswordPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :maxlength="editPwdLimit.max"
                 @input="e => editForm.password = editPwdLimit.handleInput(e)"
               />
-              <text v-if="editPwdLimit.limitReached && editPwdLimit.limitHint && editPwdLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ editPwdLimit.limitHint }}</text>
+              <text v-if="editPwdLimit.limitReached" class="notification-page__limit-text">{{ editPwdLimit.limitHint }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定） -->
             <view class="notification-page__field">
-              <text class="notification-page__label">是否启用</text>
+              <text class="notification-page__label">{{ $t('notification.enabledLabel') }}</text>
               <view class="notification-page__radio-row">
                 <view class="notification-page__radio-item" @click="editForm.enabled = true">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': editForm.enabled }">
                     <view v-if="editForm.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">是</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.yes') }}</text>
                 </view>
                 <view class="notification-page__radio-item" @click="editForm.enabled = false">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': !editForm.enabled }">
                     <view v-if="!editForm.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">否</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.no') }}</text>
                 </view>
               </view>
             </view>
             <view class="notification-page__btn-row">
               <view class="notification-page__save notification-page__btn-row-item" @click="handleUpdateEmail(ch.id)">
-                <text class="notification-page__save-text">提交</text>
+                <text class="notification-page__save-text">{{ $t('notification.submit') }}</text>
               </view>
               <view class="notification-page__cancel notification-page__btn-row-item" @click="cancelEmailEdit">
-                <text class="notification-page__cancel-text">取消</text>
+                <text class="notification-page__cancel-text">{{ $t('notification.cancel') }}</text>
               </view>
             </view>
           </view>
@@ -138,17 +138,17 @@
         <view v-if="hasWechat">
           <view class="notification-page__card" :class="{ 'notification-page__card--disabled': wechatChannel && !wechatChannel.enabled }" @click="toggleWechatEdit">
             <view class="notification-page__card-info">
-              <view class="notification-page__card-badge notification-page__card-badge--wechat">微</view>
+              <view class="notification-page__card-badge notification-page__card-badge--wechat">{{ $t('notification.wechatBadge') }}</view>
               <view class="notification-page__card-text">
-                <text class="notification-page__card-title">微信</text>
+                <text class="notification-page__card-title">{{ $t('notification.wechat') }}</text>
                 <text class="notification-page__card-subtitle">
-                  {{ wechatRemaining > 0 ? `订阅消息提醒 · 剩余可发 ${wechatRemaining} 次` : '授权额度已用完，请重新授权' }}
+                  {{ wechatRemaining > 0 ? $t('notification.wechatQuotaLeft', { count: wechatRemaining }) : $t('notification.wechatQuotaEmpty') }}
                 </text>
               </view>
             </view>
             <view class="notification-page__card-actions">
               <view v-if="wechatRemaining <= 0" class="notification-page__card-reauth" @click.stop="handleWechatReauth">
-                <text class="notification-page__card-reauth-text">重新授权</text>
+              <text class="notification-page__card-reauth-text">{{ $t('notification.reauth') }}</text>
               </view>
               <view class="notification-page__card-delete" @click.stop="handleDeleteWechat">
                 <image class="notification-page__card-delete-icon" :src="deleteIcon" mode="aspectFit" />
@@ -159,28 +159,28 @@
           <!-- 微信启用状态修改表单（点击卡片展开，仅"是否启用"单选 + 提交/取消按钮） -->
           <view v-if="wechatEditExpanded" class="notification-page__email-form">
             <view class="notification-page__field">
-              <text class="notification-page__label">是否启用</text>
+              <text class="notification-page__label">{{ $t('notification.enabledLabel') }}</text>
               <view class="notification-page__radio-row">
                 <view class="notification-page__radio-item" @click="wechatEditForm.enabled = true">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': wechatEditForm.enabled }">
                     <view v-if="wechatEditForm.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">是</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.yes') }}</text>
                 </view>
                 <view class="notification-page__radio-item" @click="wechatEditForm.enabled = false">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': !wechatEditForm.enabled }">
                     <view v-if="!wechatEditForm.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">否</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.no') }}</text>
                 </view>
               </view>
             </view>
             <view class="notification-page__btn-row">
               <view class="notification-page__save notification-page__btn-row-item" @click="handleUpdateWechat">
-                <text class="notification-page__save-text">提交</text>
+                <text class="notification-page__save-text">{{ $t('notification.submit') }}</text>
               </view>
               <view class="notification-page__cancel notification-page__btn-row-item" @click="wechatEditExpanded = false">
-                <text class="notification-page__cancel-text">取消</text>
+                <text class="notification-page__cancel-text">{{ $t('notification.cancel') }}</text>
               </view>
             </view>
           </view>
@@ -192,10 +192,10 @@
         <view v-if="hasAppPush">
           <view class="notification-page__card" :class="{ 'notification-page__card--disabled': appPushChannel && !appPushChannel.enabled }" @click="toggleAppPushEdit">
             <view class="notification-page__card-info">
-              <view class="notification-page__card-badge notification-page__card-badge--app">推</view>
+              <view class="notification-page__card-badge notification-page__card-badge--app">{{ $t('notification.appPushBadge') }}</view>
               <view class="notification-page__card-text">
-                <text class="notification-page__card-title">App推送</text>
-                <text class="notification-page__card-subtitle">系统通知栏提醒 · 已登记 {{ appPushDeviceCount }} 台设备</text>
+                <text class="notification-page__card-title">{{ $t('notification.appPush') }}</text>
+                <text class="notification-page__card-subtitle">{{ $t('notification.appPushDesc', { count: appPushDeviceCount }) }}</text>
               </view>
             </view>
             <view class="notification-page__card-delete" @click.stop="handleDeleteAppPush">
@@ -206,28 +206,28 @@
           <!-- App 推送启用状态修改表单（点击卡片展开，仅"是否启用"单选 + 提交/取消按钮） -->
           <view v-if="appPushEditExpanded" class="notification-page__email-form">
             <view class="notification-page__field">
-              <text class="notification-page__label">是否启用</text>
+              <text class="notification-page__label">{{ $t('notification.enabledLabel') }}</text>
               <view class="notification-page__radio-row">
                 <view class="notification-page__radio-item" @click="appPushEditForm.enabled = true">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': appPushEditForm.enabled }">
                     <view v-if="appPushEditForm.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">是</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.yes') }}</text>
                 </view>
                 <view class="notification-page__radio-item" @click="appPushEditForm.enabled = false">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': !appPushEditForm.enabled }">
                     <view v-if="!appPushEditForm.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">否</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.no') }}</text>
                 </view>
               </view>
             </view>
             <view class="notification-page__btn-row">
               <view class="notification-page__save notification-page__btn-row-item" @click="handleUpdateAppPush">
-                <text class="notification-page__save-text">提交</text>
+                <text class="notification-page__save-text">{{ $t('notification.submit') }}</text>
               </view>
               <view class="notification-page__cancel notification-page__btn-row-item" @click="appPushEditExpanded = false">
-                <text class="notification-page__cancel-text">取消</text>
+                <text class="notification-page__cancel-text">{{ $t('notification.cancel') }}</text>
               </view>
             </view>
           </view>
@@ -241,30 +241,30 @@
           <view class="notification-page__add-plus-h"></view>
           <view class="notification-page__add-plus-v"></view>
         </view>
-        <text class="notification-page__add-text">添加新的通知方式</text>
+        <text class="notification-page__add-text">{{ $t('notification.addNew') }}</text>
       </view>
 
       <!-- 新建通知方式表单卡（默认隐藏，点击"添加新的通知方式"后显示，淡入过渡） -->
       <view v-if="showForm">
         <view class="notification-page__form notification-page__form--fade-in guide-target-notification-form-card">
-          <text class="notification-page__form-heading">新建通知方式</text>
+          <text class="notification-page__form-heading">{{ $t('notification.newForm') }}</text>
 
-          <!-- 通知类型（单选框：邮件/微信） -->
+          <!-- 通知类型（单选框：金额/邮件/微信） -->
           <view class="notification-page__field">
-            <text class="notification-page__label">通知类型</text>
+            <text class="notification-page__label">{{ $t('notification.type') }}</text>
             <view class="notification-page__radio-row">
               <view class="notification-page__radio-item guide-target-email-type-radio" @click="selectType('邮件')">
                 <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === '邮件' }">
                   <view v-if="formType === '邮件'" class="notification-page__radio-dot"></view>
                 </view>
-                <text class="notification-page__radio-text">邮件</text>
+                <text class="notification-page__radio-text">{{ $t('notification.email') }}</text>
               </view>
               <!-- #ifdef MP-WEIXIN -->
               <view class="notification-page__radio-item" @click="selectType('微信')">
                 <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === '微信' }">
                   <view v-if="formType === '微信'" class="notification-page__radio-dot"></view>
                 </view>
-                <text class="notification-page__radio-text">微信</text>
+                <text class="notification-page__radio-text">{{ $t('notification.wechat') }}</text>
               </view>
               <!-- #endif -->
               <!-- #ifdef APP -->
@@ -272,7 +272,7 @@
                 <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': formType === 'App推送' }">
                   <view v-if="formType === 'App推送'" class="notification-page__radio-dot"></view>
                 </view>
-                <text class="notification-page__radio-text">App推送</text>
+                <text class="notification-page__radio-text">{{ $t('notification.appPush') }}</text>
               </view>
               <!-- #endif -->
             </view>
@@ -281,26 +281,26 @@
           <!-- #ifdef MP-WEIXIN -->
           <!-- 微信订阅授权说明（仅"微信"类型时显示，使用默认文字样式） -->
           <template v-if="formType === '微信'">
-            <text>点击下方「授权订阅提醒」并选择允许，打卡时间到达时将通过微信订阅消息提醒您（一次性订阅，每次授权可下发 1 条）。您每日完成打卡时也会自动补充授权额度。</text>
+            <text>{{ $t('notification.wechatTip') }}</text>
           </template>
           <!-- #endif -->
 
           <!-- #ifdef APP -->
           <!-- App 推送说明（仅"App推送"类型时显示，使用默认文字样式） -->
           <template v-if="formType === 'App推送'">
-            <text>点击下方「开启推送」后，打卡时间到达时将通过系统通知栏提醒您，App 退出后依然可以收到。多台设备可分别开启，点击通知栏消息会自动跳转到首页打卡。</text>
+            <text>{{ $t('notification.appTip') }}</text>
           </template>
           <!-- #endif -->
 
           <!-- 邮件配置表单（仅"邮件"类型时显示） -->
           <template v-if="formType === '邮件'">
             <view class="notification-page__field">
-              <text class="notification-page__label">SMTP服务器地址</text>
+              <text class="notification-page__label">{{ $t('notification.smtpHost') }}</text>
               <input
                 class="notification-page__input"
                 :class="{ 'notification-page__input--error': hostError }"
                 v-model="form.smtp_host"
-                placeholder="例如：smtp.qq.com"
+                :placeholder="$t('notification.smtpHostPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :placeholder-style="phStyle('smtp_host')"
                 :maxlength="hostLimit.max"
@@ -309,33 +309,33 @@
                 @blur="() => { onBlur(); hostError = validateHost(form.smtp_host) }"
               />
               <text v-if="hostError" class="notification-page__error-text">{{ hostError }}</text>
-              <text v-if="hostLimit.limitReached && hostLimit.limitHint && hostLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ hostLimit.limitHint }}</text>
+              <text v-if="hostLimit.limitReached" class="notification-page__limit-text">{{ hostLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
-              <text class="notification-page__label">SMTP服务器端口</text>
+              <text class="notification-page__label">{{ $t('notification.smtpPort') }}</text>
               <input
                 class="notification-page__input"
                 :class="{ 'notification-page__input--error': portError }"
                 v-model="form.smtp_port"
                 type="number"
-                placeholder="例如：465"
+                :placeholder="$t('notification.smtpPortPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :placeholder-style="phStyle('smtp_port')"
                 :maxlength="portLimit.max"
                 @input="e => { const raw = e.detail.value || ''; const filtered = portLimit.handleInput(e); form.smtp_port = filtered; portHasNonDigit = raw !== filtered }"
                 @focus="() => { onFocus('smtp_port'); portError = '' }"
-                @blur="() => { onBlur(); portError = portHasNonDigit ? '请输入有效的数字' : validatePort(form.smtp_port) }"
+                @blur="() => { onBlur(); portError = portHasNonDigit ? $t('validate.numberOnly') : validatePort(form.smtp_port) }"
               />
               <text v-if="portError" class="notification-page__error-text">{{ portError }}</text>
-              <text v-if="portLimit.limitReached && portLimit.limitHint && portLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ portLimit.limitHint }}</text>
+              <text v-if="portLimit.limitReached" class="notification-page__limit-text">{{ portLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
-              <text class="notification-page__label">发件邮箱地址</text>
+              <text class="notification-page__label">{{ $t('notification.senderEmail') }}</text>
               <input
                 class="notification-page__input"
                 :class="{ 'notification-page__input--error': emailError }"
                 v-model="form.email"
-                placeholder="例如：bbs.wuzuniao@qq.com"
+                :placeholder="$t('notification.senderEmailPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :placeholder-style="phStyle('email')"
                 :maxlength="emailLimit.max"
@@ -344,15 +344,15 @@
                 @blur="() => { onBlur(); emailError = validateEmail(form.email) }"
               />
               <text v-if="emailError" class="notification-page__error-text">{{ emailError }}</text>
-              <text v-if="emailLimit.limitReached && emailLimit.limitHint && emailLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ emailLimit.limitHint }}</text>
+              <text v-if="emailLimit.limitReached" class="notification-page__limit-text">{{ emailLimit.limitHint }}</text>
             </view>
             <view class="notification-page__field">
-              <text class="notification-page__label">客户端专用密码</text>
+              <text class="notification-page__label">{{ $t('notification.clientPassword') }}</text>
               <input
                 class="notification-page__input"
                 v-model="form.password"
                 :password="true"
-                placeholder="请输入客户端专用密码"
+                :placeholder="$t('notification.clientPasswordPlaceholder')"
                 placeholder-class="notification-page__placeholder"
                 :placeholder-style="phStyle('password')"
                 :maxlength="pwdLimit.max"
@@ -360,23 +360,23 @@
                 @focus="onFocus('password')"
                 @blur="onBlur"
               />
-              <text v-if="pwdLimit.limitReached && pwdLimit.limitHint && pwdLimit.limitHint.includes('已达')" class="notification-page__limit-text">{{ pwdLimit.limitHint }}</text>
+              <text v-if="pwdLimit.limitReached" class="notification-page__limit-text">{{ pwdLimit.limitHint }}</text>
             </view>
             <!-- 是否启用单选框（与 enabled 字段绑定，默认是） -->
             <view class="notification-page__field">
-              <text class="notification-page__label">是否启用</text>
+              <text class="notification-page__label">{{ $t('notification.enabledLabel') }}</text>
               <view class="notification-page__radio-row">
                 <view class="notification-page__radio-item" @click="form.enabled = true">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': form.enabled }">
                     <view v-if="form.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">是</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.yes') }}</text>
                 </view>
                 <view class="notification-page__radio-item" @click="form.enabled = false">
                   <view class="notification-page__radio" :class="{ 'notification-page__radio--checked': !form.enabled }">
                     <view v-if="!form.enabled" class="notification-page__radio-dot"></view>
                   </view>
-                  <text class="notification-page__radio-text">否</text>
+                  <text class="notification-page__radio-text">{{ $t('notification.no') }}</text>
                 </view>
               </view>
             </view>
@@ -397,8 +397,8 @@
     <!-- 邮箱未绑定倒计时弹窗（3秒后自动跳转绑定邮箱页面） -->
     <view v-if="showCountdown" class="notification-page__countdown-mask">
       <view class="notification-page__countdown-box">
-        <text class="notification-page__countdown-title">提示</text>
-        <text class="notification-page__countdown-text">未绑定邮箱不支持邮件通知，{{ countdown }}秒后跳转绑定邮箱</text>
+        <text class="notification-page__countdown-title">{{ $t('notification.countdownTitle') }}</text>
+        <text class="notification-page__countdown-text">{{ $t('notification.emailNotBound', { count: countdown }) }}</text>
       </view>
     </view>
 
@@ -449,8 +449,9 @@ import znxIcon from '../../assets/images/tz_znx.png'
 import yxIcon from '../../assets/images/tz_yx.png'
 import deleteIcon from '../../assets/images/shanchu.png'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '通知方式' })
+useShare({ title: t('share.notification') })
 
 const userStore = useUserStore()
 const guideStore = useGuideStore()
@@ -614,12 +615,12 @@ const canSave = computed(() => {
 // 计算属性：保存按钮文案（按通知类型区分）
 const saveButtonText = computed(() => {
   // #ifdef MP-WEIXIN
-  if (formType.value === '微信') return '授权订阅提醒'
+  if (formType.value === '微信') return $t('notification.authorize')
   // #endif
   // #ifdef APP
-  if (formType.value === 'App推送') return '开启推送'
+  if (formType.value === 'App推送') return $t('notification.enablePush')
   // #endif
-  return '保存通知'
+  return $t('notification.save')
 })
 
 // 端口格式校验：空值返回空，非整数或超出 1-65535 范围返回错误提示
@@ -627,23 +628,23 @@ function validatePort(v) {
   if (!v) return ''
   const num = Number(v)
   if (!Number.isInteger(num) || num < 1 || num > 65535) {
-    return '端口必须为 1-65535 之间的数字'
+    return t('notification.portInvalid')
   }
   return ''
 }
 
 // 邮箱格式校验：参照注册页规则
 function validateEmail(v) {
-  if (!v) return '请输入邮箱地址'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return '邮箱格式不正确'
+  if (!v) return t('validate.emailRequired')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return t('validate.emailFormat')
   return ''
 }
 
 // SMTP服务器地址格式校验：非空 + 基本域名格式
 function validateHost(v) {
-  if (!v) return '请输入SMTP服务器地址'
+  if (!v) return t('notification.hostEmpty')
   if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*(\.[a-zA-Z]{2,})$/.test(v) && !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(v)) {
-    return '服务器地址格式不正确'
+    return t('notification.hostInvalid')
   }
   return ''
 }
@@ -657,7 +658,7 @@ async function loadChannels() {
       channels.value = res.data
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '加载通知方式失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('notification.loadFailed'), icon: 'none' })
   }
 }
 
@@ -752,7 +753,7 @@ async function handleSave() {
   // #endif
   if (!canSave.value) return
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('notification.needLogin'), icon: 'none' })
     return
   }
   hostError.value = validateHost(form.smtp_host)
@@ -779,7 +780,7 @@ async function handleSave() {
       enabled: form.enabled
     })
     if (res.code === 0) {
-      uni.showToast({ title: '保存成功', icon: 'success' })
+      uni.showToast({ title: t('notification.saved'), icon: 'success' })
       showForm.value = false
       await loadChannels()
       // 新手引导：非微信小程序端保存邮件通知后进入下一步（步骤 5：制定计划）
@@ -788,7 +789,7 @@ async function handleSave() {
       }
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '保存失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('notification.saveFailed'), icon: 'none' })
   }
 }
 
@@ -828,7 +829,7 @@ function cancelEmailEdit() {
 // password 为空字符串时后端保留原加密密码，非空时加密新密码后更新
 async function handleUpdateEmail(channelId) {
   if (!editForm.smtp_host || !editForm.smtp_port || !editForm.email) {
-    uni.showToast({ title: '请填写完整配置', icon: 'none' })
+    uni.showToast({ title: t('notification.incomplete'), icon: 'none' })
     return
   }
   editHostError.value = validateHost(editForm.smtp_host)
@@ -857,12 +858,12 @@ async function handleUpdateEmail(channelId) {
       enabled: editForm.enabled
     })
     if (res.code === 0) {
-      uni.showToast({ title: '更新成功', icon: 'success' })
+      uni.showToast({ title: t('notification.updated'), icon: 'success' })
       expandedEmailId.value = null
       await loadChannels()
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('notification.updateFailed'), icon: 'none' })
   }
 }
 
@@ -870,10 +871,10 @@ async function handleUpdateEmail(channelId) {
 async function handleDeleteEmail(channelId) {
   if (!userStore.userInfo) return
   uni.showModal({
-    title: '提示',
-    content: '确定要删除该邮件通知方式吗？',
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('common.tip'),
+    content: t('notification.deleteEmailConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     success: async (res) => {
       if (!res.confirm) return
       try {
@@ -881,14 +882,14 @@ async function handleDeleteEmail(channelId) {
           channel_id: channelId
         })
         if (r.code === 0) {
-          uni.showToast({ title: '删除成功', icon: 'success' })
+          uni.showToast({ title: t('notification.deleted'), icon: 'success' })
           if (expandedEmailId.value === channelId) {
             expandedEmailId.value = null
           }
           await loadChannels()
         }
       } catch (e) {
-        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('notification.deleteFailed'), icon: 'none' })
       }
     }
   })
@@ -898,7 +899,7 @@ async function handleDeleteEmail(channelId) {
 // 开启 App 推送：登记本机设备标识到后端（渠道不存在时新建，已存在则追加/刷新本机设备）
 async function handleEnableAppPush() {
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('notification.needLogin'), icon: 'none' })
     return
   }
   // 用户主动添加 App 推送时才申请系统通知权限（避免 App 启动即弹授权打扰）；
@@ -907,22 +908,22 @@ async function handleEnableAppPush() {
   if (!granted) {
     // 用户拒绝或系统通知总开关关闭：登记设备也收不到提醒，引导去系统设置开启
     uni.showModal({
-      title: '需要通知权限',
-      content: '系统通知权限未开启，开启后才能收到打卡提醒。是否前往系统设置开启？',
-      confirmText: '去设置',
-      cancelText: '暂不',
+      title: t('notification.needPermission'),
+      content: t('notification.permissionContent'),
+      confirmText: t('notification.toSettings'),
+      cancelText: t('notification.notNow'),
       success: (res) => {
         if (res.confirm) openNotificationSettings()
       }
     })
     return
-  }
-  // 首次注册需联网向友盟取设备标识，耗时可达数秒，loading 文案明确告知用户
-  uni.showLoading({ title: '正在注册设备...', mask: true })
-  const ok = await reportDeviceToken({ createIfMissing: true, silent: false })
-  uni.hideLoading()
-  if (!ok) return
-  uni.showToast({ title: '开启成功', icon: 'success' })
+    }
+    // 首次注册需联网向友盟取设备标识，耗时可达数秒，loading 文案明确告知用户
+    uni.showLoading({ title: t('notification.registering'), mask: true })
+    const ok = await reportDeviceToken({ createIfMissing: true, silent: false })
+    uni.hideLoading()
+    if (!ok) return
+    uni.showToast({ title: t('notification.enabledOk'), icon: 'success' })
   showForm.value = false
   await loadChannels()
 }
@@ -948,12 +949,12 @@ async function handleUpdateAppPush() {
       enabled: appPushEditForm.enabled
     })
     if (res.code === 0) {
-      uni.showToast({ title: '更新成功', icon: 'success' })
+      uni.showToast({ title: t('notification.updated'), icon: 'success' })
       appPushEditExpanded.value = false
       await loadChannels()
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('notification.updateFailed'), icon: 'none' })
   }
 }
 
@@ -962,20 +963,20 @@ async function handleDeleteAppPush() {
   const ch = appPushChannel.value
   if (!ch || !userStore.userInfo) return
   uni.showModal({
-    title: '提示',
-    content: '确定要删除App推送通知方式吗？删除后所有已登记设备都将不再收到通知栏提醒。',
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('common.tip'),
+    content: t('notification.deleteAppConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     success: async (res) => {
       if (!res.confirm) return
       try {
         const r = await deleteNotificationChannel({ channel_id: ch.id })
         if (r.code === 0) {
-          uni.showToast({ title: '删除成功', icon: 'success' })
+          uni.showToast({ title: t('notification.deleted'), icon: 'success' })
           await loadChannels()
         }
       } catch (e) {
-        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('notification.deleteFailed'), icon: 'none' })
       }
     }
   })
@@ -989,11 +990,11 @@ async function handleDeleteAppPush() {
 // 当用户勾选「总是保持」并取消后，后续 requestSubscribeMessage 会静默返回 reject，
 // 此时通过 getSetting 检测静默拒绝状态，引导用户前往设置重新开启后再次发起授权
 async function doWechatAuthorize() {
-  uni.showLoading({ title: '授权中...' })
+  uni.showLoading({ title: t('notification.authorizing') })
   const ok = await requestSubscribe()
   uni.hideLoading()
   if (ok) {
-    uni.showToast({ title: '授权成功', icon: 'success' })
+    uni.showToast({ title: t('notification.authorized'), icon: 'success' })
     showForm.value = false
     await loadChannels()
     // 新手引导：授权成功后自动进入下一步（步骤 5：制定计划）
@@ -1007,20 +1008,20 @@ async function doWechatAuthorize() {
   if (!silentRejected) return
   // 静默拒绝：引导用户前往小程序设置重新开启订阅消息授权
   uni.showModal({
-    title: '需要重新允许授权',
-    content: '您此前勾选了「总是保持以上选择」并取消了授权，微信不再弹窗询问。是否前往设置重新开启订阅消息授权？',
-    confirmText: '去设置',
-    cancelText: '取消',
+    title: t('notification.needReauth'),
+    content: t('notification.reauthContent'),
+    confirmText: t('notification.toSettings'),
+    cancelText: t('common.cancel'),
     success: async (res) => {
       if (!res.confirm) return
       uni.openSetting({
         success: async () => {
           // 设置页返回后再次发起授权（用户若已解除限制，会重新弹官方授权弹窗）
-          uni.showLoading({ title: '授权中...' })
+          uni.showLoading({ title: t('notification.authorizing') })
           const retryOk = await requestSubscribe()
           uni.hideLoading()
           if (retryOk) {
-            uni.showToast({ title: '授权成功', icon: 'success' })
+            uni.showToast({ title: t('notification.authorized'), icon: 'success' })
             showForm.value = false
             await loadChannels()
           }
@@ -1034,15 +1035,15 @@ async function doWechatAuthorize() {
 // （后端写入 user_miniapp_accounts，使微信通知可正常下发）
 async function bindWechatAccount() {
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('notification.needLogin'), icon: 'none' })
     return
   }
-  uni.showLoading({ title: '绑定中...' })
+  uni.showLoading({ title: t('notification.binding') })
   let finished = false
   const timeout = setTimeout(() => {
     if (!finished) {
       uni.hideLoading()
-      uni.showToast({ title: '微信绑定超时，请重试', icon: 'none' })
+      uni.showToast({ title: t('notification.bindTimeout'), icon: 'none' })
     }
   }, 10000)
   try {
@@ -1054,7 +1055,7 @@ async function bindWechatAccount() {
     if (!code) {
       clearTimeout(timeout)
       uni.hideLoading()
-      uni.showToast({ title: '仅微信小程序内可绑定微信', icon: 'none' })
+      uni.showToast({ title: t('notification.onlyWechat'), icon: 'none' })
       return
     }
     const res = await bindWechat(code)
@@ -1064,16 +1065,16 @@ async function bindWechatAccount() {
     if (res.code === 0) {
       // 更新本地登录态与微信绑定状态，随后继续订阅授权
       userStore.setUser(res.data)
-      uni.showToast({ title: '微信绑定成功', icon: 'success' })
+      uni.showToast({ title: t('notification.bindOk'), icon: 'success' })
       await doWechatAuthorize()
     } else {
-      uni.showToast({ title: res.msg || '微信绑定失败', icon: 'none' })
+      uni.showToast({ title: res.msg || t('notification.bindFail'), icon: 'none' })
     }
   } catch (e) {
     clearTimeout(timeout)
     finished = true
     uni.hideLoading()
-    uni.showToast({ title: e.message || '微信绑定失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('notification.bindFail'), icon: 'none' })
   }
 }
 
@@ -1082,15 +1083,15 @@ async function bindWechatAccount() {
 // 先弹窗引导用户进行微信一键登录以绑定微信，绑定成功后再发起订阅授权
 async function handleWechatAuthorize() {
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('notification.needLogin'), icon: 'none' })
     return
   }
   if (!userStore.userInfo.is_wechat_bound) {
     uni.showModal({
-      title: '需先绑定微信',
-      content: '您当前账号未绑定微信，无法接收微信提醒。是否现在进行微信一键登录以绑定微信？',
-      confirmText: '去绑定',
-      cancelText: '暂不',
+      title: t('notification.bindWechatFirst'),
+      content: t('notification.bindWechatContent'),
+      confirmText: t('notification.toBind'),
+      cancelText: t('notification.notNow'),
       success: async (res) => {
         if (!res.confirm) return
         await bindWechatAccount()
@@ -1104,11 +1105,11 @@ async function handleWechatAuthorize() {
 // 微信订阅重新授权（列表卡片中额度用尽时显示）：补充一次授权额度
 async function handleWechatReauth() {
   if (!userStore.userInfo) return
-  uni.showLoading({ title: '授权中...' })
+  uni.showLoading({ title: t('notification.authorizing') })
   const ok = await requestSubscribe()
   uni.hideLoading()
   if (ok) {
-    uni.showToast({ title: '授权成功', icon: 'success' })
+    uni.showToast({ title: t('notification.authorized'), icon: 'success' })
     await loadChannels()
   }
 }
@@ -1117,10 +1118,10 @@ async function handleWechatReauth() {
 async function handleDeleteWechat() {
   if (!userStore.userInfo) return
   uni.showModal({
-    title: '提示',
-    content: '确定要删除微信通知方式吗？',
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('common.tip'),
+    content: t('notification.deleteWechatConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     success: async (res) => {
       if (!res.confirm) return
       try {
@@ -1128,12 +1129,12 @@ async function handleDeleteWechat() {
         if (!ch) return
         const r = await deleteNotificationChannel({ channel_id: ch.id })
         if (r.code === 0) {
-          uni.showToast({ title: '删除成功', icon: 'success' })
+          uni.showToast({ title: t('notification.deleted'), icon: 'success' })
           wechatEditExpanded.value = false
           await loadChannels()
         }
       } catch (e) {
-        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('notification.deleteFailed'), icon: 'none' })
       }
     }
   })
@@ -1160,12 +1161,12 @@ async function handleUpdateWechat() {
       enabled: wechatEditForm.enabled
     })
     if (res.code === 0) {
-      uni.showToast({ title: '更新成功', icon: 'success' })
+      uni.showToast({ title: t('notification.updated'), icon: 'success' })
       wechatEditExpanded.value = false
       await loadChannels()
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('notification.updateFailed'), icon: 'none' })
   }
 }
 // #endif

@@ -6,19 +6,19 @@
     <!-- 找回密码卡片 -->
     <view class="forgot-password-page__card">
       <view class="forgot-password-page__header">
-        <text class="forgot-password-page__title">找回密码</text>
+        <text class="forgot-password-page__title">{{ $t('auth.forgotTitle') }}</text>
       </view>
 
       <!-- 步骤1：邮箱 + 验证码 -->
       <view v-if="step === 1" class="forgot-password-page__form">
         <!-- 邮箱 -->
         <view class="forgot-password-page__field">
-          <text class="forgot-password-page__label">邮箱</text>
+          <text class="forgot-password-page__label">{{ $t('auth.email') }}</text>
           <input
             class="forgot-password-page__input"
             :class="{ 'forgot-password-page__input--error': errors.email }"
             v-model="form.email"
-            placeholder="请输入邮箱地址"
+            :placeholder="$t('auth.emailPlaceholder')"
             placeholder-class="forgot-password-page__placeholder"
             :placeholder-style="phStyle('email')"
             :maxlength="emailLimit.max"
@@ -27,18 +27,18 @@
             @blur="handleBlur('email')"
           />
           <text v-if="errors.email" class="forgot-password-page__error-text">{{ errors.email }}</text>
-          <text v-if="emailLimit.limitReached && emailLimit.limitHint && emailLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ emailLimit.limitHint }}</text>
+          <text v-if="emailLimit.limitReached" class="forgot-password-page__limit-text">{{ emailLimit.limitHint }}</text>
         </view>
 
         <!-- 验证码 -->
         <view class="forgot-password-page__field">
-          <text class="forgot-password-page__label">验证码</text>
+          <text class="forgot-password-page__label">{{ $t('auth.code') }}</text>
           <view class="forgot-password-page__code-row">
             <input
               class="forgot-password-page__code-input"
               :class="{ 'forgot-password-page__code-input--error': errors.code }"
               v-model="form.code"
-              placeholder="请输入验证码"
+              :placeholder="$t('auth.codePlaceholder')"
               placeholder-class="forgot-password-page__placeholder"
               :placeholder-style="phStyle('code')"
               :maxlength="codeLimit.max"
@@ -55,12 +55,12 @@
             </view>
           </view>
           <text v-if="errors.code" class="forgot-password-page__error-text">{{ errors.code }}</text>
-          <text v-if="codeLimit.limitReached && codeLimit.limitHint && codeLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ codeLimit.limitHint }}</text>
+          <text v-if="codeLimit.limitReached" class="forgot-password-page__limit-text">{{ codeLimit.limitHint }}</text>
         </view>
 
         <!-- 找回按钮 -->
         <view class="forgot-password-page__submit" @click="handleStep1Submit">
-          <text class="forgot-password-page__submit-text">下一步</text>
+          <text class="forgot-password-page__submit-text">{{ $t('auth.nextStep') }}</text>
         </view>
       </view>
 
@@ -68,7 +68,7 @@
       <view v-else class="forgot-password-page__form">
         <!-- 新密码 -->
         <view class="forgot-password-page__field">
-          <text class="forgot-password-page__label">新密码</text>
+          <text class="forgot-password-page__label">{{ $t('auth.newPassword') }}</text>
           <view
             class="forgot-password-page__password-row"
             :class="{ 'forgot-password-page__password-row--error': errors.newPassword }"
@@ -78,7 +78,7 @@
               v-model="form.newPassword"
               :password="!showNewPassword"
               :key="'fp-new-' + showNewPassword"
-              placeholder="请设置强密码"
+              :placeholder="$t('auth.newPasswordPlaceholder')"
               placeholder-class="forgot-password-page__placeholder"
               :placeholder-style="phStyle('newPassword')"
               :maxlength="newPwdLimit.max"
@@ -91,12 +91,12 @@
             </view>
           </view>
           <text v-if="errors.newPassword" class="forgot-password-page__error-text">{{ errors.newPassword }}</text>
-          <text v-if="newPwdLimit.limitReached && newPwdLimit.limitHint && newPwdLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ newPwdLimit.limitHint }}</text>
+          <text v-if="newPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ newPwdLimit.limitHint }}</text>
         </view>
 
         <!-- 确认密码 -->
         <view class="forgot-password-page__field">
-          <text class="forgot-password-page__label">确认密码</text>
+          <text class="forgot-password-page__label">{{ $t('auth.confirmPassword') }}</text>
           <view
             class="forgot-password-page__password-row"
             :class="{ 'forgot-password-page__password-row--error': errors.confirmPassword }"
@@ -106,7 +106,7 @@
               v-model="form.confirmPassword"
               :password="!showConfirmPassword"
               :key="'fp-cpwd-' + showConfirmPassword"
-              placeholder="请再次输入密码"
+              :placeholder="$t('auth.confirmPasswordPlaceholder')"
               placeholder-class="forgot-password-page__placeholder"
               :placeholder-style="phStyle('confirmPassword')"
               :maxlength="confirmPwdLimit.max"
@@ -119,19 +119,19 @@
             </view>
           </view>
           <text v-if="errors.confirmPassword" class="forgot-password-page__error-text">{{ errors.confirmPassword }}</text>
-          <text v-if="confirmPwdLimit.limitReached && confirmPwdLimit.limitHint && confirmPwdLimit.limitHint.includes('已达')" class="forgot-password-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
+          <text v-if="confirmPwdLimit.limitReached" class="forgot-password-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
         </view>
 
         <!-- 找回按钮 -->
         <view class="forgot-password-page__submit" @click="handleStep2Submit">
-          <text class="forgot-password-page__submit-text">找回</text>
+          <text class="forgot-password-page__submit-text">{{ $t('auth.resetPassword') }}</text>
         </view>
       </view>
     </view>
 
     <!-- 底部登录链接 -->
     <view class="forgot-password-page__footer" @click="goLogin">
-      <text class="forgot-password-page__footer-text">返回登录</text>
+      <text class="forgot-password-page__footer-text">{{ $t('auth.backToLogin') }}</text>
     </view>
   </view>
 </template>
@@ -154,8 +154,9 @@ import { usePlaceholder } from '../../composables/usePlaceholder'
 import { useInputLimit } from '../../composables/useInputLimit'
 import { sendResetCode, resetPassword } from '../../api/modules/user'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '找回密码' })
+useShare({ title: t('share.forgotPassword') })
 
 const step = ref(1)
 const form = reactive({
@@ -170,7 +171,7 @@ const errors = reactive({
   newPassword: '',
   confirmPassword: ''
 })
-const codeText = ref('获取验证码')
+const codeText = ref(t('auth.codeGet'))
 const counting = ref(false)
 const isSending = ref(false)
 const submitting = ref(false)
@@ -195,32 +196,32 @@ function toggleConfirmPassword() {
 
 // ===== 前端输入校验（参照 register.vue）=====
 function validateEmail(v) {
-  if (!v) return '请输入邮箱地址'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return '邮箱格式不正确'
+  if (!v) return t('validate.emailRequired')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return t('validate.emailFormat')
   return ''
 }
 
 function validateCode(v) {
-  if (!v) return '请输入验证码'
-  if (!/^\d{6}$/.test(v)) return '验证码为 6 位数字'
+  if (!v) return t('validate.codeRequired')
+  if (!/^\d{6}$/.test(v)) return t('validate.codeFormat')
   return ''
 }
 
 function validatePassword(v) {
-  if (!v) return '请设置密码'
-  if (v.length < 8 || v.length > 20) return '密码长度需为 8-20 位'
+  if (!v) return t('validate.passwordRequired')
+  if (v.length < 8 || v.length > 20) return t('validate.passwordLength')
   let categories = 0
   if (/[a-z]/.test(v)) categories++
   if (/[A-Z]/.test(v)) categories++
   if (/[0-9]/.test(v)) categories++
   if (/[^a-zA-Z0-9]/.test(v)) categories++
-  if (categories < 3) return '密码需包含大小写字母、数字、特殊符号中的至少三种'
+  if (categories < 3) return t('validate.passwordStrength')
   return ''
 }
 
 function validateConfirmPassword(v) {
-  if (!v) return '请再次输入密码'
-  if (v !== form.newPassword) return '两次密码不一致'
+  if (!v) return t('validate.confirmPasswordRequired')
+  if (v !== form.newPassword) return t('validate.confirmPasswordMismatch')
   return ''
 }
 
@@ -254,14 +255,14 @@ async function handleGetCode() {
     return
   }
   isSending.value = true
-  codeText.value = '发送中...'
+  codeText.value = t('auth.codeSending')
   try {
     await sendResetCode(form.email)
-    uni.showToast({ title: '验证码已发送', icon: 'none' })
+    uni.showToast({ title: t('auth.codeSent'), icon: 'none' })
     startCountdown()
   } catch (e) {
     // 发送失败恢复按钮，允许用户立即重试
-    codeText.value = '获取验证码'
+    codeText.value = t('auth.codeGet')
     uni.showToast({ title: e.message, icon: 'none' })
   } finally {
     isSending.value = false
@@ -277,7 +278,7 @@ function startCountdown() {
     if (sec <= 0) {
       clearInterval(timer)
       counting.value = false
-      codeText.value = '获取验证码'
+      codeText.value = t('auth.codeGet')
     } else {
       codeText.value = `${sec}s`
     }
@@ -325,13 +326,13 @@ async function handleStep2Submit() {
       code: form.code,
       new_password: form.newPassword
     })
-    uni.showToast({ title: '密码重置成功', icon: 'success' })
+    uni.showToast({ title: t('auth.resetSuccess'), icon: 'success' })
     setTimeout(() => {
       uni.redirectTo({ url: '/pages/user/login' })
     }, 1500)
   } catch (e) {
     // 验证码错误时统一提示"请输入正确验证码"
-    const msg = /验证码/.test(e.message) ? '请输入正确验证码' : e.message
+    const msg = /验证码/.test(e.message) ? t('auth.codeIncorrectHint') : e.message
     uni.showToast({ title: msg, icon: 'none' })
   } finally {
     submitting.value = false

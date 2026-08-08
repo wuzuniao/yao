@@ -11,6 +11,7 @@
  */
 import { grantWechatChannel } from '../api/modules/notification'
 import { WX_SUBSCRIBE_TEMPLATE_ID } from '../config/env'
+import { t } from '../locale'
 
 const TEMPLATE_ID = WX_SUBSCRIBE_TEMPLATE_ID
 
@@ -24,7 +25,7 @@ export function useWechatSubscribe() {
     // 非微信小程序端不发起授权（如 H5 / 开发预览），避免无意义弹窗
     // #ifndef MP-WEIXIN
     if (!silent) {
-      uni.showToast({ title: '请在微信小程序中使用订阅消息', icon: 'none' })
+      uni.showToast({ title: t('push.wechatOnly'), icon: 'none' })
     }
     return false
     // #endif
@@ -32,7 +33,7 @@ export function useWechatSubscribe() {
     // #ifdef MP-WEIXIN
     if (!TEMPLATE_ID) {
       if (!silent) {
-        uni.showToast({ title: '订阅消息模板未配置', icon: 'none' })
+        uni.showToast({ title: t('push.templateMissing'), icon: 'none' })
       }
       return false
     }
@@ -46,7 +47,7 @@ export function useWechatSubscribe() {
           await grantWechatChannel()
         } catch (e) {
           if (!silent) {
-            uni.showToast({ title: e.message || '授权失败', icon: 'none' })
+            uni.showToast({ title: e.message || t('push.authFailed'), icon: 'none' })
           }
           return false
         }
@@ -56,7 +57,7 @@ export function useWechatSubscribe() {
       return false
     } catch (e) {
       if (!silent) {
-        uni.showToast({ title: e.message || '授权失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('push.authFailed'), icon: 'none' })
       }
       return false
     }

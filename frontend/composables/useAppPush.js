@@ -27,6 +27,7 @@ import {
 // #endif
 
 import { upsertAppPushChannel } from '../api/modules/notification'
+import { t } from '../locale'
 
 // 点击推送通知后的跳转页面（与后端 UMENG_PUSH_PAGE 保持一致）
 const PUSH_TARGET_PAGE = '/pages/index/index'
@@ -301,7 +302,7 @@ export function useAppPush() {
   async function reportDeviceToken({ createIfMissing = false, silent = true } = {}) {
     // #ifndef APP
     if (!silent) {
-      uni.showToast({ title: '请在App中开启推送通知', icon: 'none' })
+      uni.showToast({ title: t('push.appOnly'), icon: 'none' })
     }
     return false
     // #endif
@@ -312,7 +313,7 @@ export function useAppPush() {
       if (!silent) {
         // 取不到 token 的常见原因是设备尚未完成友盟注册（网络不通/首次注册未完成），
         // 提示中带上「检查网络」以减少用户无效重试
-        uni.showToast({ title: '设备注册未完成，请检查网络后重试', icon: 'none', duration: 3000 })
+        uni.showToast({ title: t('push.deviceNotReady'), icon: 'none', duration: 3000 })
       }
       return false
     }
@@ -325,7 +326,7 @@ export function useAppPush() {
       return true
     } catch (e) {
       if (!silent) {
-        uni.showToast({ title: e.message || '开启推送失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('push.enableFailed'), icon: 'none' })
       }
       return false
     }

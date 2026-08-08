@@ -5,7 +5,7 @@
 
     <view class="messages-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 help/notification 等页面保持一致） -->
-      <PageHeader title="站内信" desc="查看您的打卡提醒消息，点击未读消息可标记为已读。" />
+      <PageHeader :title="$t('messages.title')" :desc="$t('messages.desc')" />
 
       <!-- 全部已读按钮（仅当存在未读消息且非加载中时显示） -->
       <view
@@ -14,24 +14,24 @@
         :class="{ 'messages-page__mark-all--disabled': markingAll }"
         @click="handleMarkAllRead"
       >
-        全部已读
+        {{ $t('messages.markAll') }}
       </view>
 
       <!-- 消息卡片列表 -->
       <view class="messages-page__list">
         <!-- 加载中（初次加载） -->
         <view v-if="loading && messages.length === 0" class="messages-page__status">
-          <text class="messages-page__status-text">加载中...</text>
+          <text class="messages-page__status-text">{{ $t('common.loading') }}</text>
         </view>
 
         <!-- 加载失败（初次加载，点击重试） -->
         <view v-else-if="error && messages.length === 0" class="messages-page__status" @click="retry">
-          <text class="messages-page__status-text messages-page__status-text--error">加载失败，点击重试</text>
+          <text class="messages-page__status-text messages-page__status-text--error">{{ $t('common.loadFailedRetry') }}</text>
         </view>
 
         <!-- 空数据 -->
         <view v-else-if="messages.length === 0" class="messages-page__status">
-          <text class="messages-page__status-text">暂无站内信消息</text>
+          <text class="messages-page__status-text">{{ $t('messages.empty') }}</text>
         </view>
 
         <!-- 消息卡片列表 -->
@@ -54,11 +54,11 @@
 
           <!-- 加载更多（分页加载中） -->
           <view v-if="loadingMore" class="messages-page__status">
-            <text class="messages-page__status-text">加载更多...</text>
+            <text class="messages-page__status-text">{{ $t('common.loadingMore') }}</text>
           </view>
           <!-- 没有更多 -->
           <view v-else-if="!hasMore && messages.length > 0" class="messages-page__status">
-            <text class="messages-page__status-text">没有更多消息了</text>
+            <text class="messages-page__status-text">{{ $t('common.noMore') }}</text>
           </view>
         </template>
       </view>
@@ -87,8 +87,9 @@ import PageHeader from '../../components/PageHeader.vue'
 import { useUserStore } from '../../store/modules/user'
 import { listMessages, markMessageRead, markAllMessagesRead } from '../../api/modules/message'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '站内信' })
+useShare({ title: t('share.messages') })
 
 const userStore = useUserStore()
 
@@ -159,7 +160,7 @@ async function handleCardClick(item) {
     }
   } catch (e) {
     // 优雅的错误提示，不中断用户操作
-    uni.showToast({ title: e.message || '标记失败，请重试', icon: 'none' })
+    uni.showToast({ title: e.message || t('messages.markFailed'), icon: 'none' })
   }
 }
 
@@ -175,12 +176,12 @@ async function handleMarkAllRead() {
         item.is_unread = false
       })
       userStore.setUnreadCount(0)
-      uni.showToast({ title: '已全部标记为已读', icon: 'none' })
+      uni.showToast({ title: t('messages.allMarked'), icon: 'none' })
     } else {
-      uni.showToast({ title: res.msg || '操作失败，请重试', icon: 'none' })
+      uni.showToast({ title: res.msg || t('common.operationFailed'), icon: 'none' })
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '操作失败，请重试', icon: 'none' })
+    uni.showToast({ title: e.message || t('common.operationFailed'), icon: 'none' })
   } finally {
     markingAll.value = false
   }

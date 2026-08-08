@@ -19,7 +19,7 @@
         <!-- 公共管理（仅管理员可见，紧贴用户资料卡下方；占半行：无图标、无副标题、无箭头，仅标题） -->
         <view v-if="isAdmin" class="settings-page__admin-row">
           <view class="settings-page__admin-card" @click="goAnnouncement">
-            <text class="settings-page__admin-title">公告管理</text>
+            <text class="settings-page__admin-title">{{ $t('settings.announcementAdmin') }}</text>
           </view>
         </view>
       </view>
@@ -28,11 +28,11 @@
       <view class="settings-page__group1" :class="{ 'settings-page__group1--disabled': isDeletionScheduled }">
         <view class="settings-page__link-card settings-page__link-card--plan guide-target-plan-method" @click="!isDeletionScheduled && goPlan()">
           <view class="settings-page__link-left">
-            <text class="settings-page__link-title">制定计划</text>
+            <text class="settings-page__link-title">{{ $t('settings.plan') }}</text>
             <!-- 仅当存在进行中的计划时显示"进行中"状态徽章 -->
             <view class="settings-page__link-status" v-if="activePlanName">
               <view class="settings-page__link-status-dot"></view>
-              <text class="settings-page__link-status-text">进行中</text>
+              <text class="settings-page__link-status-text">{{ $t('settings.planActive') }}</text>
             </view>
           </view>
           <view class="settings-page__link-right">
@@ -44,7 +44,7 @@
 
         <view class="settings-page__link-card guide-target-notification-method" @click="!isDeletionScheduled && goNotification()">
           <view class="settings-page__link-left">
-            <text class="settings-page__link-title">通知方式</text>
+            <text class="settings-page__link-title">{{ $t('settings.notification') }}</text>
           </view>
           <view class="settings-page__link-right">
             <!-- 动态展示除站内信外第一个通知类型名称，无则显示空 -->
@@ -57,19 +57,19 @@
       <!-- 分组 2：帮助中心 + 联系我们 + 服务协议 + 隐私政策 -->
       <view class="settings-page__group2">
         <view class="settings-page__group2-item settings-page__group2-item--bordered" @click="goHelp">
-          <text class="settings-page__group2-text">帮助中心</text>
+          <text class="settings-page__group2-text">{{ $t('settings.help') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <view class="settings-page__group2-item settings-page__group2-item--bordered" @click="goContact">
-          <text class="settings-page__group2-text">联系我们</text>
+          <text class="settings-page__group2-text">{{ $t('settings.contact') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <view class="settings-page__group2-item settings-page__group2-item--bordered" @click="goAgreement">
-          <text class="settings-page__group2-text">服务协议</text>
+          <text class="settings-page__group2-text">{{ $t('settings.agreement') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <view class="settings-page__group2-item" @click="goPrivacy">
-          <text class="settings-page__group2-text">隐私政策</text>
+          <text class="settings-page__group2-text">{{ $t('settings.privacy') }}</text>
           <view class="u-arrow-right"></view>
         </view>
       </view>
@@ -108,8 +108,9 @@ import { listNotificationChannels } from '../../api/modules/notification'
 import { listPlans } from '../../api/modules/plan'
 import { useShare } from '../../composables/useShare'
 import { useGuideTarget } from '../../composables/useGuideTarget'
+import { t } from '../../locale'
 
-useShare({ title: '设置' })
+useShare({ title: t('share.settings') })
 
 const userStore = useUserStore()
 const guideStore = useGuideStore()
@@ -221,7 +222,7 @@ const displayName = computed(() => {
   if (userStore.userInfo) {
     return userStore.userInfo.username || ''
   }
-  return '请登录'
+  return t('settings.login')
 })
 
 // 个性签名显示：已登录显示 signature（可能为空），未登录显示默认文案
@@ -229,7 +230,7 @@ const displaySlogan = computed(() => {
   if (userStore.userInfo) {
     return userStore.userInfo.signature != null ? String(userStore.userInfo.signature) : ''
   }
-  return '"保持热爱，奔赴山海，每一天都要好好生活。"'
+  return t('settings.defaultSlogan')
 })
 
 // 用户头像：未登录使用默认头像 hong；已登录从数据库获取，字段为空则不显示头像
@@ -267,7 +268,7 @@ function goProfileOrLogin() {
   uni.navigateTo({
     url,
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }
@@ -277,7 +278,7 @@ function navigate(url) {
   uni.navigateTo({
     url,
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }

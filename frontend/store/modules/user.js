@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserInfo } from '../../api/modules/user'
 import { getUnreadCount } from '../../api/modules/message'
+import { t } from '../../locale'
 
 /**
  * 用户状态管理 Store
@@ -94,7 +95,7 @@ export const useUserStore = defineStore('user', () => {
     deletionTimer.value = setTimeout(() => {
       clearUser()
       clearDeletionTimer()
-      uni.showToast({ title: '账号已删除', icon: 'none' })
+      uni.showToast({ title: t('user.accountDeleted'), icon: 'none' })
       setTimeout(() => {
         uni.reLaunch({ url: '/pages/user/login' })
       }, 1500)
@@ -132,7 +133,7 @@ export const useUserStore = defineStore('user', () => {
       // 账号已被后端删除（404）或 token 失效（401），清除前端状态并跳转登录页
       clearUser()
       clearDeletionTimer()
-      uni.showToast({ title: '账号已被删除', icon: 'none' })
+      uni.showToast({ title: t('user.accountRemoved'), icon: 'none' })
       setTimeout(() => {
         uni.reLaunch({ url: '/pages/user/login' })
       }, 1500)

@@ -5,72 +5,72 @@
 
     <view class="help-page__canvas">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="帮助中心" desc="找到常见问题的解答，解决APP使用问题。" />
+      <PageHeader :title="$t('help.title')" :desc="$t('help.desc')" />
 
       <!-- FAQ 卡片列表 -->
       <view class="help-page__list">
         <!-- Card 1 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">小程序的主要用途是什么？</text>
-            <text class="help-page__card-text">一个通用任务的定时打卡提醒小程序。</text>
+            <text class="help-page__card-title">{{ $t('help.q1Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q1Text') }}</text>
           </view>
         </view>
 
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">如何允许微信通知？</text>
-            <text class="help-page__card-text">通知方式页面中，授权订阅消息「打卡提醒」，打卡计划中添加「微信」通知方式。</text>
-            <text class="help-page__card-text">授权订阅消息通知后，勾选「总是保持以上选择」，后续每次打卡时会静默+1次授权通知，且不再弹窗；也就是每次打卡自动+1次授权通知次数。不勾选则会弹窗提示。</text>
-            <text class="help-page__card-text">可在通知方式页多次授权增加通知次数。</text>
+            <text class="help-page__card-title">{{ $t('help.q2Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q2Text1') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q2Text2') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q2Text3') }}</text>
           </view>
         </view>
 
         <!-- Card 2 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">邮件通知怎么填写？</text>
-            <text class="help-page__card-text">参考公众号文章（无足鸟ICT）：<text class="help-page__card-link" @click="copySmtpLink">QQ邮箱中开通SMTP服务并获取授权码</text></text>
+            <text class="help-page__card-title">{{ $t('help.q3Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q3Text') }}<text class="help-page__card-link" @click="copySmtpLink">{{ $t('help.q3Link') }}</text></text>
           </view>
         </view>
 
         <!-- Card 3 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">邮件通知怎么第一时间知道？</text>
-            <text class="help-page__card-text">微信搜索“QQ邮箱提醒”，绑定自己的邮箱后，有邮件会弹消息。</text>
+            <text class="help-page__card-title">{{ $t('help.q4Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q4Text') }}</text>
           </view>
         </view>
 
         <!-- Card 4 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">为什么邮件通知要配置自己的邮箱客户端专用密码？</text>
-            <text class="help-page__card-text">因为要用你的邮箱给你自己发信，保证邮件内容安全，还可以避免邮件被当垃圾邮件拦截。</text>
-            <text class="help-page__card-text">邮箱客户端专用密码在数据库中已被再次加密存储，且不会通过接口返回给前端。</text>
+            <text class="help-page__card-title">{{ $t('help.q5Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q5Text1') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q5Text2') }}</text>
           </view>
         </view>
 
         <!-- Card 5 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">打卡逻辑如何设置的？</text>
-            <text class="help-page__card-text">只允许在打卡日期范围内进行打卡。</text>
-            <text class="help-page__card-text">未到打卡时间：打卡按钮为“未到打卡时间”。</text>
-            <text class="help-page__card-text">提醒时间前后2小时，打卡按钮会变为“立即打卡”，此时允许打卡；已打卡则将打卡按钮变为“已打卡”。</text>
-            <text class="help-page__card-text">当存在多个提醒时间时：取两个提醒时间的中间点，将间隔时间分为两段，分别进行是否打卡判断，未打卡则将打卡按钮会变为“立即打卡”，已打卡则将打卡按钮变为“已打卡”。</text>
-            <text class="help-page__card-text">当需要打卡时，可长按“未到打卡时间”或“已打卡”按钮3秒，重置按钮为"立即打卡"，此时允许打卡。</text>
+            <text class="help-page__card-title">{{ $t('help.q6Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q6Text1') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q6Text2') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q6Text3') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q6Text4') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q6Text5') }}</text>
           </view>
         </view>
 
         <!-- Card 6 -->
         <view class="help-page__card">
           <view class="help-page__card-body">
-            <text class="help-page__card-title">通知逻辑如何设置的？</text>
-            <text class="help-page__card-text">只有一次提醒时间时：到达打卡计划的通知时间，且当前打卡计划在当天未打卡时，发送通知。</text>
-            <text class="help-page__card-text">当存在多个提醒时间时：到达打卡计划的通知时间，且当前提醒时间的匹配范围内打卡记录数量小于1时，发送通知。</text>
-            <text class="help-page__card-text">当超过提醒时间10分钟、1小时（或与下一次提醒时间的中间点，取先到的时间），依旧没有打卡记录时，发送通知。</text>
-            <text class="help-page__card-text">微信通知次数足够时，会按照上面方式通知。进行打卡后才会增加一次通知次数，否则不再进行微信通知。</text>
+            <text class="help-page__card-title">{{ $t('help.q7Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q7Text1') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q7Text2') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q7Text3') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q7Text4') }}</text>
           </view>
         </view>
       </view>
@@ -89,8 +89,9 @@
 import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '帮助中心' })
+useShare({ title: t('share.help') })
 
 // 复制 SMTP 配置教程链接到剪贴板
 function copySmtpLink() {
@@ -98,10 +99,10 @@ function copySmtpLink() {
   uni.setClipboardData({
     data: url,
     success: () => {
-      uni.showToast({ title: '链接已复制', icon: 'success' })
+      uni.showToast({ title: t('common.copySuccess'), icon: 'success' })
     },
     fail: () => {
-      uni.showToast({ title: '复制失败', icon: 'none' })
+      uni.showToast({ title: t('common.copyFailed'), icon: 'none' })
     }
   })
 }

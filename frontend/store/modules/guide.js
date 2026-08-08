@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { t } from '../../locale'
+import { useLanguageStore } from './language'
 
 /**
  * 新手引导状态管理 Store
@@ -50,32 +52,28 @@ export const useGuideStore = defineStore('guide', () => {
       target: 'settings-tab',
       stepNumber: 1,
       padding: 0,
-      title: '点击「设置」',
-      description: '在底部导航栏中点击「设置」按钮，进入设置页面。'
+      key: 'settingsTab'
     },
     {
       page: 'settings',
       target: 'profile-card',
       stepNumber: 2,
       padding: 0,
-      title: '点击用户资料卡',
-      description: '点击顶部的用户资料卡片，进入登录页面。'
+      key: 'profileCard'
     },
     {
       page: 'login',
       target: 'wechat-login',
       stepNumber: 3,
       padding: 10,
-      title: '微信一键登录',
-      description: '点击微信图标，即可一键登录并开始使用。'
+      key: 'wechatLogin'
     },
     {
       page: 'settings',
       target: 'notification-method',
       stepNumber: 4,
       padding: 0,
-      title: '设置通知方式（可选）',
-      description: '点击「通知方式」可添加微信订阅提醒；本次为可选项，也可跳过直接进入下一步。',
+      key: 'notificationOptional',
       optional: true,
       skipTo: 'plan-method'
     },
@@ -84,8 +82,7 @@ export const useGuideStore = defineStore('guide', () => {
       target: 'add-notification',
       stepNumber: 4,
       padding: 0,
-      title: '添加新的通知方式',
-      description: '点击「添加新的通知方式」，选择微信并授权订阅消息。',
+      key: 'addNotification',
       skipTo: 'plan-method'
     },
     {
@@ -96,8 +93,7 @@ export const useGuideStore = defineStore('guide', () => {
       shape: 'pill',
       cardPosition: 'anchor-top',
       cardAnchor: 'notification-form-card',
-      title: '授权订阅提醒',
-      description: '点击「授权订阅提醒」并允许，打卡时间到达将通过微信消息提醒您。',
+      key: 'wechatAuth',
       skipTo: 'plan-method'
     },
     {
@@ -105,24 +101,21 @@ export const useGuideStore = defineStore('guide', () => {
       target: 'plan-method',
       stepNumber: 5,
       padding: 0,
-      title: '制定计划',
-      description: '点击「制定计划」，创建您的第一个打卡计划。'
+      key: 'planMethod'
     },
     {
       page: 'plan',
       target: 'new-plan',
       stepNumber: 5,
       padding: 0,
-      title: '新建计划',
-      description: '点击「新建计划」，填写计划信息后保存。'
+      key: 'newPlan'
     },
     {
       page: 'settings',
       target: 'home-tab',
       stepNumber: 6,
       padding: 0,
-      title: '返回首页',
-      description: '点击底部「首页」，回到首页查看打卡按钮。'
+      key: 'homeTab'
     },
     {
       page: 'home',
@@ -130,8 +123,7 @@ export const useGuideStore = defineStore('guide', () => {
       stepNumber: 6,
       padding: 0,
       shape: 'circle',
-      title: '立即打卡',
-      description: '到达提醒时间后，点击打卡按钮即可完成打卡。本次为最后一次引导。'
+      key: 'checkin'
     }
   ]
 
@@ -142,40 +134,35 @@ export const useGuideStore = defineStore('guide', () => {
       target: 'settings-tab',
       stepNumber: 1,
       padding: 0,
-      title: '点击「设置」',
-      description: '在底部导航栏中点击「设置」按钮，进入设置页面。'
+      key: 'settingsTab'
     },
     {
       page: 'settings',
       target: 'profile-card',
       stepNumber: 2,
       padding: 0,
-      title: '点击用户资料卡',
-      description: '点击顶部的用户资料卡片，进入登录页面。'
+      key: 'profileCard'
     },
     {
       page: 'login',
       target: 'register-link',
       stepNumber: 3,
       padding: 0,
-      title: '注册账号',
-      description: '点击「立即注册」，进入账号注册页面。'
+      key: 'registerLink'
     },
     {
       page: 'register',
       target: 'register-card',
       stepNumber: 3,
       padding: 8,
-      title: '填写并提交注册',
-      description: '填写用户名、密码、邮箱和验证码后，点击「注册」按钮完成注册。'
+      key: 'registerCard'
     },
     {
       page: 'settings',
       target: 'notification-method',
       stepNumber: 4,
       padding: 0,
-      title: '设置通知方式（可选）',
-      description: '点击「通知方式」进入通知方式页，点击「添加新的通知方式」选择邮件并填写 SMTP 配置后保存。本次为可选项，也可跳过直接进入下一步。',
+      key: 'notificationOptionalNonWechat',
       optional: true,
       skipTo: 'plan-method'
     },
@@ -184,24 +171,21 @@ export const useGuideStore = defineStore('guide', () => {
       target: 'plan-method',
       stepNumber: 5,
       padding: 0,
-      title: '制定计划',
-      description: '点击「制定计划」，创建您的第一个打卡计划。'
+      key: 'planMethod'
     },
     {
       page: 'plan',
       target: 'new-plan',
       stepNumber: 5,
       padding: 0,
-      title: '新建计划',
-      description: '点击「新建计划」，填写计划信息后保存。'
+      key: 'newPlan'
     },
     {
       page: 'settings',
       target: 'home-tab',
       stepNumber: 6,
       padding: 0,
-      title: '返回首页',
-      description: '点击底部「首页」，回到首页查看打卡按钮。'
+      key: 'homeTab'
     },
     {
       page: 'home',
@@ -209,16 +193,28 @@ export const useGuideStore = defineStore('guide', () => {
       stepNumber: 6,
       padding: 0,
       shape: 'circle',
-      title: '立即打卡',
-      description: '到达提醒时间后，点击打卡按钮即可完成打卡。本次为最后一次引导。'
+      key: 'checkin'
     }
   ]
 
   // 当前生效的步骤配置（根据平台自动选择）
   const steps = ref(isWechatMP.value ? wechatSteps : nonWechatSteps)
 
-  // 当前步骤数据
-  const currentStepData = computed(() => steps.value[currentStep.value] || null)
+  // 当前步骤数据（注入翻译后的标题与说明，使其随语言切换即时更新）
+  // 注意：t() 读取模块级 currentLocale，非 Vue 响应式；必须在 computed 内读取
+  // languageStore.current 以建立响应式依赖，否则切换语言时引导卡片文案不会重算。
+  const languageStore = useLanguageStore()
+  const currentStepData = computed(() => {
+    void languageStore.current
+    const step = steps.value[currentStep.value]
+    if (!step) return null
+    const base = `guide.steps.${step.key}`
+    return {
+      ...step,
+      title: t(`${base}.title`),
+      description: t(`${base}.description`)
+    }
+  })
 
   // 总步骤数（按用户可见 stepNumber 的最大值计算）
   const totalSteps = computed(() => {

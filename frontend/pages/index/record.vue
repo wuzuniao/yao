@@ -11,12 +11,12 @@
           <view class="record-page__calendar-title-group">
             <picker mode="selector" :range="years" :value="yearIndex" @change="handleYearChange">
               <view class="record-page__calendar-title-picker">
-                <text class="record-page__calendar-year">{{ currentYear }}年</text>
+                <text class="record-page__calendar-year">{{ $t('record.year', { year: currentYear }) }}</text>
               </view>
             </picker>
-            <picker mode="selector" :range="months" :value="monthIndex" @change="handleMonthChange">
+            <picker mode="selector" :range="monthLabels" :value="monthIndex" @change="handleMonthChange">
               <view class="record-page__calendar-title-picker">
-                <text class="record-page__calendar-month">{{ currentMonth }}月</text>
+                <text class="record-page__calendar-month">{{ monthLabels[monthIndex] }}</text>
               </view>
             </picker>
           </view>
@@ -26,13 +26,7 @@
         </view>
 
         <view class="record-page__calendar-weekdays">
-          <text class="record-page__calendar-weekday">日</text>
-          <text class="record-page__calendar-weekday">一</text>
-          <text class="record-page__calendar-weekday">二</text>
-          <text class="record-page__calendar-weekday">三</text>
-          <text class="record-page__calendar-weekday">四</text>
-          <text class="record-page__calendar-weekday">五</text>
-          <text class="record-page__calendar-weekday">六</text>
+          <text v-for="(w, i) in weekdays" :key="i" class="record-page__calendar-weekday">{{ w }}</text>
         </view>
 
         <view class="record-page__calendar-grid">
@@ -75,11 +69,11 @@
 
         <!-- 加载中状态：异步查询数据库时显示视觉反馈 -->
         <view v-if="isLoadingDay" class="record-page__list-loading">
-          <text class="record-page__list-loading-text">加载中...</text>
+          <text class="record-page__list-loading-text">{{ $t('common.loading') }}</text>
         </view>
         <!-- 加载失败状态：点击重试重新发起查询 -->
         <view v-else-if="hasLoadError" class="record-page__list-error" @click="retryLoadDay">
-          <text class="record-page__list-error-text">加载失败，点击重试</text>
+          <text class="record-page__list-error-text">{{ $t('common.loadFailedRetry') }}</text>
         </view>
         <!-- 有数据：列出当天所有打卡记录 -->
         <view v-else-if="dayRecords.length > 0" class="record-page__list-items">
@@ -100,7 +94,7 @@
                 <text class="record-page__list-item-time">{{ item.notification_time }}</text>
                 <text v-if="item.checked && item.first_actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.first_actual_time) }}</text>
                 <text v-if="item.checked && item.last_actual_time && item.last_actual_time !== item.first_actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.last_actual_time) }}</text>
-                <text v-if="item.checkin_count > 2" class="record-page__list-item-count">共 {{ item.checkin_count }} 次</text>
+                <text v-if="item.checkin_count > 2" class="record-page__list-item-count">{{ $t('record.countTimes', { count: item.checkin_count }) }}</text>
               </view>
               <text class="record-page__list-item-name">{{ item.plan_name }}</text>
               <text v-if="item.plan_remark" class="record-page__list-item-remark">{{ item.plan_remark }}</text>
@@ -146,12 +140,27 @@ import { onShow } from '@dcloudio/uni-app'
 import NoticeButton from '../../components/NoticeButton.vue'
 import BottomNav from '../../components/BottomNav.vue'
 import { useUserStore } from '../../store/modules/user'
+import { useLanguageStore } from '../../store/modules/language'
 import { listMonthCheckins, listDayCheckins } from '../../api/modules/checkin'
 import jiluXqIcon from '../../assets/images/jilu_xq.png'
 import jiluWcIcon from '../../assets/images/jilu_wc.png'
 import { useShare } from '../../composables/useShare'
+import { t, tm } from '../../locale'
 
-useShare({ title: '用药记录' })
+useShare({ title: t('share.record') })
+
+// 星期标题（来自语言包，随语言切换）
+const languageStore = useLanguageStore()
+// 读取 languageStore.current 建立响应式依赖，确保切换语言时 tm 取词即时更新
+const weekdays = computed(() => {
+  void languageStore.current
+  return tm('record.weekdays')
+})
+// 月份展示标签（来自语言包，随语言切换：中文「1月」…/ 英文「Jan」…）
+const monthLabels = computed(() => {
+  void languageStore.current
+  return tm('record.monthLabels')
+})
 
 const userStore = useUserStore()
 
@@ -164,7 +173,7 @@ const currentMonth = ref(now.getMonth() + 1)
 const years = ref([...Array(21)].map((_, i) => 2020 + i))
 const yearIndex = computed(() => years.value.indexOf(currentYear.value))
 
-// 月份选择器数据（1-12）
+// 月份选择器数据（1-12，用于索引与查询）
 const months = ref([...Array(12)].map((_, i) => i + 1))
 const monthIndex = computed(() => months.value.indexOf(currentMonth.value))
 
@@ -191,7 +200,13 @@ const selectedDayDetail = computed(() => {
 // 选中日期的标题文本
 const selectedDateText = computed(() => {
   if (selectedDay.value === null) return ''
-  return `${currentMonth.value}月${selectedDay.value}日`
+  void languageStore.current // 建立语言依赖，切换语言时即时更新
+  return t('record.selectedDate', {
+    month: currentMonth.value,
+    monthName: monthLabels.value[currentMonth.value - 1],
+    day: selectedDay.value,
+    year: currentYear.value
+  })
 })
 
 // 动态生成日历日期（含月初前空格占位）

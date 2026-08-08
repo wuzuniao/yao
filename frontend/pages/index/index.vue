@@ -13,9 +13,9 @@
         <!-- 未登录：欢迎卡片（撑满首屏剩余高度；上方简介突出展示，中下方 logo 词云），点击词云区切换到介绍卡片 -->
         <view v-if="!isLoggedIn && !showIntroCard" class="index-page__welcome-card">
           <view class="index-page__welcome-copy">
-            <text class="index-page__welcome-slogan">制定通用打卡计划并按时提醒、记录的跨端APP</text>
-            <text class="index-page__intro-p">我非常重视安全，隐私数据加密传输、存储，请放心使用。若依旧担心数据安全，可<text class="index-page__intro-em">自行部署</text>此小程序。</text>
-            <text class="index-page__intro-p">开源地址：<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
+            <text class="index-page__welcome-slogan">{{ $t('home.welcomeSlogan') }}</text>
+            <text class="index-page__intro-p">{{ $t('home.welcomeSafe') }}<text class="index-page__intro-em">{{ $t('home.welcomeSafeEm') }}</text>{{ $t('home.welcomeSafeB') }}</text>
+            <text class="index-page__intro-p">{{ $t('home.repoLabel') }}<text class="index-page__intro-link" @click="copyRepoUrl">https://github.com/wuzuniao/yao</text></text>
           </view>
           <!-- 词云区：logo 居中且始终位于最上层，关键词每次进入首页在整块区域随机分布（位于 logo 下方图层）；点击整个区域切换到介绍卡片 -->
           <view class="index-page__welcome-cloud" @click="showIntroCard = true">
@@ -32,23 +32,23 @@
 
         <!-- 未登录：介绍卡片（标题“按时吃药”，介绍功能与登录引导） -->
         <view v-else-if="!isLoggedIn" class="index-page__intro-card">
-          <text class="index-page__intro-title">按时吃药</text>
+          <text class="index-page__intro-title">{{ $t('home.introTitle') }}</text>
           <view class="index-page__intro-scroll">
             <view class="index-page__intro-section">
-              <text class="index-page__intro-section-title">主要功能</text>
-              <text class="index-page__intro-p"><text class="index-page__intro-label">制定打卡计划：</text>设置计划内容、持续周期、每日提醒时间、通知方式等。到达提醒时间后，系统会自动发送通知进行提醒。</text>
-              <text class="index-page__intro-p"><text class="index-page__intro-label">多途径通知：</text>支持<text class="index-page__intro-em">站内信、微信消息订阅、邮件、APP推送</text>等多种通知渠道。</text>
+              <text class="index-page__intro-section-title">{{ $t('home.introMainTitle') }}</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-label">{{ $t('home.introPlanLabel') }}</text>{{ $t('home.introPlanText') }}</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-label">{{ $t('home.introNotifyLabel') }}</text>{{ $t('home.introNotifyEm') }}{{ $t('home.introNotifyB') }}</text>
               <!-- #ifdef H5 -->
-              <text class="index-page__intro-p">无足鸟是免费开源的按时吃药、吃药提醒与通用打卡计划软件，支持QQ、微信小程序、H5 网页与 App。适用于长期服药、每日打卡、健身打卡、学习打卡、喝水提醒、定时提醒等场景，提供打卡日历与按月统计，数据加密存储可自部署。</text>
+              <text class="index-page__intro-p">{{ $t('home.introH5Desc') }}</text>
               <!-- #endif -->
             </view>
             <view class="index-page__intro-section">
-              <text class="index-page__intro-section-title">新手引导</text>
-              <text class="index-page__intro-p"><text class="index-page__intro-strong">打卡功能必须登录后才能使用。</text></text>
-              <text class="index-page__intro-p">若只在微信中使用，建议使用<text class="index-page__intro-em">微信一键登录</text>并使用<text class="index-page__intro-em">微信订阅消息通知</text>，此方式最方便。</text>
-              <text class="index-page__intro-p">若账号想在无足鸟系列软件产品中通用，可<text class="index-page__intro-em">绑定邮箱并设置密码</text>。或者使用普通注册方式创建账号，<text class="index-page__intro-strong">一次注册，多端畅享</text>。使用普通注册方式时，<text class="index-page__intro-warning">请务必牢记账号与密码</text>，避免账号丢失或密码泄露。</text>
+              <text class="index-page__intro-section-title">{{ $t('home.guideTitle') }}</text>
+              <text class="index-page__intro-p"><text class="index-page__intro-strong">{{ $t('home.guideMustLogin') }}</text></text>
+              <text class="index-page__intro-p">{{ $t('home.guideWechatTip') }}<text class="index-page__intro-em">{{ $t('home.guideWechatEm') }}</text>{{ $t('home.guideWechatB') }}<text class="index-page__intro-em">{{ $t('home.guideWechatSubEm') }}</text>{{ $t('home.guideWechatB2') }}</text>
+              <text class="index-page__intro-p">{{ $t('home.guideBindTip') }}<text class="index-page__intro-em">{{ $t('home.guideBindEm') }}</text>{{ $t('home.guideBindB') }}<text class="index-page__intro-strong">{{ $t('home.guideBindStrong') }}</text>{{ $t('home.guideBindB2') }}<text class="index-page__intro-warning">{{ $t('home.guideBindWarn') }}</text>{{ $t('home.guideBindB3') }}</text>
               <view class="index-page__intro-action" @click="startBeginnerGuide">
-                <text class="index-page__intro-action-text">点我开启新手引导</text>
+                <text class="index-page__intro-action-text">{{ $t('home.startGuide') }}</text>
               </view>
             </view>
           </view>
@@ -58,16 +58,16 @@
         <template v-else>
           <!-- 空状态提示（已登录无进行中计划时，展示新手引导卡片；样式参考未登录介绍卡片） -->
           <view v-if="!hasActivePlans" class="index-page__guide-card">
-            <text class="index-page__guide-title" decode>新手引导</text>
+            <text class="index-page__guide-title" decode>{{ $t('home.guideTitle') }}</text>
             <view class="index-page__guide-content">
               <view class="index-page__guide-section">
-                <text class="index-page__guide-line" decode><text class="index-page__guide-em">【可选】</text>点击设置页 <text class="index-page__guide-arrow" decode>-></text> 通知方式 <text class="index-page__guide-arrow" decode>-></text> 新增消息通知方式，建议使用微信订阅消息。</text>
-                <text class="index-page__guide-line" decode>点击设置页 <text class="index-page__guide-arrow" decode>-></text> 制定计划 <text class="index-page__guide-arrow" decode>-></text> 创建打卡计划。</text>
-                <text class="index-page__guide-line" decode>若APP不会操作，可参考<text class="index-page__guide-link">帮助中心</text>Q&A，或通过邮箱反馈问题。</text>
+                <text class="index-page__guide-line" decode><text class="index-page__guide-em">{{ $t('home.guideOptional') }}</text>{{ $t('home.guideStepNotify') }} <text class="index-page__guide-arrow" decode>{{ $t('home.guideArrow') }}</text> {{ $t('home.guideStepNotification') }} <text class="index-page__guide-arrow" decode>{{ $t('home.guideArrow') }}</text> {{ $t('home.guideStepAddNotify') }}</text>
+                <text class="index-page__guide-line" decode>{{ $t('home.guideStepNotify') }} <text class="index-page__guide-arrow" decode>{{ $t('home.guideArrow') }}</text> {{ $t('home.guideStepPlan') }} <text class="index-page__guide-arrow" decode>{{ $t('home.guideArrow') }}</text> {{ $t('home.guideStepCreatePlan') }}</text>
+                <text class="index-page__guide-line" decode>{{ $t('home.guideHelpTip') }}<text class="index-page__guide-link">{{ $t('home.guideHelpLink') }}</text>{{ $t('home.guideHelpB') }}</text>
               </view>
             </view>
             <view class="index-page__guide-action" @click="startLoggedInGuide">
-              <text class="index-page__guide-action-text" decode>点我重新开启新手引导</text>
+              <text class="index-page__guide-action-text" decode>{{ $t('home.restartGuide') }}</text>
             </view>
           </view>
 
@@ -77,11 +77,11 @@
           <view class="index-page__primary-card">
             <view class="index-page__primary-copy">
               <text class="index-page__primary-title">{{ primaryPlan.name }}</text>
-              <text class="index-page__primary-desc">{{ primaryPlan.remark || '无备注' }}</text>
+              <text class="index-page__primary-desc">{{ primaryPlan.remark || $t('home.noRemark') }}</text>
             </view>
             <view class="index-page__status-badge">
               <view class="index-page__status-dot"></view>
-              <text class="index-page__status-text">进行中</text>
+              <text class="index-page__status-text">{{ $t('home.statusActive') }}</text>
             </view>
           </view>
 
@@ -89,7 +89,7 @@
           <view v-if="secondaryPlan" class="index-page__secondary-card" @click="handleSecondaryClick">
             <view class="index-page__secondary-copy">
               <text class="index-page__secondary-title">{{ secondaryPlan.name }}</text>
-              <text class="index-page__secondary-desc">{{ secondaryPlan.remark || '无备注' }}</text>
+              <text class="index-page__secondary-desc">{{ secondaryPlan.remark || $t('home.noRemark') }}</text>
             </view>
             <!-- 3+任务时右侧显示"..."按钮，点击展开任务列表；2个任务时不显示任何按钮 -->
             <view v-if="activePlans.length > 2" class="index-page__secondary-more" @click.stop="toggleTaskList">
@@ -136,7 +136,7 @@
       <!-- 任务列表弹层（点击"..."展开，列出所有进行中任务，点击某任务替换到主要卡片） -->
       <view v-if="showTaskList" class="index-page__task-mask" @click="showTaskList = false">
         <view class="index-page__task-list" @click.stop>
-          <text class="index-page__task-list-title">选择任务</text>
+          <text class="index-page__task-list-title">{{ $t('home.selectTask') }}</text>
           <view
             v-for="plan in activePlans"
             :key="plan.id"
@@ -202,11 +202,12 @@ import checkinInactiveIcon from '../../assets/images/daka_0.png'
 import checkinDoneIcon from '../../assets/images/daka_1.png'
 import brandLogo from '../../assets/images/touxiang/hong.png'
 import { useShare } from '../../composables/useShare'
+import { t, tm } from '../../locale'
 import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 import { useAppPush } from '../../composables/useAppPush'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 
-useShare({ title: '首页' })
+useShare({ title: t('share.home') })
 
 const guideStore = useGuideStore()
 
@@ -217,7 +218,8 @@ useGuideTarget('checkin-button', '.guide-target-checkin-button')
 const showIntroCard = ref(false)
 
 // ===== 欢迎卡片词云（每次进入首页随机生成位置/字号/颜色/旋转） =====
-const CLOUD_WORD_TEXTS = ['免费', '易用', '安全', '开源']
+// cloudWords 为数组型词条，必须用 tm() 取原始数组（t() 只返回字符串，数组会回退成 key 字符串）
+const CLOUD_WORD_TEXTS = tm('home.cloudWords') || []
 // 字号档位（s1-s5）与颜色池（c1-c6，取自 global.scss 设计令牌：
 // 品牌绿/品牌深绿/链接蓝/警告黄/成功绿/次要文本色）。
 // 字号采用等差数列：s1 = CLOUD_SIZE_BASE，其后每档 +CLOUD_SIZE_STEP（档差固定、依次叠加），
@@ -540,10 +542,10 @@ const isWaiting = computed(() => checkinState.value.status === 'waiting')
 
 // 按钮文本
 const checkinText = computed(() => {
-  if (isButtonDisabled.value) return '无打卡任务'
-  if (isWaiting.value) return '未到打卡时间'
-  if (isCheckinDone.value) return '已打卡'
-  return '立即打卡'
+  if (isButtonDisabled.value) return t('home.btnNoTask')
+  if (isWaiting.value) return t('home.btnWaiting')
+  if (isCheckinDone.value) return t('home.btnDone')
+  return t('home.btnCheckin')
 })
 
 // 是否显示打卡图标（仅 active 和 done 显示图标，waiting/disabled 不显示）

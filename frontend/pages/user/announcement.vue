@@ -5,7 +5,7 @@
 
     <view class="announcement-page__main">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/profile 等页面保持一致） -->
-      <PageHeader title="公告管理" desc="发布与管理全站公告，仅管理员可操作。" />
+      <PageHeader :title="$t('announcement.title')" :desc="$t('announcement.desc')" />
 
       <!-- 公告模板入口卡（点击后切换为模板编辑表单，隐藏已有公告列表） -->
       <view
@@ -13,9 +13,9 @@
         v-if="!showForm && !editingId && !isEditingTemplate"
         @click="handleTemplateEntry"
       >
-        <text class="announcement-page__template-entry-title">公告模板</text>
+        <text class="announcement-page__template-entry-title">{{ $t('announcement.templateEntry') }}</text>
         <text class="announcement-page__template-entry-subtitle">
-          {{ templateForm.title || '点击编辑公告模板' }}
+          {{ templateForm.title || $t('announcement.templateEntrySubtitle') }}
         </text>
       </view>
 
@@ -26,21 +26,21 @@
         @click="handleNewEntry"
       >
         <image class="announcement-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
-        <text class="announcement-page__new-entry-text">发布公告</text>
+        <text class="announcement-page__new-entry-text">{{ $t('announcement.newEntry') }}</text>
       </view>
 
       <!-- 发布表单（默认隐藏，点击"发布公告"后显示，已有列表全部隐藏） -->
       <view class="announcement-page__form-wrap" v-if="showForm">
         <view class="announcement-page__form announcement-page__form--fade-in">
-          <text class="announcement-page__form-heading">发布新公告</text>
+          <text class="announcement-page__form-heading">{{ $t('announcement.newFormHeading') }}</text>
 
           <!-- 公告标题 -->
           <view class="announcement-page__field">
-            <text class="announcement-page__label">公告标题</text>
+            <text class="announcement-page__label">{{ $t('announcement.fieldTitle') }}</text>
             <input
               class="announcement-page__input"
               v-model="form.title"
-              placeholder="请输入公告标题"
+              :placeholder="$t('announcement.titlePlaceholder')"
               placeholder-class="announcement-page__placeholder"
               :placeholder-style="phStyle('title')"
               :maxlength="titleLimit.max"
@@ -48,16 +48,16 @@
               @focus="onFocus('title')"
               @blur="onBlur"
             />
-            <text v-if="titleLimit.limitReached && titleLimit.limitHint && titleLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ titleLimit.limitHint }}</text>
+            <text v-if="titleLimit.limitReached" class="announcement-page__limit-text">{{ titleLimit.limitHint }}</text>
           </view>
 
           <!-- 公告内容 -->
           <view class="announcement-page__field">
-            <text class="announcement-page__label">公告内容</text>
+            <text class="announcement-page__label">{{ $t('announcement.content') }}</text>
             <textarea
               class="announcement-page__textarea"
               v-model="form.content"
-              placeholder="请输入公告内容"
+              :placeholder="$t('announcement.contentPlaceholder')"
               placeholder-class="announcement-page__placeholder"
               :placeholder-style="phStyle('content')"
               :maxlength="contentLimit.max"
@@ -65,16 +65,16 @@
               @focus="onFocus('content')"
               @blur="onBlur"
             />
-            <text v-if="contentLimit.limitReached && contentLimit.limitHint && contentLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ contentLimit.limitHint }}</text>
+            <text v-if="contentLimit.limitReached" class="announcement-page__limit-text">{{ contentLimit.limitHint }}</text>
           </view>
 
           <!-- 取消 / 提交 -->
           <view class="announcement-page__actions">
             <view class="announcement-page__cancel" @click="cancelForm">
-              <text class="announcement-page__cancel-text">取消</text>
+              <text class="announcement-page__cancel-text">{{ $t('announcement.cancel') }}</text>
             </view>
             <view class="announcement-page__save" @click="handlePublish">
-              <text class="announcement-page__save-text">提交</text>
+              <text class="announcement-page__save-text">{{ $t('announcement.publish') }}</text>
             </view>
           </view>
         </view>
@@ -83,15 +83,15 @@
       <!-- 模板编辑表单（默认隐藏，点击"公告模板"后显示） -->
       <view class="announcement-page__form-wrap" v-if="isEditingTemplate">
         <view class="announcement-page__form announcement-page__form--fade-in">
-          <text class="announcement-page__form-heading">编辑公告模板</text>
+          <text class="announcement-page__form-heading">{{ $t('announcement.editTemplateHeading') }}</text>
 
           <!-- 公告标题 -->
           <view class="announcement-page__field">
-            <text class="announcement-page__label">公告标题</text>
+            <text class="announcement-page__label">{{ $t('announcement.fieldTitle') }}</text>
             <input
               class="announcement-page__input"
               v-model="templateForm.title"
-              placeholder="请输入公告标题"
+              :placeholder="$t('announcement.titlePlaceholder')"
               placeholder-class="announcement-page__placeholder"
               :placeholder-style="phStyle('title')"
               :maxlength="templateTitleLimit.max"
@@ -99,16 +99,16 @@
               @focus="onFocus('title')"
               @blur="onBlur"
             />
-            <text v-if="templateTitleLimit.limitReached && templateTitleLimit.limitHint && templateTitleLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ templateTitleLimit.limitHint }}</text>
+            <text v-if="templateTitleLimit.limitReached" class="announcement-page__limit-text">{{ templateTitleLimit.limitHint }}</text>
           </view>
 
           <!-- 公告内容 -->
           <view class="announcement-page__field">
-            <text class="announcement-page__label">公告内容</text>
+            <text class="announcement-page__label">{{ $t('announcement.content') }}</text>
             <textarea
               class="announcement-page__textarea"
               v-model="templateForm.content"
-              placeholder="请输入公告内容"
+              :placeholder="$t('announcement.contentPlaceholder')"
               placeholder-class="announcement-page__placeholder"
               :placeholder-style="phStyle('content')"
               :maxlength="templateContentLimit.max"
@@ -116,16 +116,16 @@
               @focus="onFocus('content')"
               @blur="onBlur"
             />
-            <text v-if="templateContentLimit.limitReached && templateContentLimit.limitHint && templateContentLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ templateContentLimit.limitHint }}</text>
+            <text v-if="templateContentLimit.limitReached" class="announcement-page__limit-text">{{ templateContentLimit.limitHint }}</text>
           </view>
 
           <!-- 取消 / 更新 -->
           <view class="announcement-page__actions">
             <view class="announcement-page__cancel" @click="cancelTemplate">
-              <text class="announcement-page__cancel-text">取消</text>
+              <text class="announcement-page__cancel-text">{{ $t('announcement.cancel') }}</text>
             </view>
             <view class="announcement-page__save" @click="handleTemplateUpdate">
-              <text class="announcement-page__save-text">更新</text>
+              <text class="announcement-page__save-text">{{ $t('announcement.update') }}</text>
             </view>
           </view>
         </view>
@@ -160,38 +160,38 @@
           <!-- 编辑表单（就地展开，无标题，从卡片延伸出来） -->
           <view v-if="editingId === item.id" class="announcement-page__card-edit announcement-page__form--fade-in">
             <view class="announcement-page__field">
-              <text class="announcement-page__label">公告标题</text>
+              <text class="announcement-page__label">{{ $t('announcement.fieldTitle') }}</text>
               <input
                 class="announcement-page__input"
                 v-model="editingForm.title"
-                placeholder="请输入公告标题"
+                :placeholder="$t('announcement.titlePlaceholder')"
                 placeholder-class="announcement-page__placeholder"
                 :maxlength="editTitleLimit.max"
                 @input="e => editingForm.title = editTitleLimit.handleInput(e)"
               />
-              <text v-if="editTitleLimit.limitReached && editTitleLimit.limitHint && editTitleLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ editTitleLimit.limitHint }}</text>
+              <text v-if="editTitleLimit.limitReached" class="announcement-page__limit-text">{{ editTitleLimit.limitHint }}</text>
             </view>
 
             <view class="announcement-page__field">
-              <text class="announcement-page__label">公告内容</text>
+              <text class="announcement-page__label">{{ $t('announcement.content') }}</text>
               <textarea
                 class="announcement-page__textarea"
                 v-model="editingForm.content"
-                placeholder="请输入公告内容"
+                :placeholder="$t('announcement.contentPlaceholder')"
                 placeholder-class="announcement-page__placeholder"
                 :maxlength="editContentLimit.max"
                 @input="e => editingForm.content = editContentLimit.handleInput(e)"
               />
-              <text v-if="editContentLimit.limitReached && editContentLimit.limitHint && editContentLimit.limitHint.includes('已达')" class="announcement-page__limit-text">{{ editContentLimit.limitHint }}</text>
+              <text v-if="editContentLimit.limitReached" class="announcement-page__limit-text">{{ editContentLimit.limitHint }}</text>
             </view>
 
             <!-- 取消 / 更新 -->
             <view class="announcement-page__actions">
               <view class="announcement-page__cancel" @click="cancelEdit">
-                <text class="announcement-page__cancel-text">取消</text>
+                <text class="announcement-page__cancel-text">{{ $t('announcement.cancel') }}</text>
               </view>
               <view class="announcement-page__save" @click="handleUpdate(item.id)">
-                <text class="announcement-page__save-text">更新</text>
+                <text class="announcement-page__save-text">{{ $t('announcement.update') }}</text>
               </view>
             </view>
           </view>
@@ -230,8 +230,9 @@ import {
 import jiaJihuaIcon from '../../assets/images/jia_jihua.png'
 import shanchuIcon from '../../assets/images/shanchu.png'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '公告管理' })
+useShare({ title: t('share.announcement') })
 
 const userStore = useUserStore()
 
@@ -266,7 +267,7 @@ const templateContentLimit = useInputLimit(5000)
 onLoad(() => {
   // 角色守卫：非管理员禁止进入（服务端接口另有 get_current_admin 兜底）
   if (!userStore.userInfo || userStore.userInfo.role !== 7) {
-    uni.showToast({ title: '无权限访问', icon: 'none' })
+    uni.showToast({ title: t('announcement.noPermission'), icon: 'none' })
     setTimeout(() => uni.navigateBack(), 800)
     return
   }
@@ -302,23 +303,23 @@ async function loadTemplate() {
 // 删除公告（点击垃圾桶图标后二次确认）
 function handleDelete(announcementId) {
   uni.showModal({
-    title: '提示',
-    content: '确定要删除该公告吗？',
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('common.tip'),
+    content: t('announcement.deleteConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     success: async (res) => {
       if (!res.confirm) return
       try {
         const r = await deleteAnnouncement(announcementId)
         if (r.code === 0) {
-          uni.showToast({ title: '删除成功', icon: 'success' })
+          uni.showToast({ title: t('announcement.deleted'), icon: 'success' })
           if (editingId.value === announcementId) {
             editingId.value = null
           }
           await loadAnnouncements()
         }
       } catch (e) {
-        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('announcement.deleteFailed'), icon: 'none' })
       }
     }
   })
@@ -374,15 +375,15 @@ function cancelTemplate() {
 async function handleTemplateUpdate() {
   if (isSubmitting.value) return
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('announcement.needLogin'), icon: 'none' })
     return
   }
   if (!templateForm.title.trim()) {
-    uni.showToast({ title: '请输入公告标题', icon: 'none' })
+    uni.showToast({ title: t('announcement.needTitle'), icon: 'none' })
     return
   }
   if (!templateForm.content.trim()) {
-    uni.showToast({ title: '请输入公告内容', icon: 'none' })
+    uni.showToast({ title: t('announcement.needContent'), icon: 'none' })
     return
   }
   isSubmitting.value = true
@@ -392,11 +393,11 @@ async function handleTemplateUpdate() {
       content: templateForm.content
     })
     if (res.code === 0) {
-      uni.showToast({ title: '模板更新成功', icon: 'success' })
+      uni.showToast({ title: t('announcement.templateUpdated'), icon: 'success' })
       isEditingTemplate.value = false
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '模板更新失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('announcement.templateUpdateFailed'), icon: 'none' })
   } finally {
     isSubmitting.value = false
   }
@@ -406,27 +407,27 @@ async function handleTemplateUpdate() {
 async function handlePublish() {
   if (isSubmitting.value) return
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('announcement.needLogin'), icon: 'none' })
     return
   }
   if (!form.title.trim()) {
-    uni.showToast({ title: '请输入公告标题', icon: 'none' })
+    uni.showToast({ title: t('announcement.needTitle'), icon: 'none' })
     return
   }
   if (!form.content.trim()) {
-    uni.showToast({ title: '请输入公告内容', icon: 'none' })
+    uni.showToast({ title: t('announcement.needContent'), icon: 'none' })
     return
   }
   isSubmitting.value = true
   try {
     const res = await publishAnnouncement({ title: form.title, content: form.content })
     if (res.code === 0) {
-      uni.showToast({ title: '公告发布成功', icon: 'success' })
+      uni.showToast({ title: t('announcement.published'), icon: 'success' })
       showForm.value = false
       await loadAnnouncements()
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '发布失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('announcement.publishFailed'), icon: 'none' })
   } finally {
     isSubmitting.value = false
   }
@@ -437,11 +438,11 @@ async function handleUpdate(announcementId) {
   if (isSubmitting.value) return
   if (!userStore.userInfo) return
   if (!editingForm.title.trim()) {
-    uni.showToast({ title: '请输入公告标题', icon: 'none' })
+    uni.showToast({ title: t('announcement.needTitle'), icon: 'none' })
     return
   }
   if (!editingForm.content.trim()) {
-    uni.showToast({ title: '请输入公告内容', icon: 'none' })
+    uni.showToast({ title: t('announcement.needContent'), icon: 'none' })
     return
   }
   isSubmitting.value = true
@@ -451,12 +452,12 @@ async function handleUpdate(announcementId) {
       content: editingForm.content
     })
     if (res.code === 0) {
-      uni.showToast({ title: '公告更新成功', icon: 'success' })
+      uni.showToast({ title: t('announcement.updated'), icon: 'success' })
       await loadAnnouncements()
       editingId.value = null
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('announcement.updateFailed'), icon: 'none' })
   } finally {
     isSubmitting.value = false
   }

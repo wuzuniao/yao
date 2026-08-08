@@ -25,6 +25,7 @@
  */
 
 import { ref, computed, reactive } from 'vue'
+import { t } from '../locale'
 
 /**
  * 创建单个输入框的限制器
@@ -49,7 +50,9 @@ export function useInputLimit(maxLength, allowedPattern) {
   // 是否触发超限提示（仅当 wasAtLimit 为 true 且当前值仍达上限时显示）
   const limitReached = ref(false)
   // 上限提示文本（仅超限触发时有值）
-  const limitHint = computed(() => limitReached.value ? `已达 ${maxLength} 字上限` : '')
+  const limitHint = computed(() =>
+    limitReached.value ? t('validate.limitReached', { max: maxLength }) : ''
+  )
 
   /**
    * 过滤非法字符并截断到最大长度

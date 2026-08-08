@@ -5,45 +5,45 @@
 
     <view class="profile-page__main">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 plan/notification 等页面保持一致） -->
-      <PageHeader title="个人信息" desc="管理您的账户资料与安全设置，随时修改个人信息。" />
+      <PageHeader :title="$t('profile.title')" :desc="$t('profile.desc')" />
 
       <!-- 分组 1：资料修改（修改用户名、修改头像、修改签名、修改密码、修改邮箱） -->
       <view class="profile-page__group" :class="{ 'profile-page__group--disabled': isDeletionScheduled }">
         <!-- 修改用户名 -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('username')">
-          <text class="profile-page__group-text">修改用户名</text>
+          <text class="profile-page__group-text">{{ $t('profile.changeUsername') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <!-- 修改用户名表单（动态显示） -->
         <view v-if="expandedSections.username" class="profile-page__form-section">
           <view class="profile-page__form-field">
-            <text class="profile-page__form-label">新用户名</text>
+            <text class="profile-page__form-label">{{ $t('profile.newUsername') }}</text>
             <input
               class="profile-page__input"
               :class="{ 'profile-page__input--error': usernameError }"
               v-model="usernameForm.value"
-              placeholder="请输入新用户名（2-15 个字符）"
+              :placeholder="$t('profile.newUsernamePlaceholder')"
               placeholder-class="profile-page__placeholder"
               :maxlength="usernameLimit.max"
               @input="e => usernameForm.value = usernameLimit.handleInput(e)"
               @blur="usernameError = validateUsername(usernameForm.value)"
             />
             <text v-if="usernameError" class="profile-page__error-text">{{ usernameError }}</text>
-            <text v-if="usernameLimit.limitReached && usernameLimit.limitHint && usernameLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ usernameLimit.limitHint }}</text>
+            <text v-if="usernameLimit.limitReached" class="profile-page__limit-text">{{ usernameLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('username')">
-              <text class="profile-page__btn-text">取消</text>
+              <text class="profile-page__btn-text">{{ $t('common.cancel') }}</text>
             </view>
             <view class="profile-page__btn profile-page__btn--submit" @click="handleUpdateUsername">
-              <text class="profile-page__btn-text">提交</text>
+              <text class="profile-page__btn-text">{{ $t('common.submit') }}</text>
             </view>
           </view>
         </view>
 
         <!-- 修改头像 -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('avatar')">
-          <text class="profile-page__group-text">修改头像</text>
+          <text class="profile-page__group-text">{{ $t('profile.changeAvatar') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <!-- 修改头像表单（动态显示） -->
@@ -61,17 +61,17 @@
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('avatar')">
-              <text class="profile-page__btn-text">取消</text>
+              <text class="profile-page__btn-text">{{ $t('common.cancel') }}</text>
             </view>
             <view class="profile-page__btn profile-page__btn--submit" @click="handleUpdateAvatar">
-              <text class="profile-page__btn-text">提交</text>
+              <text class="profile-page__btn-text">{{ $t('common.submit') }}</text>
             </view>
           </view>
         </view>
 
         <!-- 修改签名 -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('signature')">
-          <text class="profile-page__group-text">修改签名</text>
+          <text class="profile-page__group-text">{{ $t('profile.changeSignature') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <!-- 修改签名表单（动态显示） -->
@@ -80,33 +80,33 @@
             class="profile-page__input"
             :class="{ 'profile-page__input--error': signatureError }"
             v-model="signatureForm.value"
-            placeholder="请输入签名（最多 70 个字符）"
+            :placeholder="$t('profile.signaturePlaceholder')"
             placeholder-class="profile-page__placeholder"
             :maxlength="signatureLimit.max"
             @input="e => signatureForm.value = signatureLimit.handleInput(e)"
           />
           <text v-if="signatureError" class="profile-page__error-text">{{ signatureError }}</text>
-          <text v-if="signatureLimit.limitReached && signatureLimit.limitHint && signatureLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ signatureLimit.limitHint }}</text>
+          <text v-if="signatureLimit.limitReached" class="profile-page__limit-text">{{ signatureLimit.limitHint }}</text>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('signature')">
-              <text class="profile-page__btn-text">取消</text>
+              <text class="profile-page__btn-text">{{ $t('common.cancel') }}</text>
             </view>
             <view class="profile-page__btn profile-page__btn--submit" @click="handleUpdateSignature">
-              <text class="profile-page__btn-text">提交</text>
+              <text class="profile-page__btn-text">{{ $t('common.submit') }}</text>
             </view>
           </view>
         </view>
 
         <!-- 修改密码 / 设置密码（无密码用户显示"设置密码"） -->
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="toggleSection('password')">
-          <text class="profile-page__group-text">{{ hasPassword ? '修改密码' : '设置密码' }}</text>
+          <text class="profile-page__group-text">{{ hasPassword ? $t('profile.changePassword') : $t('profile.setPassword') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <!-- 修改/设置密码表单（动态显示） -->
         <view v-if="expandedSections.password" class="profile-page__form-section">
           <!-- 旧密码（仅已设置密码的用户需要验证） -->
           <view v-if="hasPassword" class="profile-page__form-field">
-            <text class="profile-page__form-label">旧密码</text>
+            <text class="profile-page__form-label">{{ $t('profile.oldPassword') }}</text>
             <view
               class="profile-page__password-row"
               :class="{ 'profile-page__password-row--error': passwordErrors.oldPassword }"
@@ -116,21 +116,21 @@
                 v-model="passwordForm.oldPassword"
                 :password="!showOldPassword"
                 :key="'pro-old-' + showOldPassword"
-                placeholder="请输入旧密码"
+                :placeholder="$t('profile.oldPasswordPlaceholder')"
                 placeholder-class="profile-page__placeholder"
                 :maxlength="oldPwdLimit.max"
                 @input="e => passwordForm.oldPassword = oldPwdLimit.handleInput(e)"
-                @blur="passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'"
+                @blur="passwordErrors.oldPassword = passwordForm.oldPassword ? '' : $t('validate.oldPasswordRequired')"
               />
               <view class="profile-page__eye" @click="toggleOldPassword">
                 <PasswordEye :visible="showOldPassword" />
               </view>
             </view>
             <text v-if="passwordErrors.oldPassword" class="profile-page__error-text">{{ passwordErrors.oldPassword }}</text>
-            <text v-if="oldPwdLimit.limitReached && oldPwdLimit.limitHint && oldPwdLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ oldPwdLimit.limitHint }}</text>
+            <text v-if="oldPwdLimit.limitReached" class="profile-page__limit-text">{{ oldPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
-            <text class="profile-page__form-label">新密码</text>
+            <text class="profile-page__form-label">{{ $t('profile.newPassword') }}</text>
             <view
               class="profile-page__password-row"
               :class="{ 'profile-page__password-row--error': passwordErrors.newPassword }"
@@ -140,7 +140,7 @@
                 v-model="passwordForm.newPassword"
                 :password="!showNewPassword"
                 :key="'pro-new-' + showNewPassword"
-                placeholder="请设置强密码"
+                :placeholder="$t('profile.newPasswordPlaceholder')"
                 placeholder-class="profile-page__placeholder"
                 :maxlength="newPwdLimit.max"
                 @input="e => passwordForm.newPassword = newPwdLimit.handleInput(e)"
@@ -151,10 +151,10 @@
               </view>
             </view>
             <text v-if="passwordErrors.newPassword" class="profile-page__error-text">{{ passwordErrors.newPassword }}</text>
-            <text v-if="newPwdLimit.limitReached && newPwdLimit.limitHint && newPwdLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ newPwdLimit.limitHint }}</text>
+            <text v-if="newPwdLimit.limitReached" class="profile-page__limit-text">{{ newPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-field">
-            <text class="profile-page__form-label">确认密码</text>
+            <text class="profile-page__form-label">{{ $t('profile.confirmPassword') }}</text>
             <view
               class="profile-page__password-row"
               :class="{ 'profile-page__password-row--error': passwordErrors.confirmPassword }"
@@ -164,32 +164,32 @@
                 v-model="passwordForm.confirmPassword"
                 :password="!showConfirmPassword"
                 :key="'pro-cpwd-' + showConfirmPassword"
-                placeholder="请再次输入密码"
+                :placeholder="$t('profile.confirmPasswordPlaceholder')"
                 placeholder-class="profile-page__placeholder"
                 :maxlength="confirmPwdLimit.max"
                 @input="e => passwordForm.confirmPassword = confirmPwdLimit.handleInput(e)"
-                @blur="passwordErrors.confirmPassword = passwordForm.confirmPassword ? (passwordForm.confirmPassword !== passwordForm.newPassword ? '两次密码不一致' : '') : '请再次输入密码'"
+                @blur="passwordErrors.confirmPassword = passwordForm.confirmPassword ? (passwordForm.confirmPassword !== passwordForm.newPassword ? $t('validate.confirmPasswordMismatch') : '') : $t('validate.confirmPasswordRequired')"
               />
               <view class="profile-page__eye" @click="toggleConfirmPassword">
                 <PasswordEye :visible="showConfirmPassword" />
               </view>
             </view>
             <text v-if="passwordErrors.confirmPassword" class="profile-page__error-text">{{ passwordErrors.confirmPassword }}</text>
-            <text v-if="confirmPwdLimit.limitReached && confirmPwdLimit.limitHint && confirmPwdLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
+            <text v-if="confirmPwdLimit.limitReached" class="profile-page__limit-text">{{ confirmPwdLimit.limitHint }}</text>
           </view>
           <view class="profile-page__form-actions">
             <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('password')">
-              <text class="profile-page__btn-text">取消</text>
+              <text class="profile-page__btn-text">{{ $t('common.cancel') }}</text>
             </view>
             <view class="profile-page__btn profile-page__btn--submit" @click="handleChangePassword">
-              <text class="profile-page__btn-text">提交</text>
+              <text class="profile-page__btn-text">{{ $t('common.submit') }}</text>
             </view>
           </view>
         </view>
 
         <!-- 修改邮箱 / 绑定邮箱（无邮箱用户显示"绑定邮箱"），作为分组1最后一项无需下边框 -->
         <view class="profile-page__group-item" @click="toggleSection('email')">
-          <text class="profile-page__group-text">{{ hasEmail ? '修改邮箱' : '绑定邮箱' }}</text>
+          <text class="profile-page__group-text">{{ hasEmail ? $t('profile.changeEmail') : $t('profile.bindEmail') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <!-- 修改/绑定邮箱表单（动态显示） -->
@@ -197,13 +197,13 @@
           <!-- 步骤1：旧邮箱验证（仅已有邮箱的用户需要） -->
           <view v-if="hasEmail && emailStep === 1">
             <view class="profile-page__form-field">
-              <text class="profile-page__form-label">旧邮箱验证码</text>
+              <text class="profile-page__form-label">{{ $t('profile.oldEmailCode') }}</text>
               <view class="profile-page__code-row">
                 <input
                 class="profile-page__input profile-page__input--code"
                 :class="{ 'profile-page__input--error': emailErrors.oldCode }"
                 v-model="emailForm.oldCode"
-                placeholder="请输入验证码"
+                :placeholder="$t('profile.codePlaceholder')"
                 placeholder-class="profile-page__placeholder"
                 :maxlength="oldCodeLimit.max"
                 @input="e => emailForm.oldCode = oldCodeLimit.handleInput(e)"
@@ -217,42 +217,42 @@
                 </view>
               </view>
               <text v-if="emailErrors.oldCode" class="profile-page__error-text">{{ emailErrors.oldCode }}</text>
-              <text v-if="oldCodeLimit.limitReached && oldCodeLimit.limitHint && oldCodeLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ oldCodeLimit.limitHint }}</text>
+              <text v-if="oldCodeLimit.limitReached" class="profile-page__limit-text">{{ oldCodeLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('email')">
-                <text class="profile-page__btn-text">取消</text>
+                <text class="profile-page__btn-text">{{ $t('common.cancel') }}</text>
               </view>
               <view class="profile-page__btn profile-page__btn--submit" @click="handleVerifyOldEmail">
-                <text class="profile-page__btn-text">验证</text>
+                <text class="profile-page__btn-text">{{ $t('common.verify') }}</text>
               </view>
             </view>
           </view>
           <!-- 步骤2：新邮箱验证 / 绑定邮箱（无邮箱用户直接显示此步骤） -->
           <view v-else>
             <view class="profile-page__form-field">
-              <text class="profile-page__form-label">新邮箱地址</text>
+              <text class="profile-page__form-label">{{ $t('profile.newEmail') }}</text>
               <input
                 class="profile-page__input"
                 :class="{ 'profile-page__input--error': emailErrors.newEmail }"
                 v-model="emailForm.newEmail"
-                placeholder="请输入新邮箱地址"
+                :placeholder="$t('profile.newEmailPlaceholder')"
                 placeholder-class="profile-page__placeholder"
                 :maxlength="newEmailLimit.max"
                 @input="e => emailForm.newEmail = newEmailLimit.handleInput(e)"
                 @blur="emailErrors.newEmail = validateEmail(emailForm.newEmail)"
               />
               <text v-if="emailErrors.newEmail" class="profile-page__error-text">{{ emailErrors.newEmail }}</text>
-              <text v-if="newEmailLimit.limitReached && newEmailLimit.limitHint && newEmailLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ newEmailLimit.limitHint }}</text>
+              <text v-if="newEmailLimit.limitReached" class="profile-page__limit-text">{{ newEmailLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-field">
-              <text class="profile-page__form-label">新邮箱验证码</text>
+              <text class="profile-page__form-label">{{ $t('profile.newEmailCode') }}</text>
               <view class="profile-page__code-row">
                 <input
                   class="profile-page__input profile-page__input--code"
                   :class="{ 'profile-page__input--error': emailErrors.newCode }"
                   v-model="emailForm.newCode"
-                  placeholder="请输入验证码"
+                  :placeholder="$t('profile.codePlaceholder')"
                   placeholder-class="profile-page__placeholder"
                   :maxlength="newCodeLimit.max"
                   @input="e => emailForm.newCode = newCodeLimit.handleInput(e)"
@@ -266,14 +266,14 @@
                 </view>
               </view>
               <text v-if="emailErrors.newCode" class="profile-page__error-text">{{ emailErrors.newCode }}</text>
-              <text v-if="newCodeLimit.limitReached && newCodeLimit.limitHint && newCodeLimit.limitHint.includes('已达')" class="profile-page__limit-text">{{ newCodeLimit.limitHint }}</text>
+              <text v-if="newCodeLimit.limitReached" class="profile-page__limit-text">{{ newCodeLimit.limitHint }}</text>
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="hasEmail ? handleResetEmailStep() : toggleSection('email')">
-                <text class="profile-page__btn-text">{{ hasEmail ? '返回' : '取消' }}</text>
+                <text class="profile-page__btn-text">{{ hasEmail ? $t('common.back') : $t('common.cancel') }}</text>
               </view>
               <view class="profile-page__btn profile-page__btn--submit" @click="handleChangeEmail">
-                <text class="profile-page__btn-text">{{ hasEmail ? '修改' : '绑定' }}</text>
+                <text class="profile-page__btn-text">{{ hasEmail ? $t('common.modify') : $t('common.bind') }}</text>
               </view>
             </view>
           </view>
@@ -283,9 +283,9 @@
 
       <!-- 分组 1.5：偏好设置（语言 / 指纹登录 / 主题，独立成区） -->
       <view class="profile-page__group">
-        <!-- 语言切换（默认简体中文，点击开关切到 English；本期仅做按钮功能，不翻译界面） -->
+        <!-- 语言切换（简体中文 / English） -->
         <view class="profile-page__group-item profile-page__group-item--bordered">
-          <text class="profile-page__group-text">语言</text>
+          <text class="profile-page__group-text">{{ $t('profile.language') }}</text>
           <!-- 纯 CSS 手写开关（独立类，区别于指纹开关）：旋钮滑动指示状态，
                开关内居中显示当前语言名，引用语义令牌保持单一配色真源 -->
           <view
@@ -296,14 +296,14 @@
             @click="toggleLanguage"
           >
             <view class="profile-page__lang-knob" />
-            <text class="profile-page__lang-text">{{ languageIsEnglish ? 'English' : '简体中文' }}</text>
+            <text class="profile-page__lang-text">{{ $t('language.' + (languageStore.current === 'zh-CN' ? 'zhCN' : 'en')) }}</text>
           </view>
         </view>
 
         <!-- 指纹登录开关（仅 App 端：设备支持指纹 + 已登录时显示） -->
         <!-- #ifdef APP -->
         <view v-if="showBiometric" class="profile-page__group-item profile-page__group-item--bordered">
-          <text class="profile-page__group-text">指纹登录</text>
+          <text class="profile-page__group-text">{{ $t('profile.biometric') }}</text>
           <!-- 纯 CSS 手写开关：原生 switch 的 color 属性编译期取色、不支持 var()，
                故手写以引用语义令牌 var(--color-wechat)，保持全局单一配色真源 -->
           <view
@@ -321,7 +321,7 @@
         <!-- 主题切换：仅 role>1 用户显示（进入页面时已查询数据库刷新 role） -->
         <template v-if="showTheme">
           <view class="profile-page__group-item" @click="toggleSection('theme')">
-            <text class="profile-page__group-text">主题</text>
+            <text class="profile-page__group-text">{{ $t('profile.theme') }}</text>
             <view class="u-arrow-right"></view>
           </view>
           <!-- 主题选择（动态显示） -->
@@ -340,10 +340,10 @@
             </view>
             <view class="profile-page__form-actions">
               <view class="profile-page__btn profile-page__btn--cancel" @click="toggleSection('theme')">
-                <text class="profile-page__btn-text">取消</text>
+                <text class="profile-page__btn-text">{{ $t('common.cancel') }}</text>
               </view>
               <view class="profile-page__btn profile-page__btn--submit" @click="handleApplyTheme">
-                <text class="profile-page__btn-text">提交</text>
+                <text class="profile-page__btn-text">{{ $t('common.submit') }}</text>
               </view>
             </view>
           </view>
@@ -353,18 +353,18 @@
       <!-- 分组 2：退出登录 + 删除账号（危险操作，单独分组并使用红色文字提示） -->
       <view class="profile-page__group">
         <view class="profile-page__group-item profile-page__group-item--bordered" @click="handleLogout">
-          <text class="profile-page__group-text profile-page__group-text--danger">退出登录</text>
+          <text class="profile-page__group-text profile-page__group-text--danger">{{ $t('profile.logout') }}</text>
           <view class="u-arrow-right"></view>
         </view>
         <view class="profile-page__group-item" @click="handleDeletion">
           <text class="profile-page__group-text profile-page__group-text--danger">
-            {{ isDeletionScheduled ? '取消删除' : '删除账号' }}
+            {{ isDeletionScheduled ? $t('profile.cancelDeletion') : $t('profile.deleteAccount') }}
           </text>
           <view class="u-arrow-right"></view>
         </view>
         <!-- 免登录账号删除说明入口（满足 Google Play 网页删除入口要求） -->
         <view class="profile-page__group-item profile-page__group-item--hint" @click="goDeleteAccountHelp">
-          <text class="profile-page__group-text profile-page__group-text--hint">了解账号删除与数据说明</text>
+          <text class="profile-page__group-text profile-page__group-text--hint">{{ $t('profile.deleteAccountHelp') }}</text>
           <view class="u-arrow-right"></view>
         </view>
       </view>
@@ -411,12 +411,13 @@ import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
 import lanAvatar from '../../assets/images/touxiang/lan.png'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 // App 端生物识别（指纹）登录开关（仅 App 端使用）
 // #ifdef APP
 import { useBiometric } from '../../composables/useBiometric'
 // #endif
 
-useShare({ title: '个人信息' })
+useShare({ title: t('share.profile') })
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -597,9 +598,9 @@ function resetSection(section) {
 
 // ===== 修改用户名 =====
 function validateUsername(v) {
-  if (!v) return '请输入用户名'
-  if (v.length < 2 || v.length > 15) return '用户名长度需为 2-15 个字符'
-  if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(v)) return '用户名仅允许中文、英文及数字字符'
+  if (!v) return t('validate.usernameRequired')
+  if (v.length < 2 || v.length > 15) return t('validate.usernameLength')
+  if (!/^[\u4e00-\u9fa5a-zA-Z0-9]+$/.test(v)) return t('validate.usernameFormat')
   return ''
 }
 
@@ -619,9 +620,9 @@ async function handleUpdateUsername() {
     try {
       uni.setStorageSync('userInfo', userStore.userInfo)
     } catch (e) {
-      console.warn('保存本地用户信息失败', e)
+      console.warn(t('profile.usernameUpdated'), e)
     }
-    uni.showToast({ title: '用户名修改成功', icon: 'success' })
+    uni.showToast({ title: t('profile.usernameUpdated'), icon: 'success' })
     toggleSection('username')
   } catch (e) {
     uni.showToast({ title: e.message, icon: 'none' })
@@ -631,7 +632,7 @@ async function handleUpdateUsername() {
 async function handleUpdateAvatar() {
   const avatarValue = avatarKeyToDbValue[avatarForm.selected]
   if (!avatarValue) {
-    uni.showToast({ title: '请选择头像', icon: 'none' })
+    uni.showToast({ title: t('profile.avatarRequired'), icon: 'none' })
     return
   }
   try {
@@ -643,9 +644,9 @@ async function handleUpdateAvatar() {
     try {
       uni.setStorageSync('userInfo', userStore.userInfo)
     } catch (e) {
-      console.warn('保存本地用户信息失败', e)
+      console.warn(t('profile.avatarUpdated'), e)
     }
-    uni.showToast({ title: '头像更新成功', icon: 'success' })
+    uni.showToast({ title: t('profile.avatarUpdated'), icon: 'success' })
     toggleSection('avatar')
   } catch (e) {
     uni.showToast({ title: e.message, icon: 'none' })
@@ -654,22 +655,22 @@ async function handleUpdateAvatar() {
 
 async function handleApplyTheme() {
   if (!themeForm.selected) {
-    uni.showToast({ title: '请选择主题', icon: 'none' })
+    uni.showToast({ title: t('profile.themeRequired'), icon: 'none' })
     return
   }
   // 写入主题 store（内部持久化 + 更新 App.vue 根 data-theme，全端即时生效）
   themeStore.setTheme(themeForm.selected)
-  uni.showToast({ title: '主题已应用', icon: 'success' })
+  uni.showToast({ title: t('profile.themeApplied'), icon: 'success' })
   toggleSection('theme')
 }
 
 async function handleUpdateSignature() {
   if (!signatureForm.value.trim()) {
-    signatureError.value = '请输入签名'
+    signatureError.value = t('validate.signatureRequired')
     return
   }
   if (signatureForm.value.length > 70) {
-    signatureError.value = '签名长度不能超过 70 个字符'
+    signatureError.value = t('validate.signatureTooLong')
     return
   }
   try {
@@ -681,9 +682,9 @@ async function handleUpdateSignature() {
     try {
       uni.setStorageSync('userInfo', userStore.userInfo)
     } catch (e) {
-      console.warn('保存本地用户信息失败', e)
+      console.warn(t('profile.signatureUpdated'), e)
     }
-    uni.showToast({ title: '签名更新成功', icon: 'success' })
+    uni.showToast({ title: t('profile.signatureUpdated'), icon: 'success' })
     toggleSection('signature')
   } catch (e) {
     uni.showToast({ title: e.message, icon: 'none' })
@@ -704,28 +705,28 @@ const passwordErrors = reactive({
 })
 
 function validatePassword(v) {
-  if (!v) return '请输入密码'
-  if (v.length < 8 || v.length > 20) return '密码长度需为 8-20 位'
+  if (!v) return t('validate.passwordRequired')
+  if (v.length < 8 || v.length > 20) return t('validate.passwordLength')
   let categories = 0
   if (/[a-z]/.test(v)) categories++
   if (/[A-Z]/.test(v)) categories++
   if (/[0-9]/.test(v)) categories++
   if (/[^a-zA-Z0-9]/.test(v)) categories++
-  if (categories < 3) return '密码需包含大小写字母、数字、特殊符号中的至少三种'
+  if (categories < 3) return t('validate.passwordStrength')
   return ''
 }
 
 async function handleChangePassword() {
   passwordErrors.newPassword = validatePassword(passwordForm.newPassword)
-  passwordErrors.confirmPassword = passwordForm.confirmPassword ? '' : '请输入确认密码'
+  passwordErrors.confirmPassword = passwordForm.confirmPassword ? '' : t('validate.confirmPasswordRequired')
 
   if (passwordForm.newPassword && passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword) {
-    passwordErrors.confirmPassword = '两次密码不一致'
+    passwordErrors.confirmPassword = t('validate.confirmPasswordMismatch')
   }
 
   // 已有密码用户需校验旧密码
   if (hasPassword.value) {
-    passwordErrors.oldPassword = passwordForm.oldPassword ? '' : '请输入旧密码'
+    passwordErrors.oldPassword = passwordForm.oldPassword ? '' : t('validate.oldPasswordRequired')
   } else {
     passwordErrors.oldPassword = ''
   }
@@ -744,7 +745,7 @@ async function handleChangePassword() {
           old_password: passwordForm.oldPassword,
         new_password: passwordForm.newPassword
       })
-      uni.showToast({ title: '密码修改成功', icon: 'success' })
+      uni.showToast({ title: t('profile.passwordUpdated'), icon: 'success' })
     } else {
       // 设置密码：无密码用户首次设置
       await setPassword({
@@ -755,9 +756,9 @@ async function handleChangePassword() {
       try {
         uni.setStorageSync('userInfo', userStore.userInfo)
       } catch (e) {
-        console.warn('保存本地用户信息失败', e)
+        console.warn(t('profile.passwordUpdated'), e)
       }
-      uni.showToast({ title: '密码设置成功', icon: 'success' })
+      uni.showToast({ title: t('profile.passwordSet'), icon: 'success' })
     }
     toggleSection('password')
   } catch (e) {
@@ -787,14 +788,14 @@ const emailNewCodeText = ref('获取验证码')
 const emailNewCodeSending = ref(false)
 
 function validateEmail(v) {
-  if (!v) return '请输入邮箱地址'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return '邮箱格式不正确'
+  if (!v) return t('validate.emailRequired')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return t('validate.emailFormat')
   return ''
 }
 
 function validateCode(v) {
-  if (!v) return '请输入验证码'
-  if (!/^\d{6}$/.test(v)) return '验证码为 6 位数字'
+  if (!v) return t('validate.codeRequired')
+  if (!/^\d{6}$/.test(v)) return t('validate.codeFormat')
   return ''
 }
 
@@ -807,7 +808,7 @@ function startCountdown(targetText, targetCounting) {
     if (sec <= 0) {
       clearInterval(timer)
       targetCounting.value = false
-      targetText.value = '获取验证码'
+      targetText.value = t('common.getCode')
     } else {
       targetText.value = `${sec}s`
     }
@@ -817,14 +818,14 @@ function startCountdown(targetText, targetCounting) {
 async function handleGetOldEmailCode() {
   if (emailOldCodeCounting.value || emailOldCodeSending.value) return
   emailOldCodeSending.value = true
-  emailOldCodeText.value = '发送中...'
+  emailOldCodeText.value = t('common.sending')
   try {
     await sendChangeEmailOldCode()
-    uni.showToast({ title: '验证码已发送', icon: 'none' })
+    uni.showToast({ title: t('common.codeSent'), icon: 'none' })
     startCountdown(emailOldCodeText, emailOldCodeCounting)
   } catch (e) {
     // 发送失败恢复按钮，允许用户立即重试
-    emailOldCodeText.value = '获取验证码'
+    emailOldCodeText.value = t('common.getCode')
     uni.showToast({ title: e.message, icon: 'none' })
   } finally {
     emailOldCodeSending.value = false
@@ -847,7 +848,7 @@ function handleResetEmailStep() {
   emailErrors.newEmail = ''
   emailErrors.newCode = ''
   emailNewCodeCounting.value = false
-  emailNewCodeText.value = '获取验证码'
+  emailNewCodeText.value = t('common.getCode')
 }
 
 async function handleGetNewEmailCode() {
@@ -859,15 +860,15 @@ async function handleGetNewEmailCode() {
     return
   }
   emailNewCodeSending.value = true
-  emailNewCodeText.value = '发送中...'
+  emailNewCodeText.value = t('common.sending')
   try {
     // 绑定邮箱场景（无邮箱用户）允许邮箱已存在以触发账号合并；修改邮箱场景禁止已存在
     await sendChangeEmailNewCode(emailForm.newEmail, !hasEmail.value)
-    uni.showToast({ title: '验证码已发送', icon: 'none' })
+    uni.showToast({ title: t('common.codeSent'), icon: 'none' })
     startCountdown(emailNewCodeText, emailNewCodeCounting)
   } catch (e) {
     // 发送失败恢复按钮，允许用户立即重试
-    emailNewCodeText.value = '获取验证码'
+    emailNewCodeText.value = t('common.getCode')
     uni.showToast({ title: e.message, icon: 'none' })
   } finally {
     emailNewCodeSending.value = false
@@ -893,7 +894,7 @@ async function handleChangeEmail() {
         new_email: emailForm.newEmail,
         new_code: emailForm.newCode
       })
-      uni.showToast({ title: '邮箱修改成功', icon: 'success' })
+      uni.showToast({ title: t('profile.emailUpdated'), icon: 'success' })
     } else {
       // 绑定邮箱：无邮箱用户首次绑定，仅需新邮箱验证码
       // 若邮箱已存在会触发账号合并，返回的主账号 id 和 access_token 可能与当前不同
@@ -905,12 +906,12 @@ async function handleChangeEmail() {
       userStore.setUser(result.data)
       // 刷新未读站内信等用户相关缓存，确保合并后全局状态与主账号一致
       userStore.loadUnreadCount(true)
-      uni.showToast({ title: '邮箱绑定成功', icon: 'success' })
+      uni.showToast({ title: t('profile.emailBound'), icon: 'success' })
     }
     toggleSection('email')
   } catch (e) {
     // 验证码错误时统一提示"请输入正确验证码"
-    const msg = /验证码/.test(e.message) ? '请输入正确验证码' : e.message
+    const msg = /验证码/.test(e.message) ? t('profile.codeIncorrectHint') : e.message
     uni.showToast({ title: msg, icon: 'none' })
   }
 }
@@ -920,8 +921,8 @@ function handleDeletion() {
   if (isDeletionScheduled.value) {
     // 处于冷静期，执行取消删除
     uni.showModal({
-      title: '提示',
-      content: '确定要取消账号删除吗？',
+      title: t('common.tip'),
+      content: t('profile.cancelDeletionConfirm'),
       success: async (res) => {
         if (res.confirm) {
           try {
@@ -930,11 +931,11 @@ function handleDeletion() {
             try {
               uni.setStorageSync('userInfo', userStore.userInfo)
             } catch (e) {
-              console.warn('保存本地用户信息失败', e)
+              console.warn(t('profile.deletionCancelled'), e)
             }
             // 取消删除倒计时
             userStore.clearDeletionTimer()
-            uni.showToast({ title: '账号删除已取消', icon: 'success' })
+            uni.showToast({ title: t('profile.deletionCancelled'), icon: 'success' })
           } catch (e) {
             uni.showToast({ title: e.message, icon: 'none' })
           }
@@ -944,10 +945,10 @@ function handleDeletion() {
   } else {
     // 未处于冷静期，执行删除
     uni.showModal({
-      title: '删除账号',
-      content: '账号将在24小时后自动删除，且无法恢复，请保留个人数据',
-      confirmText: '确认删除',
-      cancelText: '取消',
+      title: t('profile.deleteConfirmTitle'),
+      content: t('profile.deleteConfirmContent'),
+      confirmText: t('profile.deleteConfirmText'),
+      cancelText: t('common.cancel'),
       success: async (res) => {
         if (res.confirm) {
           try {
@@ -956,11 +957,11 @@ function handleDeletion() {
             try {
               uni.setStorageSync('userInfo', userStore.userInfo)
             } catch (e) {
-              console.warn('保存本地用户信息失败', e)
+              console.warn(t('profile.deletionScheduled'), e)
             }
             // 启动 24 小时倒计时，到期后自动清除前端状态并跳转登录页
             userStore.startDeletionCountdown()
-            uni.showToast({ title: '已计划删除，24小时后自动删除', icon: 'none' })
+            uni.showToast({ title: t('profile.deletionScheduled'), icon: 'none' })
           } catch (e) {
             uni.showToast({ title: e.message, icon: 'none' })
           }
@@ -970,7 +971,7 @@ function handleDeletion() {
   }
 }
 
-// ===== 语言切换（仅按钮功能，暂不翻译界面）=====
+// ===== 语言切换（简体中文 / English）=====
 function toggleLanguage() {
   // 在简体中文（zh-CN）与 English（en）之间切换，持久化到本地
   languageStore.setLanguage(languageIsEnglish.value ? 'zh-CN' : 'en')
@@ -987,7 +988,7 @@ function toggleBiometric() {
     const hasToken = !!biometric.getBiometricToken()
     if (!hasToken) {
       biometricEnabled.value = false
-      uni.showToast({ title: '请先用账号密码登录以开启指纹', icon: 'none' })
+      uni.showToast({ title: t('profile.biometricNeedLogin'), icon: 'none' })
       return
     }
     biometric.setEnabled(true)
@@ -1010,12 +1011,12 @@ function goDeleteAccountHelp() {
 // ===== 退出登录 =====
 function handleLogout() {
   uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
+    title: t('common.tip'),
+    content: t('profile.logoutConfirm'),
     success: (res) => {
       if (res.confirm) {
         userStore.clearUser()
-        uni.showToast({ title: '已退出登录', icon: 'none' })
+        uni.showToast({ title: t('profile.loggedOut'), icon: 'none' })
         setTimeout(() => {
           uni.redirectTo({ url: '/pages/index/settings' })
         }, 1500)

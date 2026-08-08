@@ -5,26 +5,26 @@
 
     <view class="plan-page__main">
       <!-- 页面标题区（复用 PageHeader 组件，结构与 notification/profile 等页面保持一致） -->
-      <PageHeader title="制定计划" desc="合理规划您的用药与健康提醒，助您养成良好的生活习惯。" />
+      <PageHeader :title="$t('plan.title')" :desc="$t('plan.desc')" />
 
       <!-- 新建计划入口卡（点击后切换为"新建计划详情"表单卡，隐藏所有已有计划） -->
       <view class="plan-page__new-entry guide-target-new-plan" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
         <image class="plan-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
-        <text class="plan-page__new-entry-text">新建计划</text>
+        <text class="plan-page__new-entry-text">{{ $t('plan.newEntry') }}</text>
       </view>
 
       <!-- 新建计划详情表单卡（默认隐藏，点击"新建计划"后显示，已有计划全部隐藏） -->
       <view class="plan-page__form-wrap" v-if="showForm">
         <view class="plan-page__form plan-page__form--fade-in">
-          <text class="plan-page__form-heading">新建计划详情</text>
+          <text class="plan-page__form-heading">{{ $t('plan.newFormHeading') }}</text>
 
           <!-- 计划名称 -->
           <view class="plan-page__field">
-            <text class="plan-page__label">计划名称</text>
+            <text class="plan-page__label">{{ $t('plan.name') }}</text>
             <input
               class="plan-page__input"
               v-model="form.name"
-              placeholder="例如：按时吃药"
+              :placeholder="$t('plan.namePlaceholder')"
               placeholder-class="plan-page__placeholder"
               :placeholder-style="phStyle('name')"
               :maxlength="nameLimit.max"
@@ -32,16 +32,16 @@
               @focus="onFocus('name')"
               @blur="onBlur"
             />
-            <text v-if="nameLimit.limitReached && nameLimit.limitHint && nameLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ nameLimit.limitHint }}</text>
+            <text v-if="nameLimit.limitReached" class="plan-page__limit-text">{{ nameLimit.limitHint }}</text>
           </view>
 
           <!-- 备注说明 -->
           <view class="plan-page__field">
-            <text class="plan-page__label">备注说明</text>
+            <text class="plan-page__label">{{ $t('plan.remark') }}</text>
             <textarea
               class="plan-page__textarea"
               v-model="form.remark"
-              placeholder="例如：饭后半小时服用"
+              :placeholder="$t('plan.remarkPlaceholder')"
               placeholder-class="plan-page__placeholder"
               :placeholder-style="phStyle('remark')"
               :maxlength="remarkLimit.max"
@@ -49,28 +49,28 @@
               @focus="onFocus('remark')"
               @blur="onBlur"
             />
-            <text v-if="remarkLimit.limitReached && remarkLimit.limitHint && remarkLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ remarkLimit.limitHint }}</text>
+            <text v-if="remarkLimit.limitReached" class="plan-page__limit-text">{{ remarkLimit.limitHint }}</text>
           </view>
 
           <!-- 计划持续起始日期（起止日期双控件，禁止手动输入） -->
           <view class="plan-page__field">
-            <text class="plan-page__label">计划持续起始日期</text>
+            <text class="plan-page__label">{{ $t('plan.dateRange') }}</text>
             <view class="plan-page__date-range">
               <picker mode="date" :value="form.startDate" @change="handleStartDateChange" class="plan-page__date-picker">
                 <view class="plan-page__picker-display">
                   <text
                     class="plan-page__picker-text"
                     :class="{ 'plan-page__picker-text--placeholder': !form.startDate }"
-                  >{{ form.startDate || '开始日期' }}</text>
+                  >{{ form.startDate || $t('plan.startDate') }}</text>
                 </view>
               </picker>
-              <text class="plan-page__date-separator">至</text>
+              <text class="plan-page__date-separator">{{ $t('plan.dateTo') }}</text>
               <picker mode="date" :value="form.endDate" @change="handleEndDateChange" class="plan-page__date-picker">
                 <view class="plan-page__picker-display">
                   <text
                     class="plan-page__picker-text"
                     :class="{ 'plan-page__picker-text--placeholder': !form.endDate }"
-                  >{{ form.endDate || '结束日期' }}</text>
+                  >{{ form.endDate || $t('plan.endDate') }}</text>
                 </view>
               </picker>
             </view>
@@ -79,10 +79,10 @@
           <!-- 提醒时间（多个单个时间控件，可动态添加/删除） -->
           <view class="plan-page__field">
             <view class="plan-page__time-label-row">
-              <text class="plan-page__label">提醒时间</text>
+              <text class="plan-page__label">{{ $t('plan.time') }}</text>
               <view class="plan-page__add-time" @click="handleAddTime">
                 <image class="plan-page__add-time-icon" :src="jiaShijianIcon" mode="aspectFit" />
-                <text class="plan-page__add-time-text">添加时间</text>
+                <text class="plan-page__add-time-text">{{ $t('plan.addTime') }}</text>
               </view>
             </view>
             <view
@@ -95,7 +95,7 @@
                   <text
                     class="plan-page__time-picker-text"
                     :class="{ 'plan-page__time-picker-text--placeholder': !t }"
-                  >{{ t || '选择时间' }}</text>
+                  >{{ t || $t('plan.selectTime') }}</text>
                 </view>
               </picker>
               <view class="plan-page__time-delete" @click="handleDeleteTime(idx)">
@@ -106,7 +106,7 @@
 
           <!-- 优先级单选框（0-7，数字越小优先级越高，默认3） -->
           <view class="plan-page__field">
-            <text class="plan-page__label">优先级（数字越小越优先）</text>
+            <text class="plan-page__label">{{ $t('plan.priority') }}</text>
             <view class="plan-page__priority-row">
               <view
                 v-for="n in 8"
@@ -124,7 +124,7 @@
 
           <!-- 通知方式（从数据库动态加载） -->
           <view class="plan-page__field">
-            <text class="plan-page__label">通知方式</text>
+            <text class="plan-page__label">{{ $t('plan.channel') }}</text>
             <view class="plan-page__notify-row" v-if="availableChannels.length > 0">
               <view
                 v-for="ch in availableChannels"
@@ -139,31 +139,31 @@
               </view>
             </view>
             <view v-else class="plan-page__notify-empty">
-              <text class="plan-page__notify-empty-text">暂无通知方式，请先到"通知方式"页配置</text>
+              <text class="plan-page__notify-empty-text">{{ $t('plan.channelEmpty') }}</text>
             </view>
           </view>
 
           <!-- 任务状态（单选框：进行中/暂停/已结束，对应 1/2/0） -->
           <view class="plan-page__field">
-            <text class="plan-page__label">任务状态</text>
+            <text class="plan-page__label">{{ $t('plan.status') }}</text>
             <view class="plan-page__status-row">
               <view class="plan-page__status-item" @click="form.status = 1">
                 <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.status === 1 }">
                   <view v-if="form.status === 1" class="plan-page__radio-dot"></view>
                 </view>
-                <text class="plan-page__status-text">进行中</text>
+                <text class="plan-page__status-text">{{ $t('plan.statusActive') }}</text>
               </view>
               <view class="plan-page__status-item" @click="form.status = 2">
                 <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.status === 2 }">
                   <view v-if="form.status === 2" class="plan-page__radio-dot"></view>
                 </view>
-                <text class="plan-page__status-text">暂停</text>
+                <text class="plan-page__status-text">{{ $t('plan.statusPaused') }}</text>
               </view>
               <view class="plan-page__status-item" @click="form.status = 0">
                 <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.status === 0 }">
                   <view v-if="form.status === 0" class="plan-page__radio-dot"></view>
                 </view>
-                <text class="plan-page__status-text">已结束</text>
+                <text class="plan-page__status-text">{{ $t('plan.statusEnded') }}</text>
               </view>
             </view>
           </view>
@@ -171,7 +171,7 @@
           <!-- 保存按钮 -->
           <view class="plan-page__save" @click="handleSave">
             <image class="plan-page__save-icon" :src="baocunJihuaIcon" mode="aspectFit" />
-            <text class="plan-page__save-text">保存计划</text>
+            <text class="plan-page__save-text">{{ $t('plan.save') }}</text>
           </view>
         </view>
       </view>
@@ -203,7 +203,7 @@
               <view class="plan-page__card-head">
                 <view class="plan-page__card-title-group">
                   <text class="plan-page__card-title">{{ plan.name }}</text>
-                  <text class="plan-page__card-subtitle">{{ plan.remark || '无备注' }}</text>
+                  <text class="plan-page__card-subtitle">{{ plan.remark || $t('plan.noRemark') }}</text>
                 </view>
                 <view class="plan-page__card-delete" @click.stop="handleDeletePlan(plan.id)">
                   <image class="plan-page__card-delete-icon" :src="shanchuIcon" mode="aspectFit" />
@@ -225,51 +225,51 @@
           <view v-if="editingPlanId === plan.id" class="plan-page__card-edit plan-page__form--fade-in">
             <!-- 计划名称 -->
             <view class="plan-page__field">
-              <text class="plan-page__label">计划名称</text>
+              <text class="plan-page__label">{{ $t('plan.name') }}</text>
               <input
                 class="plan-page__input"
                 v-model="editingForm.name"
-                placeholder="例如：按时吃药"
+                :placeholder="$t('plan.namePlaceholder')"
                 placeholder-class="plan-page__placeholder"
                 :maxlength="editNameLimit.max"
                 @input="e => editingForm.name = editNameLimit.handleInput(e)"
               />
-              <text v-if="editNameLimit.limitReached && editNameLimit.limitHint && editNameLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ editNameLimit.limitHint }}</text>
+              <text v-if="editNameLimit.limitReached" class="plan-page__limit-text">{{ editNameLimit.limitHint }}</text>
             </view>
 
             <!-- 备注说明 -->
             <view class="plan-page__field">
-              <text class="plan-page__label">备注说明</text>
+              <text class="plan-page__label">{{ $t('plan.remark') }}</text>
               <textarea
                 class="plan-page__textarea"
                 v-model="editingForm.remark"
-                placeholder="例如：饭后半小时服用"
+                :placeholder="$t('plan.remarkPlaceholder')"
                 placeholder-class="plan-page__placeholder"
                 :maxlength="editRemarkLimit.max"
                 @input="e => editingForm.remark = editRemarkLimit.handleInput(e)"
               />
-              <text v-if="editRemarkLimit.limitReached && editRemarkLimit.limitHint && editRemarkLimit.limitHint.includes('已达')" class="plan-page__limit-text">{{ editRemarkLimit.limitHint }}</text>
+              <text v-if="editRemarkLimit.limitReached" class="plan-page__limit-text">{{ editRemarkLimit.limitHint }}</text>
             </view>
 
             <!-- 计划持续起始日期 -->
             <view class="plan-page__field">
-              <text class="plan-page__label">计划持续起始日期</text>
+              <text class="plan-page__label">{{ $t('plan.dateRange') }}</text>
               <view class="plan-page__date-range">
                 <picker mode="date" :value="editingForm.startDate" @change="handleEditStartDateChange" class="plan-page__date-picker">
                   <view class="plan-page__picker-display">
                     <text
                       class="plan-page__picker-text"
                       :class="{ 'plan-page__picker-text--placeholder': !editingForm.startDate }"
-                    >{{ editingForm.startDate || '开始日期' }}</text>
+                    >{{ editingForm.startDate || $t('plan.startDate') }}</text>
                   </view>
                 </picker>
-                <text class="plan-page__date-separator">至</text>
+                <text class="plan-page__date-separator">{{ $t('plan.dateTo') }}</text>
                 <picker mode="date" :value="editingForm.endDate" @change="handleEditEndDateChange" class="plan-page__date-picker">
                   <view class="plan-page__picker-display">
                     <text
                       class="plan-page__picker-text"
                       :class="{ 'plan-page__picker-text--placeholder': !editingForm.endDate }"
-                    >{{ editingForm.endDate || '结束日期' }}</text>
+                    >{{ editingForm.endDate || $t('plan.endDate') }}</text>
                   </view>
                 </picker>
               </view>
@@ -278,23 +278,23 @@
             <!-- 提醒时间 -->
             <view class="plan-page__field">
               <view class="plan-page__time-label-row">
-                <text class="plan-page__label">提醒时间</text>
+                <text class="plan-page__label">{{ $t('plan.time') }}</text>
                 <view class="plan-page__add-time" @click="handleEditAddTime">
                   <image class="plan-page__add-time-icon" :src="jiaShijianIcon" mode="aspectFit" />
-                  <text class="plan-page__add-time-text">添加时间</text>
+                  <text class="plan-page__add-time-text">{{ $t('plan.addTime') }}</text>
                 </view>
-              </view>
-              <view
+                </view>
+                <view
                 v-for="(t, idx) in editingForm.times"
                 :key="idx"
                 class="plan-page__time-row"
-              >
+                >
                 <picker mode="time" :value="t" @change="handleEditTimeChange($event, idx)" class="plan-page__time-picker">
                   <view class="plan-page__time-picker-display">
                     <text
                       class="plan-page__time-picker-text"
                       :class="{ 'plan-page__time-picker-text--placeholder': !t }"
-                    >{{ t || '选择时间' }}</text>
+                    >{{ t || $t('plan.selectTime') }}</text>
                   </view>
                 </picker>
                 <view class="plan-page__time-delete" @click="handleEditDeleteTime(idx)">
@@ -305,7 +305,7 @@
 
             <!-- 优先级单选框 -->
             <view class="plan-page__field">
-              <text class="plan-page__label">优先级（数字越小越优先）</text>
+              <text class="plan-page__label">{{ $t('plan.priority') }}</text>
               <view class="plan-page__priority-row">
                 <view
                   v-for="n in 8"
@@ -323,7 +323,7 @@
 
             <!-- 通知方式 -->
             <view class="plan-page__field">
-              <text class="plan-page__label">通知方式</text>
+              <text class="plan-page__label">{{ $t('plan.channel') }}</text>
               <view class="plan-page__notify-row" v-if="availableChannels.length > 0">
                 <view
                   v-for="ch in availableChannels"
@@ -338,31 +338,31 @@
               </view>
               </view>
               <view v-else class="plan-page__notify-empty">
-                <text class="plan-page__notify-empty-text">暂无通知方式，请先到"通知方式"页配置</text>
+                <text class="plan-page__notify-empty-text">{{ $t('plan.channelEmpty') }}</text>
               </view>
             </view>
 
             <!-- 任务状态 -->
             <view class="plan-page__field">
-              <text class="plan-page__label">任务状态</text>
+              <text class="plan-page__label">{{ $t('plan.status') }}</text>
               <view class="plan-page__status-row">
                 <view class="plan-page__status-item" @click="editingForm.status = 1">
                   <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.status === 1 }">
                     <view v-if="editingForm.status === 1" class="plan-page__radio-dot"></view>
                   </view>
-                  <text class="plan-page__status-text">进行中</text>
+                  <text class="plan-page__status-text">{{ $t('plan.statusActive') }}</text>
                 </view>
                 <view class="plan-page__status-item" @click="editingForm.status = 2">
                   <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.status === 2 }">
                     <view v-if="editingForm.status === 2" class="plan-page__radio-dot"></view>
                   </view>
-                  <text class="plan-page__status-text">暂停</text>
+                  <text class="plan-page__status-text">{{ $t('plan.statusPaused') }}</text>
                 </view>
                 <view class="plan-page__status-item" @click="editingForm.status = 0">
                   <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.status === 0 }">
                     <view v-if="editingForm.status === 0" class="plan-page__radio-dot"></view>
                   </view>
-                  <text class="plan-page__status-text">已结束</text>
+                  <text class="plan-page__status-text">{{ $t('plan.statusEnded') }}</text>
                 </view>
               </view>
             </view>
@@ -370,7 +370,7 @@
             <!-- 更新按钮 -->
             <view class="plan-page__save" @click="handleSaveEdit(plan.id)">
               <image class="plan-page__save-icon" :src="baocunJihuaIcon" mode="aspectFit" />
-              <text class="plan-page__save-text">更新计划</text>
+              <text class="plan-page__save-text">{{ $t('plan.update') }}</text>
             </view>
           </view>
         </view>
@@ -412,8 +412,9 @@ import jiaShijianIcon from '../../assets/images/jia_shijian.png'
 import shanchuIcon from '../../assets/images/shanchu.png'
 import baocunJihuaIcon from '../../assets/images/baocun_jihua.png'
 import { useShare } from '../../composables/useShare'
+import { t } from '../../locale'
 
-useShare({ title: '制定计划' })
+useShare({ title: t('share.plan') })
 
 const userStore = useUserStore()
 const guideStore = useGuideStore()
@@ -537,16 +538,16 @@ onMounted(() => {
 function handleDeletePlan(planId) {
   if (!userStore.userInfo) return
   uni.showModal({
-    title: '提示',
-    content: '确定要删除该计划吗？',
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('common.tip'),
+    content: t('plan.deleteConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     success: async (res) => {
       if (!res.confirm) return
       try {
         const r = await deletePlan(planId)
         if (r.code === 0) {
-          uni.showToast({ title: '删除成功', icon: 'success' })
+          uni.showToast({ title: t('plan.deleted'), icon: 'success' })
           // 如果正在编辑被删除的计划，收起编辑表单
           if (editingPlanId.value === planId) {
             editingPlanId.value = null
@@ -554,7 +555,7 @@ function handleDeletePlan(planId) {
           await loadPlans()
         }
       } catch (e) {
-        uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+        uni.showToast({ title: e.message || t('plan.deleteFailed'), icon: 'none' })
       }
     }
   })
@@ -631,7 +632,7 @@ function handleAddTime() {
 }
 function handleDeleteTime(idx) {
   if (form.times.length <= 1) {
-    uni.showToast({ title: '至少保留一个提醒时间', icon: 'none' })
+    uni.showToast({ title: t('plan.keepOneTime'), icon: 'none' })
     return
   }
   form.times.splice(idx, 1)
@@ -660,7 +661,7 @@ function handleEditAddTime() {
 }
 function handleEditDeleteTime(idx) {
   if (editingForm.times.length <= 1) {
-    uni.showToast({ title: '至少保留一个提醒时间', icon: 'none' })
+    uni.showToast({ title: t('plan.keepOneTime'), icon: 'none' })
     return
   }
   editingForm.times.splice(idx, 1)
@@ -679,32 +680,32 @@ async function handleSave() {
   // 防重复提交：提交中直接返回
   if (isSubmitting.value) return
   if (!userStore.userInfo) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.showToast({ title: t('plan.needLogin'), icon: 'none' })
     return
   }
   if (!form.name.trim()) {
-    uni.showToast({ title: '请输入计划名称', icon: 'none' })
+    uni.showToast({ title: t('plan.needName'), icon: 'none' })
     return
   }
   if (!form.startDate) {
-    uni.showToast({ title: '请选择开始日期', icon: 'none' })
+    uni.showToast({ title: t('plan.needStart'), icon: 'none' })
     return
   }
   if (!form.endDate) {
-    uni.showToast({ title: '请选择结束日期', icon: 'none' })
+    uni.showToast({ title: t('plan.needEnd'), icon: 'none' })
     return
   }
   if (form.endDate < form.startDate) {
-    uni.showToast({ title: '结束日期不能早于开始日期', icon: 'none' })
+    uni.showToast({ title: t('plan.endBeforeStart'), icon: 'none' })
     return
   }
   const validTimes = form.times.filter(t => t)
   if (validTimes.length === 0) {
-    uni.showToast({ title: '请至少设置一个提醒时间', icon: 'none' })
+    uni.showToast({ title: t('plan.needTime'), icon: 'none' })
     return
   }
   if (selectedChannelIds.value.length === 0) {
-    uni.showToast({ title: '请至少选择一个通知方式', icon: 'none' })
+    uni.showToast({ title: t('plan.needChannel'), icon: 'none' })
     return
   }
 
@@ -721,12 +722,12 @@ async function handleSave() {
       priority: form.priority
     })
     if (res.code === 0) {
-      uni.showToast({ title: '计划创建成功', icon: 'success' })
+      uni.showToast({ title: t('plan.created'), icon: 'success' })
       showForm.value = false
       await loadPlans()
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '保存失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('plan.saveFailed'), icon: 'none' })
   } finally {
     isSubmitting.value = false
   }
@@ -738,28 +739,28 @@ async function handleSaveEdit(planId) {
   if (isSubmitting.value) return
   if (!userStore.userInfo) return
   if (!editingForm.name.trim()) {
-    uni.showToast({ title: '请输入计划名称', icon: 'none' })
+    uni.showToast({ title: t('plan.needName'), icon: 'none' })
     return
   }
   if (!editingForm.startDate) {
-    uni.showToast({ title: '请选择开始日期', icon: 'none' })
+    uni.showToast({ title: t('plan.needStart'), icon: 'none' })
     return
   }
   if (!editingForm.endDate) {
-    uni.showToast({ title: '请选择结束日期', icon: 'none' })
+    uni.showToast({ title: t('plan.needEnd'), icon: 'none' })
     return
   }
   if (editingForm.endDate < editingForm.startDate) {
-    uni.showToast({ title: '结束日期不能早于开始日期', icon: 'none' })
+    uni.showToast({ title: t('plan.endBeforeStart'), icon: 'none' })
     return
   }
   const validTimes = editingForm.times.filter(t => t)
   if (validTimes.length === 0) {
-    uni.showToast({ title: '请至少设置一个提醒时间', icon: 'none' })
+    uni.showToast({ title: t('plan.needTime'), icon: 'none' })
     return
   }
   if (editingSelectedChannelIds.value.length === 0) {
-    uni.showToast({ title: '请至少选择一个通知方式', icon: 'none' })
+    uni.showToast({ title: t('plan.needChannel'), icon: 'none' })
     return
   }
 
@@ -776,7 +777,7 @@ async function handleSaveEdit(planId) {
       priority: editingForm.priority
     })
     if (res.code === 0) {
-      uni.showToast({ title: '计划更新成功', icon: 'success' })
+      uni.showToast({ title: t('plan.updated'), icon: 'success' })
       // 先刷新计划列表数据，再收起编辑表单。
       // 若先置 editingPlanId=null 再 loadPlans，色条 class 会经历 --active→无→--active 的往返，
       // 微信小程序 setData diff 机制可能将最终状态与编辑中状态对比认为相同而跳过更新，导致色条停留在中间灰色态。
@@ -785,7 +786,7 @@ async function handleSaveEdit(planId) {
       editingPlanId.value = null
     }
   } catch (e) {
-    uni.showToast({ title: e.message || '更新失败', icon: 'none' })
+    uni.showToast({ title: e.message || t('plan.updateFailed'), icon: 'none' })
   } finally {
     isSubmitting.value = false
   }

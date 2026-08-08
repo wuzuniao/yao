@@ -32,8 +32,9 @@
  *        不传则由微信自动截取页面内容作为封面
  */
 import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { t } from '../locale'
 
-const DEFAULT_TITLE = '无足鸟按时吃药打卡'
+const DEFAULT_TITLE = t('share.default')
 
 export function useShare(options = {}) {
   const { title = DEFAULT_TITLE, path, imageUrl } = options

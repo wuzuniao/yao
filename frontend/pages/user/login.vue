@@ -6,7 +6,7 @@
     <!-- 微信一键登录区（仅微信小程序端展示，H5 端无微信一键登录能力） -->
     <!-- #ifdef MP-WEIXIN -->
     <view v-if="loginMode === 'wechat'" class="login-page__wechat">
-      <text class="login-page__title">一键登录</text>
+      <text class="login-page__title">{{ $t('auth.wechatLogin') }}</text>
       <view class="login-page__wechat-btn guide-target-wechat-login" @click="handleWechatLogin">
         <image class="login-page__wechat-icon" :src="wxIcon" mode="aspectFit" />
       </view>
@@ -15,14 +15,14 @@
         <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': wechatAgree }">
           <view v-if="wechatAgree" class="login-page__checkmark"></view>
         </view>
-        <text class="login-page__remember-text">查看并同意</text>
-        <text class="login-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
-        <text class="login-page__remember-text">和</text>
-        <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+        <text class="login-page__remember-text">{{ $t('auth.agreePrefix') }}</text>
+        <text class="login-page__agree-link" @click.stop="goAgreement">{{ $t('auth.agreementName') }}</text>
+        <text class="login-page__remember-text">{{ $t('auth.and') }}</text>
+        <text class="login-page__agree-link" @click.stop="goPrivacy">{{ $t('auth.privacyName') }}</text>
       </view>
       <!-- 切换到账号密码登录引导（放大突出） -->
       <view class="login-page__switch" @click="switchMode('normal')">
-        <text class="login-page__switch-text">账号密码登录</text>
+        <text class="login-page__switch-text">{{ $t('auth.switchToPassword') }}</text>
       </view>
     </view>
     <!-- #endif -->
@@ -30,7 +30,7 @@
     <!-- App 端指纹一键登录区（仅 App 端，设备支持指纹且本地存在凭证时展示） -->
     <!-- #ifdef APP -->
     <view v-if="loginMode === 'fingerprint' && biometricVisible" class="login-page__wechat">
-      <text class="login-page__title">一键登录</text>
+      <text class="login-page__title">{{ $t('auth.wechatLogin') }}</text>
       <view class="login-page__wechat-btn guide-target-fingerprint-login" @click="handleFingerprintLogin">
         <image class="login-page__wechat-icon" :src="fingerprintIcon" mode="aspectFit" />
       </view>
@@ -39,31 +39,31 @@
         <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': fingerprintAgree }">
           <view v-if="fingerprintAgree" class="login-page__checkmark"></view>
         </view>
-        <text class="login-page__remember-text">查看并同意</text>
-        <text class="login-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
-        <text class="login-page__remember-text">和</text>
-        <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+        <text class="login-page__remember-text">{{ $t('auth.agreePrefix') }}</text>
+        <text class="login-page__agree-link" @click.stop="goAgreement">{{ $t('auth.agreementName') }}</text>
+        <text class="login-page__remember-text">{{ $t('auth.and') }}</text>
+        <text class="login-page__agree-link" @click.stop="goPrivacy">{{ $t('auth.privacyName') }}</text>
       </view>
       <!-- 切换到账号密码登录引导 -->
       <view class="login-page__switch" @click="switchMode('normal')">
-        <text class="login-page__switch-text">账号密码登录</text>
+        <text class="login-page__switch-text">{{ $t('auth.switchToPassword') }}</text>
       </view>
     </view>
     <!-- #endif -->
 
     <!-- 主登录卡片（账号密码登录，H5 端默认展示；微信端切换或注册页跳转时展示） -->
     <view v-if="loginMode === 'normal'" class="login-page__card">
-      <text class="login-page__title">欢迎回来</text>
+      <text class="login-page__title">{{ $t('auth.welcome') }}</text>
 
       <view class="login-page__form">
         <!-- 用户名或邮箱 -->
         <view class="login-page__field">
-          <text class="login-page__label">用户名或邮箱</text>
+          <text class="login-page__label">{{ $t('auth.usernameOrEmail') }}</text>
           <input
             class="login-page__input"
             :class="{ 'login-page__input--error': errors.username }"
             v-model="form.username"
-            placeholder="请输入用户名或邮箱"
+            :placeholder="$t('auth.usernameOrEmailPlaceholder')"
             placeholder-class="login-page__placeholder"
             :placeholder-style="phStyle('username')"
             :maxlength="usernameLimit.max"
@@ -72,12 +72,12 @@
             @blur="handleBlur('username')"
           />
           <text v-if="errors.username" class="login-page__error-text">{{ errors.username }}</text>
-          <text v-if="usernameLimit.limitReached && usernameLimit.limitHint && usernameLimit.limitHint.includes('已达')" class="login-page__limit-text">{{ usernameLimit.limitHint }}</text>
+          <text v-if="usernameLimit.limitReached" class="login-page__limit-text">{{ usernameLimit.limitHint }}</text>
         </view>
 
         <!-- 密码 -->
         <view class="login-page__field login-page__field--password">
-          <text class="login-page__label">密码</text>
+          <text class="login-page__label">{{ $t('auth.password') }}</text>
           <view
             class="login-page__password-row"
             :class="{ 'login-page__password-row--error': errors.password }"
@@ -87,7 +87,7 @@
               v-model="form.password"
               :password="!showPassword"
               :key="'login-pwd-' + showPassword"
-              placeholder="请输入密码"
+              :placeholder="$t('auth.passwordPlaceholder')"
               placeholder-class="login-page__placeholder"
               :placeholder-style="phStyle('password')"
               :maxlength="passwordLimit.max"
@@ -100,9 +100,9 @@
             </view>
           </view>
           <text v-if="errors.password" class="login-page__error-text">{{ errors.password }}</text>
-          <text v-if="passwordLimit.limitReached && passwordLimit.limitHint && passwordLimit.limitHint.includes('已达')" class="login-page__limit-text">{{ passwordLimit.limitHint }}</text>
+          <text v-if="passwordLimit.limitReached" class="login-page__limit-text">{{ passwordLimit.limitHint }}</text>
           <view class="login-page__forgot-row">
-            <text class="login-page__forgot" @click="handleForgot">忘记密码？</text>
+            <text class="login-page__forgot" @click="handleForgot">{{ $t('auth.forgotPassword') }}</text>
           </view>
         </view>
 
@@ -112,13 +112,13 @@
             <view class="login-page__checkbox" :class="{ 'login-page__checkbox--checked': remember }">
               <view v-if="remember" class="login-page__checkmark"></view>
             </view>
-            <text class="login-page__remember-text">查看并同意</text>
-            <text class="login-page__agree-link" @click.stop="goAgreement">《服务协议》</text>
-            <text class="login-page__remember-text">和</text>
-            <text class="login-page__agree-link" @click.stop="goPrivacy">《隐私政策》</text>
+            <text class="login-page__remember-text">{{ $t('auth.agreePrefix') }}</text>
+            <text class="login-page__agree-link" @click.stop="goAgreement">{{ $t('auth.agreementName') }}</text>
+            <text class="login-page__remember-text">{{ $t('auth.and') }}</text>
+            <text class="login-page__agree-link" @click.stop="goPrivacy">{{ $t('auth.privacyName') }}</text>
           </view>
           <view class="login-page__submit guide-target-login-submit" @click="handleLogin">
-            <text class="login-page__submit-text">登录</text>
+            <text class="login-page__submit-text">{{ $t('auth.login') }}</text>
           </view>
         </view>
       </view>
@@ -126,15 +126,15 @@
       <!-- 切换到微信一键登录引导（仅微信小程序端展示） -->
       <!-- #ifdef MP-WEIXIN -->
       <view class="login-page__switch" @click="switchMode('wechat')">
-        <text class="login-page__switch-text">一键登录</text>
+        <text class="login-page__switch-text">{{ $t('auth.switchToWechat') }}</text>
       </view>
       <!-- #endif -->
     </view>
 
     <!-- 底部注册链接（位于普通登录卡片外，但随普通登录卡片一起出现；仅"立即注册"可点击） -->
     <view v-if="loginMode === 'normal'" class="login-page__footer">
-      <text class="login-page__footer-text">还没有账号？</text>
-      <text class="login-page__footer-link guide-target-register-link" @click="goRegister">立即注册</text>
+      <text class="login-page__footer-text">{{ $t('auth.noAccount') }}</text>
+      <text class="login-page__footer-link guide-target-register-link" @click="goRegister">{{ $t('auth.registerNow') }}</text>
     </view>
 
     <!-- 新手引导遮罩（仅在引导激活时渲染） -->
@@ -173,6 +173,7 @@ import PasswordEye from '../../components/PasswordEye.vue'
 import { useShare } from '../../composables/useShare'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 import { biometricLogin } from '../../api/modules/user'
+import { t } from '../../locale'
 // 微信一键登录相关（仅微信小程序端使用）
 // #ifdef MP-WEIXIN
 import { wechatLogin } from '../../api/modules/user'
@@ -184,7 +185,7 @@ import { useBiometric } from '../../composables/useBiometric'
 import fingerprintIcon from '../../assets/images/dl_fingerprint.png'
 // #endif
 
-useShare({ title: '登录' })
+useShare({ title: t('share.login') })
 
 const guideStore = useGuideStore()
 
@@ -270,12 +271,12 @@ const passwordLimit = useInputLimit(20)
 
 // ===== 前端输入校验（参照 register.vue）=====
 function validateUsername(v) {
-  if (!v) return '请输入用户名或邮箱'
+  if (!v) return t('validate.usernameRequired')
   return ''
 }
 
 function validatePassword(v) {
-  if (!v) return '请输入密码'
+  if (!v) return t('validate.passwordRequired')
   return ''
 }
 
@@ -338,10 +339,10 @@ async function handleLogin() {
   // 2. 隐私协议勾选校验：未勾选时显示确认弹窗
   if (!remember.value) {
     uni.showModal({
-      title: '提示',
-      content: '请先查看并同意《服务协议》和《隐私政策》',
-      confirmText: '确认',
-      cancelText: '取消',
+      title: t('common.tip'),
+      content: t('auth.agreePrivacy'),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       success: (res) => {
         if (res.confirm) {
           remember.value = true
@@ -381,16 +382,16 @@ async function handleLogin() {
     const _bioSupported = await biometric.isAvailable()
     if (_bioSupported && !biometric.isEnabled()) {
       uni.showModal({
-        title: '开启指纹登录',
-        content: '是否开启指纹登录，下次免密一键登录？',
-        confirmText: '开启',
-        cancelText: '暂不',
+        title: t('auth.enableBiometric'),
+        content: t('auth.enableBiometricContent'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
         success: (r) => {
           if (r.confirm) {
             biometric.setEnabled(true)
-            uni.showToast({ title: '已开启指纹登录', icon: 'success' })
+            uni.showToast({ title: t('auth.enableBiometricOk'), icon: 'success' })
           } else {
-            uni.showToast({ title: '登录成功', icon: 'success' })
+            uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
           }
           setTimeout(() => {
             uni.redirectTo({ url: '/pages/index/settings' })
@@ -400,7 +401,7 @@ async function handleLogin() {
       return
     }
     // #endif
-    uni.showToast({ title: '登录成功', icon: 'success' })
+    uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
     // 5. 登录成功后跳转 settings.vue
     setTimeout(() => {
       uni.redirectTo({ url: '/pages/index/settings' })
@@ -416,7 +417,7 @@ function handleForgot() {
   uni.navigateTo({
     url: '/pages/user/forgot-password',
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }
@@ -429,10 +430,10 @@ function handleWechatLogin() {
   // 隐私协议勾选校验：未勾选时弹出确认对话框，用户点击"确认"后直接执行登录
   if (!wechatAgree.value) {
     uni.showModal({
-      title: '提示',
-      content: '请先查看并同意《服务协议》和《隐私政策》',
-      confirmText: '确认',
-      cancelText: '取消',
+      title: t('common.tip'),
+      content: t('auth.agreePrivacy'),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       success: (res) => {
         if (res.confirm) {
           wechatAgree.value = true
@@ -443,7 +444,7 @@ function handleWechatLogin() {
     return
   }
   submitting.value = true
-  uni.showLoading({ title: '微信登录中...', mask: true })
+  uni.showLoading({ title: t('auth.wechatLoggingIn'), mask: true })
 
   // 超时安全网：覆盖整个登录流程（uni.login + 后端请求），15秒后自动重置
   // 注意：不在 uni.login success 中清除，等后端请求完成后才清除
@@ -451,7 +452,7 @@ function handleWechatLogin() {
     submitting.value = false
     uni.hideLoading()
     setTimeout(() => {
-      uni.showToast({ title: '登录超时，请检查网络或后端服务', icon: 'none' })
+      uni.showToast({ title: t('auth.wechatTimeout'), icon: 'none' })
     }, 200)
   }, 15000)
 
@@ -461,7 +462,7 @@ function handleWechatLogin() {
         clearTimeout(timeoutId)
         uni.hideLoading()
         setTimeout(() => {
-          uni.showToast({ title: '获取微信登录凭证失败', icon: 'none' })
+          uni.showToast({ title: t('auth.wechatCodeFail'), icon: 'none' })
         }, 200)
         submitting.value = false
         return
@@ -471,7 +472,7 @@ function handleWechatLogin() {
         clearTimeout(timeoutId)
         uni.hideLoading()
         userStore.setUser(res.data)
-        uni.showToast({ title: '登录成功', icon: 'success' })
+        uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
         setTimeout(() => {
           uni.redirectTo({ url: '/pages/index/settings' })
         }, 1500)
@@ -493,9 +494,9 @@ function handleWechatLogin() {
       setTimeout(() => {
         const msg = (err && err.errMsg) || ''
         if (msg.includes('cancel') || msg.includes('auth deny')) {
-          uni.showToast({ title: '已取消微信登录', icon: 'none' })
+          uni.showToast({ title: t('auth.wechatCancel'), icon: 'none' })
         } else {
-          uni.showToast({ title: '微信登录失败', icon: 'none' })
+          uni.showToast({ title: t('auth.wechatFail'), icon: 'none' })
         }
       }, 200)
       submitting.value = false
@@ -511,10 +512,10 @@ async function handleFingerprintLogin() {
   // 隐私协议勾选校验（与微信登录对称）
   if (!fingerprintAgree.value) {
     uni.showModal({
-      title: '提示',
-      content: '请先查看并同意《服务协议》和《隐私政策》',
-      confirmText: '确认',
-      cancelText: '取消',
+      title: t('common.tip'),
+      content: t('auth.agreePrivacy'),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       success: (res) => {
         if (res.confirm) {
           fingerprintAgree.value = true
@@ -531,7 +532,7 @@ async function handleFingerprintLogin() {
     return
   }
   submitting.value = true
-  uni.showLoading({ title: '指纹验证中...', mask: true })
+  uni.showLoading({ title: t('push.biometricAuthContent'), mask: true })
   try {
     // 1. 系统级指纹验证（未通过不会返回成功）
     await biometric.authenticate()
@@ -542,7 +543,7 @@ async function handleFingerprintLogin() {
     })
     uni.hideLoading()
     userStore.setUser(res.data)
-    uni.showToast({ title: '登录成功', icon: 'success' })
+    uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
     setTimeout(() => {
       uni.redirectTo({ url: '/pages/index/settings' })
     }, 1500)
@@ -566,7 +567,7 @@ function goRegister() {
   uni.navigateTo({
     url: '/pages/user/register',
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }
@@ -575,7 +576,7 @@ function goPrivacy() {
   uni.navigateTo({
     url: '/pages/user/privacy',
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }
@@ -584,7 +585,7 @@ function goAgreement() {
   uni.navigateTo({
     url: '/pages/user/agreement',
     fail: () => {
-      uni.showToast({ title: '页面跳转失败', icon: 'none' })
+      uni.showToast({ title: t('common.navigateFailed'), icon: 'none' })
     }
   })
 }
