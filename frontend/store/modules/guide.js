@@ -294,6 +294,23 @@ export const useGuideStore = defineStore('guide', () => {
     }
   }
 
+  // 登录/注册成功后推进引导（由登录页在登录成功跳转前调用）
+  // 当前步骤处于登录页（login）时，跳过后续注册页步骤，直接进入「通知方式」步骤。
+  // 场景：App/H5 端用户在登录页直接账号密码/指纹登录（未走注册流程），
+  // 若不主动推进，返回设置页时 onPageEnter 会把步骤回退到 profile-card（第 2 步），
+  // 表现为「引导项没有向下更新」。
+  // 微信小程序端步骤 3 之后本就是 settings 页，onPageEnter 会自动推进；
+  // 此处主动推进到同一目标步骤，幂等无副作用。
+  function advanceOnLoginSuccess() {
+    if (!isActive.value) return
+    const step = steps.value[currentStep.value]
+    if (!step || step.page !== 'login') return
+    const idx = steps.value.findIndex(s => s.target === 'notification-method')
+    if (idx !== -1) {
+      currentStep.value = idx
+    }
+  }
+
   // 页面进入时上报（由各页面 onShow 调用）
   // 根据当前步骤与页面名的前后关系推进或回退；页面名可能重复出现，因此不再使用 findIndex
   function onPageEnter(page) {
@@ -362,6 +379,7 @@ export const useGuideStore = defineStore('guide', () => {
     completeGuide,
     nextStep,
     skipToStepByTarget,
+    advanceOnLoginSuccess,
     onPageEnter,
     setTargetRect,
     clearTargetRect

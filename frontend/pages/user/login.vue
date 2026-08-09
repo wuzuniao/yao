@@ -393,6 +393,8 @@ async function handleLogin() {
           } else {
             uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
           }
+          // 登录成功后推进新手引导（跳过注册页步骤，直接进入通知方式步骤）
+          guideStore.advanceOnLoginSuccess()
           setTimeout(() => {
             uni.redirectTo({ url: '/pages/index/settings' })
           }, 1500)
@@ -401,6 +403,8 @@ async function handleLogin() {
       return
     }
     // #endif
+    // 登录成功后推进新手引导（跳过注册页步骤，直接进入通知方式步骤）
+    guideStore.advanceOnLoginSuccess()
     uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
     // 5. 登录成功后跳转 settings.vue
     setTimeout(() => {
@@ -472,6 +476,8 @@ function handleWechatLogin() {
         clearTimeout(timeoutId)
         uni.hideLoading()
         userStore.setUser(res.data)
+        // 登录成功后推进新手引导（跳过注册页步骤，直接进入通知方式步骤）
+        guideStore.advanceOnLoginSuccess()
         uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
         setTimeout(() => {
           uni.redirectTo({ url: '/pages/index/settings' })
@@ -543,6 +549,8 @@ async function handleFingerprintLogin() {
     })
     uni.hideLoading()
     userStore.setUser(res.data)
+    // 登录成功后推进新手引导（跳过注册页步骤，直接进入通知方式步骤）
+    guideStore.advanceOnLoginSuccess()
     uni.showToast({ title: t('auth.loginSuccess'), icon: 'success' })
     setTimeout(() => {
       uni.redirectTo({ url: '/pages/index/settings' })
