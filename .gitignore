@@ -59,6 +59,13 @@ node_modules/
 dist/
 unpackage/
 
+# 鸿蒙签名证书与 material（含私钥，禁止提交 Git；entry/ 下工程配置可提交）
+frontend/harmony-configs/*.p12
+frontend/harmony-configs/*.cer
+frontend/harmony-configs/*.csr
+frontend/harmony-configs/*.p7b
+frontend/harmony-configs/material/
+
 # ============================================================
 # IDE / 编辑器
 # ============================================================

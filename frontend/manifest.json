@@ -84,7 +84,22 @@
         }
     },
     "app-harmony" : {
-        "bundleName" : "com.wuzuniao.yao"
+        "bundleName" : "com.wuzuniao.yao",
+        "distribute" : {
+            "bundleName" : "com.wuzuniao.yao",
+            "deviceTypes" : [ "phone", "tablet", "2in1", "tv", "wearable", "car" ],
+            "signingConfigs" : {
+                "release" : {
+                    "certpath" : "yao.cer",
+                    "keyAlias" : "yao",
+                    "keyPassword" : "0000001B3E6A69EAD07124AA550D2F7A33221EC5B4B13AEA2C96F9DFFCD115E523192B672241FF1AD01E7A",
+                    "profile" : "yaoRelease.p7b",
+                    "signAlg" : "SHA256withECDSA",
+                    "storeFile" : "com.wuzuniao.yao.p12",
+                    "storePassword" : "0000001B68A9AC0BCAE92530E7277CBB50DE9379371EE4D20658F4F129D4F5A82A7076E3435D40421B6B80"
+                }
+            }
+        }
     },
     "quickapp" : {},
     "mp-weixin" : {

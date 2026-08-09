@@ -1,8 +1,19 @@
 /**
  * App 推送（友盟+ U-Push）composable
  * --------------------------------------------------------------------------
- * 仅 App 端（#ifdef APP，含 Android / iOS / HarmonyOS）生效，小程序 / H5 端调用直接返回 false，
- * 不产生副作用。注意 APP-PLUS 宏不含鸿蒙，凡三端通用逻辑一律用 APP，鸿蒙差异用 APP-HARMONY 隔离。
+ * 仅 Android / iOS 端（#ifdef APP-PLUS）生效；鸿蒙端与小程序 / H5 端调用直接返回 false，
+ * 不产生副作用。
+ *
+ * ⚠️ 鸿蒙端为何不支持（勿改回 #ifdef APP）：
+ *   xtf-umengpush 为 DCloud 付费「加密」UTS 插件（三端 index.uts 均为密文）。按官方规范，
+ *   加密 UTS 插件发行到「Web / 小程序 / 鸿蒙」时须走云端编译换取 module.har，而该云编译链路
+ *   仅支持 uni-app x 工程，不支持本项目所用的传统 uni-app 工程。故鸿蒙编译时
+ *   oh-package.json5 会声明 utssdk/app-harmony/module.har 依赖但该文件永不生成，
+ *   ohpm 安装即报 00617202 Fetch Local Package Failed。
+ *   因此已在插件 package.json 将 harmony 标记为 "-"，本文件同步改用 APP-PLUS 隔离，
+ *   两者必须保持一致，否则鸿蒙端会残留悬空 import 导致编译失败。
+ *   鸿蒙用户的提醒能力由邮件 / 站内信通道承担。
+ *
  * 通过已购插件 xtf-umengpush（普通授权版，绑定 __UNI__528E611 / 包名 com.wuzuniao.yao）集成，
  * 友盟 appKey / messageSecret 配置在插件自带 umeng-push-config.json（鸿蒙为 umconfig.json），不在 manifest.json。
  *  - getDeviceToken(): 取本机友盟 deviceToken（初始化返回值 / register-state 事件 / 轮询三重通道）
@@ -13,8 +24,9 @@
  *  - requestPermission(): 申请系统通知权限，已开启则直接返回、不重复弹窗
  *  - isNotificationEnabled() / openNotificationSettings(): 权限状态查询与设置页跳转
  */
-// 友盟推送插件 API 仅 App 端存在，import 必须置于条件编译内，避免小程序/H5 引用不存在的导出
-// #ifdef APP
+// 友盟推送插件 API 仅 Android / iOS 端存在，import 必须置于条件编译内，
+// 避免鸿蒙 / 小程序 / H5 引用不存在的导出（鸿蒙不支持原因见文件头说明）
+// #ifdef APP-PLUS
 import {
   initializeUmengPush,
   createUmengPushInitOptions,
@@ -63,7 +75,7 @@ function cacheDeviceToken(token) {
  *  - notification-click：通知栏点击跳转
  */
 function registerRuntimeListener() {
-  // #ifdef APP
+  // #ifdef APP-PLUS
   if (runtimeListenerRegistered) {
     return
   }
@@ -102,11 +114,11 @@ function registerRuntimeListener() {
  * @returns {boolean} SDK 是否已完成初始化
  */
 function initUmeng() {
-  // #ifndef APP
+  // #ifndef APP-PLUS
   return false
   // #endif
 
-  // #ifdef APP
+  // #ifdef APP-PLUS
   if (initialized) {
     return true
   }
@@ -142,11 +154,11 @@ function initUmeng() {
  * @returns {boolean} 已开启返回 true；查询异常时返回 true（避免误拦截正常流程）
  */
 function isNotificationEnabled() {
-  // #ifndef APP
+  // #ifndef APP-PLUS
   return false
   // #endif
 
-  // #ifdef APP
+  // #ifdef APP-PLUS
   try {
     const info = getPushDeviceInfo()
     if (!info) {
@@ -169,11 +181,11 @@ function isNotificationEnabled() {
  * @returns {Promise<boolean>} 最终是否已获得通知权限
  */
 function requestPermission() {
-  // #ifndef APP
+  // #ifndef APP-PLUS
   return Promise.resolve(false)
   // #endif
 
-  // #ifdef APP
+  // #ifdef APP-PLUS
   return new Promise((resolve) => {
     // 已开启则忽略，不再弹窗打扰
     if (isNotificationEnabled()) {
@@ -181,17 +193,6 @@ function requestPermission() {
       return
     }
     try {
-      // #ifdef APP-HARMONY
-      // 鸿蒙无 plus.android 命名空间，也无 POST_NOTIFICATIONS 标准权限，
-      // 统一走友盟插件封装的鸿蒙实现申请通知授权
-      initUmeng()
-      requestNotificationPermission({
-        success: (res) => resolve(!!(res && res.granted)),
-        fail: () => resolve(false)
-      })
-      // #endif
-
-      // #ifndef APP-HARMONY
       if (plus.os.name === 'iOS') {
         // iOS 走友盟封装（相对成熟，无厂商 ROM 差异）：首次调用由系统弹 APNs 授权框，
         // 已拒绝过则系统不再弹窗，此时 granted=false，由调用方引导去系统设置
@@ -211,7 +212,6 @@ function requestPermission() {
         () => resolve(isNotificationEnabled()),
         () => resolve(false)
       )
-      // #endif
     } catch (e) {
       console.warn('[AppPush] 申请通知权限异常：', e)
       resolve(false)
@@ -224,8 +224,7 @@ function requestPermission() {
  * 引导用户前往系统设置手动开启通知（用户已拒绝且系统不再弹窗时使用）
  */
 function openNotificationSettings() {
-  // #ifdef APP
-  // 注：鸿蒙端插件未封装系统设置页跳转，调用后可能无响应，已由 try-catch 兜底不报错
+  // #ifdef APP-PLUS
   try {
     openUmengNotificationSettings()
   } catch (e) {
@@ -240,21 +239,15 @@ export function useAppPush() {
    * @returns {Promise<{ token: string, platform: string } | null>} 获取失败返回 null
    */
   async function getDeviceToken() {
-    // #ifndef APP
+    // #ifndef APP-PLUS
     return null
     // #endif
 
-    // #ifdef APP
+    // #ifdef APP-PLUS
     return new Promise((resolve) => {
       try {
         initUmeng()
-        // #ifdef APP-HARMONY
-        // 鸿蒙端 plus.os.name 取值不可靠，且平台恒定，直接固定上报 harmony
-        const platform = 'harmony'
-        // #endif
-        // #ifndef APP-HARMONY
         const platform = plus.os.name === 'iOS' ? 'ios' : 'android'
-        // #endif
         // 通道一：缓存（注册成功后即固定，最快）
         if (cachedDeviceToken) {
           resolve({ token: cachedDeviceToken, platform })
@@ -300,14 +293,14 @@ export function useAppPush() {
    * @returns {Promise<boolean>} 是否上报成功
    */
   async function reportDeviceToken({ createIfMissing = false, silent = true } = {}) {
-    // #ifndef APP
+    // #ifndef APP-PLUS
     if (!silent) {
       uni.showToast({ title: t('push.appOnly'), icon: 'none' })
     }
     return false
     // #endif
 
-    // #ifdef APP
+    // #ifdef APP-PLUS
     const device = await getDeviceToken()
     if (!device) {
       if (!silent) {
@@ -339,7 +332,7 @@ export function useAppPush() {
    * 若此处另行调用 onUmengPushRuntimeEvent 会覆盖 register-state 取 token 的监听）
    */
   function registerPushClick() {
-    // #ifdef APP
+    // #ifdef APP-PLUS
     if (clickListenerRegistered) {
       return
     }

@@ -7,16 +7,24 @@
   //   - ohos.permission.ACCESS_BIOMETRIC：指纹登录（uni.startSoterAuthentication
   //     及 checkIsSupportSoterAuthentication / checkIsSoterEnrolledInDevice
   //     自 HBuilderX 4.31 起在鸿蒙端可用，但必须声明该权限，否则调用直接失败）。
-  //   - 推送所需的 INTERNET / GET_NETWORK_INFO / APP_TRACKING_CONSENT 已由
-  //     uni_modules/xtf-umengpush/utssdk/app-harmony/module.json5 声明并自动合并，
-  //     此处不重复声明，避免冲突。
-  //   - 鸿蒙推送预初始化桥接：已创建 entry/src/main/ets/abilityStage/MyAbilityStage.ets，
-  //     其 preInit(...) 须在 AbilityStage.onCreate 阶段执行（否则冷启动推送通道可能未就绪）。
-  //     注册方式：在下方 module 顶层补 "srcEntry": "./ets/abilityStage/MyAbilityStage.ets"。
-  //     ⚠️ 覆盖 srcEntry 会替换 uni 默认的 AbilityStage，存在与 uni 运行时冲突导致启动失败的风险，
-  //     须在 DevEco Studio 真机编译验证通过后再取消注释启用；若冲突需改 MyAbilityStage 继承 uni 运行时基类。
+  //   - 鸿蒙端不集成友盟推送：xtf-umengpush 为付费加密 UTS 插件，发行鸿蒙须走
+  //     DCloud 云端编译换取 module.har，而该链路仅支持 uni-app x 工程，本项目为
+  //     传统 uni-app，故 module.har 永不生成、ohpm 报 00617202。已在插件
+  //     package.json 将 harmony 置为 "-"，友盟相关权限与 AbilityStage 预初始化
+  //     桥接（原 MyAbilityStage.ets）一并移除。鸿蒙提醒走邮件 / 站内信通道。
+  //   - 注意：HBuilderX 合并本增量文件时不会自动注入 module 的若干必填字段，必须在此
+  //     显式声明，否则产物 entry/src/main/module.json5 缺失字段导致 hvigor 报错
+  //     （2026-08-09 连续踩坑）：
+  //       * module.type            缺失 → 00303196 "Unable to obtain the module type"
+  //       * module.deliveryWithInstall 缺失 → 00303038 schema "must have required
+  //         property 'deliveryWithInstall'"
+  //       * module.mainElement    缺失 → 同上 schema（参照 HBuilderX 生成的 EntryAbility）
+  //     补 deliveryWithInstall:true 与 mainElement:"EntryAbility" 即可通过 schema 校验。
   "module": {
-    // "srcEntry": "./ets/abilityStage/MyAbilityStage.ets",
+    "name": "entry",
+    "type": "entry",
+    "mainElement": "EntryAbility",
+    "deliveryWithInstall": true,
     "requestPermissions": [
       {
         "name": "ohos.permission.ACCESS_BIOMETRIC",
