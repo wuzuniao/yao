@@ -31,7 +31,7 @@
 | 后端 | FastAPI（异步） | RESTful API |
 | 后端 | SQLAlchemy / Pydantic | ORM（asyncmy 驱动）/ 数据校验 |
 | 后端 | PyJWT / bcrypt / cryptography | 认证 / 密码哈希 / AES-256-GCM 加密 |
-| 数据库 | MariaDB 12.3 (LTS) | 业务库与用户库分离 |
+| 数据库 | MariaDB 10.11 (LTS) | 业务库与用户库分离 |
 | 部署 | Docker + Docker Compose | MariaDB + FastAPI + Nginx |
 
 ---
@@ -127,15 +127,24 @@ npm run build:h5         # H5 生产构建（生产部署由 scripts/deploy.sh �
 
 ### 后端（`backend/.env`）
 
-从 `.env.template` 复制，关键配置：
+从 `.env.template` 复制（完整变量与说明见该文件），关键配置：
 
 | 变量 | 说明 |
 |------|------|
 | `DATABASE_URL` | MariaDB 连接串，如 `mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4` |
-| `SMTP_*` | 发件 SMTP 主机/端口/账号/密码/发件名 |
-| `WX_APPID` / `WX_APP_SECRET` | 微信小程序凭证 |
-| `ENCRYPTION_SECRET_KEY` | AES-256-GCM 加密密钥（base64 编码 32 字节） |
-| `JWT_SECRET_KEY` / `JWT_EXPIRE_DAYS` | JWT 签名密钥 / 过期天数（默认 7） |
+| `SMTP_*` | 发件 SMTP 主机/端口/账号/密码/发件名（腾讯企业邮，用于注册验证码邮件） |
+| `WX_APPID` / `WX_APP_SECRET` | 微信小程序凭证（微信一键登录） |
+| `WX_SUBSCRIBE_TEMPLATE_ID` | 微信订阅消息模板 ID（打卡提醒下发） |
+| `WX_SUBSCRIBE_PAGE` | 点击订阅消息后跳转的小程序页面路径 |
+| `WX_SUBSCRIBE_ORG_NAME` | 订阅消息「机构名称」字段（thing12）展示值 |
+| `UMENG_ANDROID_APP_KEY` / `UMENG_ANDROID_MASTER_SECRET` | 友盟+ U-Push Android 应用密钥（App 离线推送） |
+| `UMENG_IOS_APP_KEY` / `UMENG_IOS_MASTER_SECRET` | 友盟+ U-Push iOS 应用密钥（暂未创建，留空占位） |
+| `UMENG_HARMONY_APP_KEY` / `UMENG_HARMONY_MASTER_SECRET` | 友盟+ U-Push 鸿蒙应用密钥 |
+| `UMENG_PRODUCTION_MODE` | 推送环境开关：true=生产 / false=测试（仅 iOS 生效） |
+| `UMENG_PUSH_PAGE` | 点击 App 推送通知后跳转的页面路径 |
+| `ENCRYPTION_SECRET_KEY` | AES-256-GCM 加密密钥（base64 编码 32 字节，用于加密邮件客户端密码等敏感信息） |
+| `JWT_SECRET_KEY` / `JWT_EXPIRE_DAYS` | JWT 签名密钥 / 过期天数（默认 7，见 项目规范.md §4） |
+| `CORS_ALLOW_ORIGINS` | 允许跨域访问的源（逗号分隔，主要约束 Web 端，小程序不受限） |
 
 ### 前端（`frontend/config/env.js`）
 
@@ -214,19 +223,55 @@ docker run --rm -v "$PWD/frontend:/app:z" -w /app node:20-slim \
 
 ---
 
+## 增量更新（生产环境）
+
+有时只需更新 H5 前端或后端，无需整库重部署。以下流程在部署目录 `/opt/yao/deploy` 与前端源码目录 `/opt/yao/frontend` 上进行增量更新（生产服务器内存仅 1.7GB，须注意资源限制）：
+
+1. 停止前后端容器（释放内存，避免构建时 OOM）
+
+   ```bash
+   cd /opt/yao/deploy && docker compose stop backend nginx
+   ```
+
+2. 构建 H5 前端（`--memory=1g --memory-swap=2g --cpus=1.5` 限制 Node 容器资源；`npm install` 自动同步 `package-lock.json`）
+
+   ```bash
+   docker run --rm --memory=1g --memory-swap=2g --cpus=1.5 \
+     -v "/opt/yao/frontend:/app:z" -w /app node:20-slim \
+     sh -c "npm install --registry=https://registry.npmmirror.com --legacy-peer-deps && npm run build:h5"
+   ```
+
+   > 提示：若 `npm install` 无需更新依赖，可改为 `npm ci`（更快，但要求 lock 文件已同步）。
+
+3. 重启前后端容器（仅重建 backend 与 nginx，不影响 mariadb）
+
+   ```bash
+   cd /opt/yao/deploy && docker compose up -d --force-recreate backend nginx
+   ```
+
+4. 验证服务（等待约 15 秒后）
+
+   ```bash
+   docker ps --format "table {{.Names}}\t{{.Status}}" && \
+   curl -sk -o /dev/null -w "HTTPS: %{http_code}\n" https://localhost/ && \
+   docker exec yao-nginx curl -s -o /dev/null -w "Backend: %{http_code}\n" http://backend:8000/health
+   ```
+
+---
+
 ## 常见问题（FAQ）
 
 ### 这是什么应用？
 无足鸟按时吃药打卡是一款免费、开源的通用打卡计划与按时提醒工具。你可以为任何需要按时执行的事项（吃药、健身、学习、喝水等）创建计划，到点自动提醒，并记录打卡历史。
 
 ### 支持哪些平台？
-微信小程序（主要）、H5 网页、Android/iOS App（通过 HBuilderX 打包）。同一套 uni-app（Vue 3）代码跨端运行。
+微信小程序（主要）、H5 网页、Android/iOS App、鸿蒙（HarmonyOS）App（通过 HBuilderX 打包）。同一套 uni-app（Vue 3）代码跨端运行。
 
 ### 数据安全吗？
 密码经 bcrypt 哈希，邮件客户端专用密码与微信 session_key 经 AES-256-GCM 加密存储，传输全程 HTTPS。支持自行部署，数据完全掌握在自己手中。
 
 ### 通知渠道有哪些？
-站内信（默认，应用内查看）、微信订阅消息（一次性订阅，需用户授权）、邮件（用户自配 SMTP）。同一计划可关联多个渠道，到点同时发送。
+站内信（默认，应用内查看）、微信订阅消息（一次性订阅，需用户授权）、邮件（用户自配 SMTP）、App 推送（友盟+ U-Push，仅 App 端）。同一计划可关联多个渠道，到点同时发送。
 
 ### 如何自行部署？
 后端 Docker 化部署（`scripts/deploy.sh` 一键完成 MariaDB + FastAPI + H5 + Nginx）；H5 由脚本自动构建，小程序/App 用 HBuilderX 发行或 CLI 构建（`npm run build:mp-weixin` / `npm run build:h5`）。详见上方"部署"章节。

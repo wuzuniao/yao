@@ -110,6 +110,7 @@ export default {
   // ===== 表单校验 =====
   validate: {
     usernameRequired: '请输入用户名',
+    usernamePlaceholder: '请输入用户名（2-15 个字符，仅限中文、英文及数字）',
     usernameLength: '用户名长度需为 2-15 个字符',
     usernameFormat: '用户名仅允许中文、英文及数字字符',
     passwordRequired: '请输入密码',

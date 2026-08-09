@@ -101,6 +101,7 @@ export default {
   // ===== Form validation =====
   validate: {
     usernameRequired: 'Please enter a username',
+    usernamePlaceholder: 'Enter a username (2–15 characters, letters, numbers, or Chinese only)',
     usernameLength: 'Username must be 2–15 characters',
     usernameFormat: 'Username may contain only Chinese characters, letters, and numbers',
     passwordRequired: 'Please enter a password',

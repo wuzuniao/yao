@@ -1,7 +1,8 @@
 <template>
   <template v-if="visible && ready">
     <!-- 视觉蒙版：单 view + box-shadow 大扩散绘制高亮洞以外的灰色蒙版；
-         view 本身透明，高亮洞内显示目标元素，连续渲染无 SVG mask 抗锯齿黑边 -->
+         view 本身透明，高亮洞内显示目标元素，连续渲染无拼接线，圆角处随高亮圆角填充、无4角白边；
+         pointer-events:none 不阻挡洞内目标点击；目标未就绪时不渲染，避免全屏拦截蒙版盖住页面卡死 -->
     <view
       v-if="highlightRect"
       class="beginner-guide__mask-hole"
@@ -10,6 +11,7 @@
 
     <!-- #ifndef H5 -->
     <!-- 微信小程序点击阻挡层：4 个透明矩形覆盖高亮洞以外区域，高亮洞内无 view，点击直达目标；
+         视觉蒙版由上面的 mask-hole box-shadow 统一绘制（故矩形透明，拼接处无颜色、无拼接线）；
          H5 端蒙版 view pointer-events:none 不阻挡点击，无需点击阻挡层 -->
     <template v-if="highlightRect">
       <view class="beginner-guide__bar" :style="topBarStyle" @touchmove.stop @click.stop></view>
@@ -18,15 +20,6 @@
       <view class="beginner-guide__bar" :style="rightBarStyle" @touchmove.stop @click.stop></view>
     </template>
     <!-- #endif -->
-
-    <!-- 高亮洞外灰色蒙版（目标位置就绪时显示）：单 view + box-shadow 大扩散绘制洞外蒙版；
-         视图透明且 pointer-events:none，不阻挡洞内目标点击；目标未就绪时不渲染，避免全屏拦截蒙版
-         盖住页面导致"点击后空白/卡死"（如通知方式页点击"添加新方式"后入口卡消失、引导步骤切换瞬间目标尚未上报） -->
-    <view
-      v-if="targetRect"
-      class="beginner-guide__mask beginner-guide__mask--hole"
-      :style="maskHoleStyle"
-    ></view>
 
     <!-- 高亮边框：与目标元素完全重合，pointer-events:none 不阻挡点击 -->
     <view
@@ -58,7 +51,7 @@
  * --------------------------------------------------------------------------
  * 功能：跨页面新手引导的视觉呈现层
  *  - 灰色蒙版：覆盖目标元素以外的区域
- *    - H5 与微信小程序均使用单 view box-shadow 大扩散绘制洞外蒙版（连续渲染无 SVG mask 抗锯齿黑边）
+ *    - H5 与微信小程序均使用单 view box-shadow 大扩散绘制洞外蒙版（连续渲染无拼接线，圆角处随高亮圆角填充、无4角白边）
  *    - 微信小程序额外用 4 个透明矩形作点击阻挡层（H5 端蒙版 view pointer-events:none 不阻挡点击）
  *  - 高亮边框：围绕目标元素描边，吸引视线（pointer-events:none 不阻挡目标点击）
  *  - 步骤卡片：显示步骤序号、标题、说明文字，附带"跳过"按钮
@@ -71,7 +64,7 @@
  *
  * 蒙版原理：
  *  - 视觉层：单 view + box-shadow 大扩散一次性绘制高亮洞以外的灰色蒙版，
- *    单层连续渲染，无拼接线，背景颜色一致；view 本身透明，高亮洞内显示目标元素。
+ *    单层连续渲染，无拼接线，圆角处随高亮圆角填充、无4角白边；view 本身透明，高亮洞内显示目标元素。
  *  - H5：蒙版 view pointer-events:none 不阻挡任何点击，无需点击阻挡层。
  *  - 微信小程序：额外用 4 个透明矩形覆盖高亮洞以外的整屏区域（pointer-events:auto），
  *    高亮洞内不放置任何 view，点击直达目标；透明矩形拼接处不可见，视觉无影响。
@@ -290,8 +283,8 @@ const rightBarStyle = computed(() => {
   }
 })
 
-// 微信小程序：视觉层单 view 样式
-// box-shadow 大扩散一次性绘制高亮洞以外的灰色蒙版，单层连续无拼接线；
+// 视觉层单 view 样式（H5 与微信小程序共用）
+// box-shadow 大扩散一次性绘制高亮洞以外的灰色蒙版，单层连续无拼接线，圆角处随高亮圆角填充、无4角白边；
 // 视图本身背景透明且 pointer-events:none，不阻挡洞内目标点击，洞外点击由透明矩形阻挡层处理
 const spreadPx = computed(() => Math.max(screenWidth.value, screenHeight.value) * 2)
 const maskHoleStyle = computed(() => {
@@ -391,19 +384,6 @@ function handleSkip() {
  * 步骤卡片内部样式使用 rpx（随屏缩放），平板断点(≥768px)锁定为 px。
  * ========================================================================== */
 
-.beginner-guide__mask {
-  position: fixed;
-  background: var(--color-mask-60);
-  z-index: 9998;
-}
-
-.beginner-guide__mask--full {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
 .beginner-guide__highlight {
   position: fixed;
   /* border-radius 由 style 动态绑定，根据目标形状在 32rpx 大圆角与正圆之间自适应 */
@@ -419,8 +399,8 @@ function handleSkip() {
   z-index: 9997;
 }
 
-/* 微信小程序视觉层：单 view，box-shadow 大扩散绘制高亮洞以外的灰色蒙版；
-   单层连续渲染无拼接线；pointer-events:none 不阻挡洞内目标点击 */
+/* 视觉层：单 view，box-shadow 大扩散绘制高亮洞以外的灰色蒙版；
+   单层连续渲染无拼接线，圆角处随高亮圆角填充、无4角白边；pointer-events:none 不阻挡洞内目标点击 */
 .beginner-guide__mask-hole {
   position: fixed;
   background: transparent;
