@@ -19,12 +19,13 @@
     </template>
     <!-- #endif -->
 
-    <!-- 全屏蒙版（目标位置尚未上报时，覆盖整屏阻止操作） -->
+    <!-- 高亮洞外灰色蒙版（目标位置就绪时显示）：单 view + box-shadow 大扩散绘制洞外蒙版；
+         视图透明且 pointer-events:none，不阻挡洞内目标点击；目标未就绪时不渲染，避免全屏拦截蒙版
+         盖住页面导致"点击后空白/卡死"（如通知方式页点击"添加新方式"后入口卡消失、引导步骤切换瞬间目标尚未上报） -->
     <view
-      v-if="!targetRect"
-      class="beginner-guide__mask beginner-guide__mask--full"
-      @touchmove.stop
-      @click.stop
+      v-if="targetRect"
+      class="beginner-guide__mask beginner-guide__mask--hole"
+      :style="maskHoleStyle"
     ></view>
 
     <!-- 高亮边框：与目标元素完全重合，pointer-events:none 不阻挡点击 -->

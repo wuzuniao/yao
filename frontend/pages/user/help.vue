@@ -73,6 +73,16 @@
             <text class="help-page__card-text">{{ $t('help.q7Text4') }}</text>
           </view>
         </view>
+
+        <!-- Card 7 -->
+        <view class="help-page__card">
+          <view class="help-page__card-body">
+            <text class="help-page__card-title">{{ $t('help.q8Title') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q8Text1') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q8Text2') }}</text>
+            <text class="help-page__card-text">{{ $t('help.q8Text3') }}</text>
+          </view>
+        </view>
       </view>
     </view>
   </view>

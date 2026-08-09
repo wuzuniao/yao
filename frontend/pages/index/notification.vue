@@ -615,12 +615,12 @@ const canSave = computed(() => {
 // 计算属性：保存按钮文案（按通知类型区分）
 const saveButtonText = computed(() => {
   // #ifdef MP-WEIXIN
-  if (formType.value === '微信') return $t('notification.authorize')
+  if (formType.value === '微信') return t('notification.authorize')
   // #endif
   // #ifdef APP
-  if (formType.value === 'App推送') return $t('notification.enablePush')
+  if (formType.value === 'App推送') return t('notification.enablePush')
   // #endif
-  return $t('notification.save')
+  return t('notification.save')
 })
 
 // 端口格式校验：空值返回空，非整数或超出 1-65535 范围返回错误提示
@@ -728,12 +728,9 @@ function handleAdd() {
   emailError.value = ''
   hostError.value = ''
   // 新手引导：当前步骤为「添加新的通知方式」时，点击进入下一步「授权订阅提醒」
+  // （仅微信小程序端走到此步骤；非微信端引导步骤在 settings 页，不会进入本分支）
   if (guideStore.isActive && guideStore.currentStepData?.target === 'add-notification') {
     guideStore.nextStep()
-    // 非微信小程序端已默认选中邮件，直接进入「保存邮件通知」步骤
-    if (!guideStore.isWechatMP && guideStore.currentStepData?.target === 'email-type-radio') {
-      guideStore.nextStep()
-    }
   }
 }
 

@@ -598,7 +598,13 @@ export default {
     q7Text3:
       'If there is still no check-in record 10 minutes and 1 hour after the reminder time (or at the midpoint before the next reminder, whichever comes first), another notification is sent.',
     q7Text4:
-      'WeChat notifications follow the rules above as long as you have quota remaining. Each check-in adds one notification credit; without credits, WeChat notifications stop.'
+      'WeChat notifications follow the rules above as long as you have quota remaining. Each check-in adds one notification credit; without credits, WeChat notifications stop.',
+    q8Title: 'How do I enable App notifications?',
+    q8Text1:
+      'Only available on the App. On the Notification Methods page, authorize and enable "App push," then add "App push" as a notification method in your check-in plan.',
+    q8Text2:
+      'Currently, an "App push" is delivered to the phone notification bar only while the App is running in the foreground. Offline push delivery will be added in a later update.',
+    q8Text3: 'So far it has only been tested on Android.'
   },
 
   // ===== Contact page =====
