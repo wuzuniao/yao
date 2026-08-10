@@ -97,7 +97,10 @@ pip install -r backend/requirements.txt
 pip install -r backend/requirements-test.txt   # 测试依赖（可选）
 
 cp backend/.env.template backend/.env    # Linux/macOS；Windows 用 copy
-python scripts/init_db.py                 # 初始化数据库（需先启动 MariaDB）
+# 初始化数据库（需先启动 MariaDB）：执行 backend/sql/ 下的建表脚本
+mysql -u root -p < backend/sql/create_yao_db.sql      # 业务库 wuzuniao_yao
+mysql -u root -p < backend/sql/create_user_db.sql     # 用户库 wuzuniao_yonghu
+# 如需增量字段/表，按文件名顺序追加执行 add_*.sql
 
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

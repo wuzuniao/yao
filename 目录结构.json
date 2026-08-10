@@ -231,9 +231,8 @@
     },
     "scripts": {
       "描述": "本地开发与运维辅助脚本",
-      "dev.bat": "Windows一键启动后端脚本",
-      "init_db.py": "初始化数据库表结构脚本",
-      "test_db_connection.py": "数据库连接测试脚本",
+      "test_db_connection.py": "数据库连接测试脚本（MariaDB 连通性 + 自动建 wuzuniao_yao 库，本地排错用）",
+      "_i18n_check.cjs": "i18n 裸中文检查工具：扫描 frontend 下 .vue 模板未走 $t 的裸中文；通过 npm run i18n:check 调用",
       "backup_db.sh": "MariaDB 定时备份脚本：通过 docker exec 调用容器内 mariadb-dump 备份 wuzuniao_yao 和 wuzuniao_yonghu 两个数据库，每个库单独一个 .sql 文件（含完整 CREATE DATABASE/TABLE 结构、数据单行 INSERT），按 日期_库名.sql 命名保存到 deploy/backup_sql/；每个数据库仅保留最近 12 份备份自动清理旧文件；root 密码从 deploy/.env 读取，路径使用 BASH_SOURCE 推导保持可移植性；已配置 cron 每周一 00:00 执行"
     },
     "tests": {
