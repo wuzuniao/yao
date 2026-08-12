@@ -660,12 +660,15 @@ async function loadActivePlans() {
     return
   }
   try {
-    const res = await listPlans()
+    // 并行加载计划列表与今日打卡记录（两者互不依赖，改并行后任务卡片首屏可见时间
+    // 从"两请求耗时之和"降为"两请求最大值"）
+    const [res] = await Promise.all([
+      listPlans(),
+      loadAllTodayCheckins()
+    ])
     if (res.code === 0 && res.data) {
       // 仅保留进行中的计划
       const plans = res.data.filter(p => p.status === 1)
-      // 加载今日所有计划打卡记录（排序依赖打卡状态）
-      await loadAllTodayCheckins()
       // 按新规则排序：当前匹配区间未打卡的排前，已打卡的排后
       const now = new Date()
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
@@ -926,7 +929,10 @@ onShow(() => {
   // 并行加载最近 7 天公告（不阻塞任务卡片）
   loadRecentAnnouncements()
   // 并行加载用户通知渠道，用于判断打卡后是否需要补授权微信订阅消息
+  // App 端无微信订阅消息能力（requestSubscribe 在非微信端为空操作），跳过该请求节省一次网络开销
+  // #ifdef MP-WEIXIN
   loadUserChannels()
+  // #endif
   // 已登录情况下，首页加载完成后触发一次未读站内信刷新，基于打卡记录自动标记已读并同步通知图标
   if (userStore.userInfo) {
     userStore.loadUnreadCount(true)

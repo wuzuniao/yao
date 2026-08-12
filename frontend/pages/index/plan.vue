@@ -530,8 +530,9 @@ async function loadChannels() {
 }
 
 onMounted(() => {
+  // 仅加载计划列表；通知渠道由 onShow 统一刷新（覆盖首次进入与从通知方式页返回场景），
+  // 此处不再重复调用 loadChannels，避免首次进入页面时发出两次相同请求
   loadPlans()
-  loadChannels()
 })
 
 // 删除计划（点击 shanchu 图标后二次确认）

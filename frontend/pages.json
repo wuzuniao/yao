@@ -125,5 +125,15 @@
     "navigationBarTitleText": "无足鸟按时吃药打卡 - 通用打卡计划与按时提醒工具",
     "navigationBarBackgroundColor": "#F8F8F8",
     "backgroundColor": "#e8ebe6"
+  },
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["pages/user"]
+    },
+    "pages/index/settings": {
+      "network": "all",
+      "packages": ["pages/user"]
+    }
   }
 }
