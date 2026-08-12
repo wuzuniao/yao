@@ -23,16 +23,6 @@ _CODE_RE = re.compile(r"^\d{6}$")
 # 控制字符（保留 \t 和 \n），用于输入净化
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
-# === 敏感字段（输出过滤） ===
-_SENSITIVE_FIELDS = frozenset({
-    "password_hash",
-    "session_key",
-    "wx_session_key",
-    "verification_code",
-    "secret",
-    "token",
-})
-
 # JWT 签名算法（HS256，与 JWT_SECRET_KEY 配合使用）
 _JWT_ALGORITHM = "HS256"
 
@@ -228,15 +218,3 @@ class Security:
         if "sub" not in payload:
             raise ValueError("登录凭证格式不正确")
         return payload
-
-    # ===== 通用输出实体化 =====
-
-    @staticmethod
-    def filter_output(data: dict) -> dict:
-        """
-        输出数据实体化（过滤）：
-        移除敏感字段（password_hash、session_key 等），防止敏感信息泄露
-        """
-        if not isinstance(data, dict):
-            return data
-        return {k: v for k, v in data.items() if k not in _SENSITIVE_FIELDS}

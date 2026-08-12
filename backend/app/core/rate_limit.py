@@ -26,10 +26,22 @@ _rate_store: dict[str, list[float]] = defaultdict(list)
 
 
 def _client_ip(request: Request) -> str:
-    """获取客户端真实 IP（优先取 X-Forwarded-For 首段，回退到连接对端地址）"""
+    """
+    获取客户端真实 IP
+    - 优先取 X-Real-IP（Nginx 用 $remote_addr 设置，客户端无法伪造）
+    - 回退取 X-Forwarded-For 末段（Nginx 用 $proxy_add_x_forwarded_for 追加的真实 IP）
+    - 最后回退连接对端地址（无反代场景）
+    - 不信任 X-Forwarded-For 首段（客户端可伪造，会导致限流被绕过）
+    """
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        # 取末段：Nginx 用 $proxy_add_x_forwarded_for 时末段为 Nginx 追加的真实 IP
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     return request.client.host if request.client else "unknown"
 
 

@@ -512,6 +512,8 @@ server {
     index index.html;
 
     # 后端 API（路径保持不变：/api/v1/...）
+    # 注意：X-Real-IP 与 X-Forwarded-For 是后端限流器（rate_limit.py）识别真实客户端 IP 的关键，
+    #       缺失会导致限流被 X-Forwarded-For 伪造绕过。切勿删除以下两个 proxy_set_header。
     location /api/ {
         proxy_pass http://backend:8000;
         proxy_set_header Host              $host;

@@ -267,33 +267,3 @@ class TestJWT:
     def test_verify_token_not_string(self):
         with pytest.raises(ValueError, match="令牌不能为空"):
             Security.verify_token(None)
-
-
-class TestFilterOutput:
-    """输出过滤"""
-
-    @pytest.mark.unit
-    def test_removes_sensitive_fields(self):
-        data = {
-            "id": 1,
-            "username": "test",
-            "password_hash": "$2b$12$xxx",
-            "session_key": "abc",
-            "token": "xyz",
-        }
-        filtered = Security.filter_output(data)
-        assert "password_hash" not in filtered
-        assert "session_key" not in filtered
-        assert "token" not in filtered
-        assert filtered["id"] == 1
-        assert filtered["username"] == "test"
-
-    @pytest.mark.unit
-    def test_filter_output_non_dict(self):
-        assert Security.filter_output("not a dict") == "not a dict"
-
-    @pytest.mark.unit
-    def test_filter_output_no_sensitive_fields(self):
-        data = {"id": 1, "username": "test"}
-        filtered = Security.filter_output(data)
-        assert filtered == data

@@ -23,9 +23,9 @@
           "描述": "核心配置与工具",
           "config.py": "统一读取.env配置（Pydantic v2 SettingsConfigDict），自动切换开发/生产环境，含 ENCRYPTION_SECRET_KEY 加密密钥、JWT_SECRET_KEY/JWT_EXPIRE_DAYS 认证密钥配置、CORS_ALLOW_ORIGINS 跨域白名单（逗号分隔，通过 cors_origins_list 属性解析为列表）、微信订阅消息配置（WX_SUBSCRIBE_TEMPLATE_ID 模板ID/WX_SUBSCRIBE_PAGE 跳转页/WX_SUBSCRIBE_ORG_NAME 机构名称，均来自环境变量）、友盟+ U-Push 配置（UMENG_ANDROID_APP_KEY/UMENG_ANDROID_MASTER_SECRET/UMENG_IOS_APP_KEY/UMENG_IOS_MASTER_SECRET/UMENG_HARMONY_APP_KEY/UMENG_HARMONY_MASTER_SECRET 三平台各一套密钥（Android/iOS/鸿蒙在友盟控制台为三个独立应用），UMENG_PRODUCTION_MODE 推送环境开关仅 iOS 生效，UMENG_PUSH_PAGE 通知点击跳转页）",
           "database.py": "数据库连接引擎（SQLAlchemy异步），connect_args 设置 session time_zone='+08:00' 确保上海时区",
-          "security.py": "Security 安全验证类，集中管理所有后端安全相关验证逻辑。包含：密码哈希/校验（bcrypt）、密码复杂度验证、用户名格式验证、验证码格式验证、邮箱格式验证、SMTP参数验证、通用输入实体化（sanitize_string：去除控制字符+首尾空白+长度校验）、正整数ID验证（validate_positive_int）、头像URL协议白名单校验（validate_avatar_url：禁止 javascript:/data:/vbscript:/file: 等危险协议，防 XSS）、输出数据过滤（filter_output：移除password_hash/session_key等敏感字段）、JWT 令牌生成/校验（generate_token(user_id, role=0)：HS256签名+sub/role/iat/exp 载荷（role: 0-普通用户，7-管理员）+7天过期；verify_token：解签+过期/无效异常区分）。所有 Schema 的 field_validator 均调用此类，不自行实现验证逻辑",
+          "security.py": "Security 安全验证类，集中管理所有后端安全相关验证逻辑。包含：密码哈希/校验（bcrypt）、密码复杂度验证、用户名格式验证、验证码格式验证、邮箱格式验证、SMTP参数验证、通用输入实体化（sanitize_string：去除控制字符+首尾空白+长度校验）、正整数ID验证（validate_positive_int）、头像URL协议白名单校验（validate_avatar_url：禁止 javascript:/data:/vbscript:/file: 等危险协议，防 XSS）、JWT 令牌生成/校验（generate_token(user_id, role=0)：HS256签名+sub/role/iat/exp 载荷（role: 0-普通用户，7-管理员）+7天过期；verify_token：解签+过期/无效异常区分）。所有 Schema 的 field_validator 均调用此类，不自行实现验证逻辑。注：输出过滤由各接口显式构造响应字典实现（邮件密码返回空串、app_push device_token 不回传等），未使用通用 filter_output 方法",
           "deps.py": "FastAPI 依赖注入：get_current_user_id 与 get_current_admin 依赖，从 Authorization 头解析 Bearer token，调用 Security.verify_token 校验。安全校验：(1) JWT 签名与过期校验；(2) 数据库查询校验用户存在性、status in (0,1)（0-待删除用户在24h宽限期内仍可操作如取消删除，其他状态禁止）；(3) token_invalid_before 校验（改密码/重置密码/退出登录/删除账号后，旧 token 立即失效）；(4) get_current_admin 额外校验 role==7，非管理员返回 403。公告接口通过 Depends(get_current_admin) 保护，其余受保护接口通过 Depends(get_current_user_id)",
-          "rate_limit.py": "进程内字典限流器（滑动窗口算法），按 客户端IP+接口路径 维度计数，窗口内超过阈值返回 429。预定义策略：limit_login(5次/分钟)、limit_register(3次/分钟)、limit_send_code(3次/分钟)、limit_reset_password(3次/分钟)。适用于单进程部署，多进程需迁移至 Redis"
+          "rate_limit.py": "进程内字典限流器（滑动窗口算法），按 客户端IP+接口路径 维度计数，窗口内超过阈值返回 429。预定义策略：limit_login(5次/分钟)、limit_register(3次/分钟)、limit_send_code(3次/分钟)、limit_reset_password(3次/分钟)。适用于单进程部署，多进程需迁移至 Redis。_client_ip 取 IP 策略：优先取 X-Real-IP（Nginx 用 $remote_addr 设置，客户端无法伪造）→ 回退 X-Forwarded-For 末段（Nginx 用 $proxy_add_x_forwarded_for 追加的真实 IP）→ 最后回退连接对端地址；不信任 XFF 首段（客户端可伪造，会导致限流被绕过）"
         },
         "models": {
           "描述": "SQLAlchemy ORM模型，对应数据库表结构",
@@ -244,7 +244,7 @@
         "描述": "单元测试（不依赖外部资源，测试纯函数和工具类）",
         "backend": {
           "conftest.py": "单元测试 fixtures：mock_db（模拟数据库会话）、mock_email（模拟邮件服务）",
-          "test_security.py": "Security 安全验证类单元测试（35个）：密码哈希/校验、密码复杂度、用户名/验证码/邮箱/SMTP格式验证、输入净化、正整数校验、JWT生成与校验、输出过滤",
+          "test_security.py": "Security 安全验证类单元测试（32个）：密码哈希/校验、密码复杂度、用户名/验证码/邮箱/SMTP格式验证、输入净化、正整数校验、JWT生成与校验",
           "test_crypto.py": "AES-256-GCM 加密解密工具单元测试（8个）：加密/解密往返、空字符串、Unicode、错误密钥/篡改密文",
           "test_timezone.py": "时区工具单元测试（5个）：now_shanghai 返回 UTC+8、today_shanghai 与 UTC 日期一致性",
           "test_schemas.py": "Pydantic Schema 校验单元测试（49个）：覆盖所有 Schema（RegisterUser/LoginUser/ResetPassword/ChangePassword/UpdateSignature/UpdateAvatar/UpdateUsername/ChangeEmail/BindEmail/WeChatLogin/CreatePlan/CreateCheckin/CreateEmailChannel/UpdateEmailChannel/DeleteChannel/MarkRead）的字段验证器",

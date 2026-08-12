@@ -49,12 +49,17 @@ class CreatePlan(BaseModel):
             parts = t.split(":")
             if len(parts) < 2 or len(parts) > 3:
                 raise ValueError(f"时间格式不正确：{t}")
+            # 仅非数字字符才算"格式不正确"，数字超范围才算"范围不正确"
             try:
-                h, m = int(parts[0]), int(parts[1])
-                if h < 0 or h > 23 or m < 0 or m > 59:
-                    raise ValueError(f"时间范围不正确：{t}")
+                nums = [int(p) for p in parts]
             except ValueError:
                 raise ValueError(f"时间格式不正确：{t}")
+            h, m = nums[0], nums[1]
+            if h < 0 or h > 23 or m < 0 or m > 59:
+                raise ValueError(f"时间范围不正确：{t}")
+            # 校验秒数范围（HH:MM:SS 格式），缺失秒数视为 0
+            if len(nums) == 3 and (nums[2] < 0 or nums[2] > 59):
+                raise ValueError(f"时间范围不正确：{t}")
         return v
 
     @field_validator("channel_ids")

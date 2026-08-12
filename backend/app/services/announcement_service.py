@@ -41,7 +41,7 @@ class AnnouncementService:
         - MariaDB 日期运算使用 DATE_SUB(NOW(), INTERVAL N DAY)，
           避免 SQLAlchemy 将 timedelta 误当作绑定参数
         """
-        since = func.date_sub(func.now(), text(f"INTERVAL {days} DAY"))
+        since = func.date_sub(func.now(), text("INTERVAL :days DAY").bindparams(days=days))
         result = await self.db.execute(
             select(Announcement)
             .where(Announcement.id != 1)
