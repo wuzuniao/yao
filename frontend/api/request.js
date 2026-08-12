@@ -78,6 +78,16 @@ export function request({ url, method = 'GET', data, header, timeout }) {
           reject(new Error(t('request.sessionExpired')))
           return
         }
+        // 429 限流：请求过于频繁，展示后端 detail 文案或本地化提示，不跳转登录页
+        if (res.statusCode === 429) {
+          let msg = t('request.tooManyRequests')
+          const detail = res.data && res.data.detail
+          if (typeof detail === 'string' && detail) {
+            msg = detail
+          }
+          reject(new Error(msg))
+          return
+        }
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
           return

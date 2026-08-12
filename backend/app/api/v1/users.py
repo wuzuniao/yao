@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
 from ...core.rate_limit import (
+    limit_authenticated,
     limit_login,
     limit_register,
     limit_reset_password,
@@ -204,7 +205,7 @@ async def reset_password(payload: ResetPassword, db: AsyncSession = Depends(get_
     }
 
 
-@router.put("/update-signature")
+@router.put("/update-signature", dependencies=[Depends(limit_authenticated)])
 async def update_signature(
     payload: UpdateSignature,
     user_id: int = Depends(get_current_user_id),
@@ -230,7 +231,7 @@ async def update_signature(
     }
 
 
-@router.put("/change-password")
+@router.put("/change-password", dependencies=[Depends(limit_authenticated)])
 async def change_password(
     payload: ChangePassword,
     user_id: int = Depends(get_current_user_id),
@@ -292,7 +293,7 @@ async def send_change_email_new_code(
     return {"code": 0, "msg": "验证码已发送", "data": None}
 
 
-@router.put("/change-email")
+@router.put("/change-email", dependencies=[Depends(limit_authenticated)])
 async def change_email(
     payload: ChangeEmail,
     user_id: int = Depends(get_current_user_id),
@@ -322,7 +323,7 @@ async def change_email(
     }
 
 
-@router.put("/update-avatar")
+@router.put("/update-avatar", dependencies=[Depends(limit_authenticated)])
 async def update_avatar(
     payload: UpdateAvatar,
     user_id: int = Depends(get_current_user_id),
@@ -348,7 +349,7 @@ async def update_avatar(
     }
 
 
-@router.post("/schedule-deletion")
+@router.post("/schedule-deletion", dependencies=[Depends(limit_authenticated)])
 async def schedule_deletion(
     payload: ScheduleDeletion,
     user_id: int = Depends(get_current_user_id),
@@ -370,7 +371,7 @@ async def schedule_deletion(
     }
 
 
-@router.post("/cancel-deletion")
+@router.post("/cancel-deletion", dependencies=[Depends(limit_authenticated)])
 async def cancel_deletion(
     payload: ScheduleDeletion,
     user_id: int = Depends(get_current_user_id),
@@ -392,7 +393,7 @@ async def cancel_deletion(
     }
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(limit_authenticated)])
 async def logout(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -410,7 +411,7 @@ async def logout(
     return {"code": 0, "msg": "退出成功", "data": None}
 
 
-@router.put("/update-username")
+@router.put("/update-username", dependencies=[Depends(limit_authenticated)])
 async def update_username(
     payload: UpdateUsername,
     user_id: int = Depends(get_current_user_id),
@@ -435,7 +436,7 @@ async def update_username(
     }
 
 
-@router.put("/set-password")
+@router.put("/set-password", dependencies=[Depends(limit_authenticated)])
 async def set_password(
     payload: SetPassword,
     user_id: int = Depends(get_current_user_id),
@@ -460,7 +461,7 @@ async def set_password(
     }
 
 
-@router.put("/bind-email")
+@router.put("/bind-email", dependencies=[Depends(limit_authenticated)])
 async def bind_email(
     payload: BindEmail,
     user_id: int = Depends(get_current_user_id),
@@ -486,7 +487,7 @@ async def bind_email(
     }
 
 
-@router.get("/info")
+@router.get("/info", dependencies=[Depends(limit_authenticated)])
 async def get_user_info(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -544,7 +545,7 @@ async def wechat_login(payload: WeChatLogin, db: AsyncSession = Depends(get_db))
     }
 
 
-@router.post("/bind-wechat")
+@router.post("/bind-wechat", dependencies=[Depends(limit_authenticated)])
 async def bind_wechat(
     payload: BindWeChat,
     user_id: int = Depends(get_current_user_id),
@@ -573,7 +574,7 @@ async def bind_wechat(
     }
 
 
-@router.post("/refresh-token")
+@router.post("/refresh-token", dependencies=[Depends(limit_authenticated)])
 async def refresh_token(
     payload: RefreshTokenReq,
     authorization: str = Header(default=None),
@@ -628,7 +629,7 @@ async def biometric_login(payload: BiometricLogin, db: AsyncSession = Depends(ge
     }
 
 
-@router.post("/biometric-revoke")
+@router.post("/biometric-revoke", dependencies=[Depends(limit_authenticated)])
 async def biometric_revoke(
     payload: BiometricRevoke,
     user_id: int = Depends(get_current_user_id),

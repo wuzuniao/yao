@@ -1,5 +1,6 @@
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
@@ -21,7 +22,14 @@ def setup_logger(name: str = "app") -> logging.Logger:
 
     log_dir = Path(__file__).parent.parent.parent / "logs"
     log_dir.mkdir(exist_ok=True)
-    file_handler = logging.FileHandler(log_dir / "app.log", encoding="utf-8")
+    # 轮转日志：单文件上限 10MB，保留最近 5 个备份，总占用上限约 60MB
+    # 备份文件命名为 app.log.1、app.log.2 ... app.log.5
+    file_handler = RotatingFileHandler(
+        log_dir / "app.log",
+        maxBytes=10 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

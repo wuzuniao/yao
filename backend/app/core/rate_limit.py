@@ -81,3 +81,5 @@ limit_register = _make_limiter(max_count=3, window_seconds=60)
 limit_send_code = _make_limiter(max_count=3, window_seconds=60)
 # 重置密码：3 次/分钟（防止验证码爆破）
 limit_reset_password = _make_limiter(max_count=3, window_seconds=60)
+# 已登录用户可操作的 CRUD 接口：60 次/分钟（防止接口滥用，正常用户操作不会触达）
+limit_authenticated = _make_limiter(max_count=60, window_seconds=60)

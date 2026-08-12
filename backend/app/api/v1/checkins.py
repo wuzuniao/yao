@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
+from ...core.rate_limit import limit_authenticated
 from ...schemas.checkin_record import CreateCheckin
 from ...services.checkin_service import CheckinService
 from ...utils.timezone import SHANGHAI_TZ
@@ -22,7 +23,7 @@ def _record_to_dict(record) -> dict:
     }
 
 
-@router.post("")
+@router.post("", dependencies=[Depends(limit_authenticated)])
 async def create_checkin(
     payload: CreateCheckin,
     user_id: int = Depends(get_current_user_id),
@@ -58,7 +59,7 @@ async def create_checkin(
     }
 
 
-@router.get("/today")
+@router.get("/today", dependencies=[Depends(limit_authenticated)])
 async def list_today_checkins(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -73,7 +74,7 @@ async def list_today_checkins(
     }
 
 
-@router.get("/today/{plan_id}")
+@router.get("/today/{plan_id}", dependencies=[Depends(limit_authenticated)])
 async def list_today_checkins_by_plan(
     plan_id: int = Path(..., gt=0, description="计划ID，必须为正整数"),
     user_id: int = Depends(get_current_user_id),
@@ -92,7 +93,7 @@ async def list_today_checkins_by_plan(
     }
 
 
-@router.get("/month")
+@router.get("/month", dependencies=[Depends(limit_authenticated)])
 async def list_month_checkins(
     year: int = Query(..., description="年份，如 2026"),
     month: int = Query(..., ge=1, le=12, description="月份，1-12"),
@@ -115,7 +116,7 @@ async def list_month_checkins(
     }
 
 
-@router.get("/day")
+@router.get("/day", dependencies=[Depends(limit_authenticated)])
 async def list_day_checkins(
     date: str = Query(..., description="日期，格式 YYYY-MM-DD，如 2026-06-15"),
     user_id: int = Depends(get_current_user_id),

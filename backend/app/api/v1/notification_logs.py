@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
+from ...core.rate_limit import limit_authenticated
 from ...schemas.notification_log import MarkRead
 from ...services.notification_log_service import NotificationLogService
 
@@ -26,7 +27,7 @@ async def list_notification_logs(
     return {"code": 0, "msg": "success", "data": data}
 
 
-@router.put("/read")
+@router.put("/read", dependencies=[Depends(limit_authenticated)])
 async def mark_as_read(
     payload: MarkRead,
     user_id: int = Depends(get_current_user_id),
@@ -53,7 +54,7 @@ async def mark_as_read(
     }
 
 
-@router.get("/unread-count")
+@router.get("/unread-count", dependencies=[Depends(limit_authenticated)])
 async def get_unread_count(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -67,7 +68,7 @@ async def get_unread_count(
     return {"code": 0, "msg": "success", "data": {"unread_count": count}}
 
 
-@router.put("/read-all")
+@router.put("/read-all", dependencies=[Depends(limit_authenticated)])
 async def read_all(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
+from ...core.rate_limit import limit_authenticated
 from ...schemas.plan import CreatePlan, UpdatePlan
 from ...services.plan_service import PlanService
 
@@ -30,7 +31,7 @@ def _plan_to_dict(plan) -> dict:
     }
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(limit_authenticated)])
 async def list_plans(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -45,7 +46,7 @@ async def list_plans(
     }
 
 
-@router.post("")
+@router.post("", dependencies=[Depends(limit_authenticated)])
 async def create_plan(
     payload: CreatePlan,
     user_id: int = Depends(get_current_user_id),
@@ -76,7 +77,7 @@ async def create_plan(
     }
 
 
-@router.delete("/{plan_id}")
+@router.delete("/{plan_id}", dependencies=[Depends(limit_authenticated)])
 async def delete_plan(
     plan_id: int = Path(..., gt=0, description="计划ID，必须为正整数"),
     user_id: int = Depends(get_current_user_id),
@@ -91,7 +92,7 @@ async def delete_plan(
     return {"code": 0, "msg": "计划删除成功", "data": None}
 
 
-@router.put("/{plan_id}")
+@router.put("/{plan_id}", dependencies=[Depends(limit_authenticated)])
 async def update_plan(
     plan_id: int = Path(..., gt=0, description="计划ID，必须为正整数"),
     payload: UpdatePlan = Body(...),

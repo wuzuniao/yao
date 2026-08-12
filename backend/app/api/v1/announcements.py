@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_admin, get_current_user_id
+from ...core.rate_limit import limit_authenticated
 from ...schemas.announcement import AnnouncementCreate, AnnouncementUpdate
 from ...services.announcement_service import AnnouncementService
 
@@ -20,7 +21,7 @@ def _announcement_to_dict(announcement) -> dict:
     }
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(limit_authenticated)])
 async def list_announcements(
     admin_id: int = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
@@ -35,7 +36,7 @@ async def list_announcements(
     }
 
 
-@router.get("/recent")
+@router.get("/recent", dependencies=[Depends(limit_authenticated)])
 async def list_recent_announcements(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -50,7 +51,7 @@ async def list_recent_announcements(
     }
 
 
-@router.get("/template")
+@router.get("/template", dependencies=[Depends(limit_authenticated)])
 async def get_announcement_template(
     admin_id: int = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
@@ -67,7 +68,7 @@ async def get_announcement_template(
     }
 
 
-@router.post("")
+@router.post("", dependencies=[Depends(limit_authenticated)])
 async def publish_announcement(
     payload: AnnouncementCreate,
     admin_id: int = Depends(get_current_admin),
@@ -86,7 +87,7 @@ async def publish_announcement(
     }
 
 
-@router.put("/{announcement_id}")
+@router.put("/{announcement_id}", dependencies=[Depends(limit_authenticated)])
 async def update_announcement(
     announcement_id: int = Path(..., gt=0, description="公告ID，必须为正整数"),
     payload: AnnouncementUpdate = Body(...),
@@ -110,7 +111,7 @@ async def update_announcement(
     }
 
 
-@router.delete("/{announcement_id}")
+@router.delete("/{announcement_id}", dependencies=[Depends(limit_authenticated)])
 async def delete_announcement(
     announcement_id: int = Path(..., gt=0, description="公告ID，必须为正整数"),
     admin_id: int = Depends(get_current_admin),

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
+from ...core.rate_limit import limit_authenticated
 from ...schemas.notification_channel import (
     CHANNEL_TYPE_APP_PUSH,
     CHANNEL_TYPE_EMAIL,
@@ -52,7 +53,7 @@ def _channel_to_dict(channel) -> dict:
     return item
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(limit_authenticated)])
 async def list_channels(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -67,7 +68,7 @@ async def list_channels(
     }
 
 
-@router.post("/email")
+@router.post("/email", dependencies=[Depends(limit_authenticated)])
 async def create_email_channel(
     payload: CreateEmailChannel,
     user_id: int = Depends(get_current_user_id),
@@ -93,7 +94,7 @@ async def create_email_channel(
     }
 
 
-@router.put("/email")
+@router.put("/email", dependencies=[Depends(limit_authenticated)])
 async def update_email_channel(
     payload: UpdateEmailChannel,
     user_id: int = Depends(get_current_user_id),
@@ -120,7 +121,7 @@ async def update_email_channel(
     }
 
 
-@router.put("/wechat")
+@router.put("/wechat", dependencies=[Depends(limit_authenticated)])
 async def update_wechat_channel(
     payload: UpdateWechatChannel,
     user_id: int = Depends(get_current_user_id),
@@ -143,7 +144,7 @@ async def update_wechat_channel(
     }
 
 
-@router.post("/app-push")
+@router.post("/app-push", dependencies=[Depends(limit_authenticated)])
 async def upsert_app_push_channel(
     payload: UpsertAppPushChannel,
     user_id: int = Depends(get_current_user_id),
@@ -173,7 +174,7 @@ async def upsert_app_push_channel(
     }
 
 
-@router.put("/app-push")
+@router.put("/app-push", dependencies=[Depends(limit_authenticated)])
 async def update_app_push_channel(
     payload: UpdateAppPushChannel,
     user_id: int = Depends(get_current_user_id),
@@ -196,7 +197,7 @@ async def update_app_push_channel(
     }
 
 
-@router.delete("")
+@router.delete("", dependencies=[Depends(limit_authenticated)])
 async def delete_channel(
     payload: DeleteChannel,
     user_id: int = Depends(get_current_user_id),
@@ -211,7 +212,7 @@ async def delete_channel(
     return {"code": 0, "msg": "通知方式删除成功", "data": None}
 
 
-@router.post("/wechat/grant")
+@router.post("/wechat/grant", dependencies=[Depends(limit_authenticated)])
 async def grant_wechat_channel(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

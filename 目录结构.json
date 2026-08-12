@@ -25,7 +25,7 @@
           "database.py": "数据库连接引擎（SQLAlchemy异步），connect_args 设置 session time_zone='+08:00' 确保上海时区",
           "security.py": "Security 安全验证类，集中管理所有后端安全相关验证逻辑。包含：密码哈希/校验（bcrypt）、密码复杂度验证、用户名格式验证、验证码格式验证、邮箱格式验证、SMTP参数验证、通用输入实体化（sanitize_string：去除控制字符+首尾空白+长度校验）、正整数ID验证（validate_positive_int）、头像URL协议白名单校验（validate_avatar_url：禁止 javascript:/data:/vbscript:/file: 等危险协议，防 XSS）、JWT 令牌生成/校验（generate_token(user_id, role=0)：HS256签名+sub/role/iat/exp 载荷（role: 0-普通用户，7-管理员）+7天过期；verify_token：解签+过期/无效异常区分）。所有 Schema 的 field_validator 均调用此类，不自行实现验证逻辑。注：输出过滤由各接口显式构造响应字典实现（邮件密码返回空串、app_push device_token 不回传等），未使用通用 filter_output 方法",
           "deps.py": "FastAPI 依赖注入：get_current_user_id 与 get_current_admin 依赖，从 Authorization 头解析 Bearer token，调用 Security.verify_token 校验。安全校验：(1) JWT 签名与过期校验；(2) 数据库查询校验用户存在性、status in (0,1)（0-待删除用户在24h宽限期内仍可操作如取消删除，其他状态禁止）；(3) token_invalid_before 校验（改密码/重置密码/退出登录/删除账号后，旧 token 立即失效）；(4) get_current_admin 额外校验 role==7，非管理员返回 403。公告接口通过 Depends(get_current_admin) 保护，其余受保护接口通过 Depends(get_current_user_id)",
-          "rate_limit.py": "进程内字典限流器（滑动窗口算法），按 客户端IP+接口路径 维度计数，窗口内超过阈值返回 429。预定义策略：limit_login(5次/分钟)、limit_register(3次/分钟)、limit_send_code(3次/分钟)、limit_reset_password(3次/分钟)。适用于单进程部署，多进程需迁移至 Redis。_client_ip 取 IP 策略：优先取 X-Real-IP（Nginx 用 $remote_addr 设置，客户端无法伪造）→ 回退 X-Forwarded-For 末段（Nginx 用 $proxy_add_x_forwarded_for 追加的真实 IP）→ 最后回退连接对端地址；不信任 XFF 首段（客户端可伪造，会导致限流被绕过）"
+          "rate_limit.py": "进程内字典限流器（滑动窗口算法），按 客户端IP+接口路径 维度计数，窗口内超过阈值返回 429。预定义策略：limit_login(5次/分钟)、limit_register(3次/分钟)、limit_send_code(3次/分钟)、limit_reset_password(3次/分钟)、limit_authenticated(60次/分钟，已登录用户可操作的 CRUD 接口通用限流)。适用于单进程部署，多进程需迁移至 Redis。_client_ip 取 IP 策略：优先取 X-Real-IP（Nginx 用 $remote_addr 设置，客户端无法伪造）→ 回退 X-Forwarded-For 末段（Nginx 用 $proxy_add_x_forwarded_for 追加的真实 IP）→ 最后回退连接对端地址；不信任 XFF 首段（客户端可伪造，会导致限流被绕过）"
         },
         "models": {
           "描述": "SQLAlchemy ORM模型，对应数据库表结构",
@@ -66,7 +66,7 @@
         "utils": {
           "描述": "通用工具函数，非业务相关",
           "__init__.py": "工具包初始化文件",
-          "logger.py": "日志配置与工具",
+          "logger.py": "日志配置与工具，控制台 + RotatingFileHandler 双输出。文件日志轮转：单文件上限 10MB、保留最近 5 个备份（app.log/app.log.1~app.log.5），总占用上限约 60MB，避免长期运行撑满磁盘。格式包含时间、级别、模块、行号",
           "crypto.py": "AES-256-GCM 对称加密工具（encrypt/decrypt），用于邮件客户端专用密码加密存储，存储格式 base64(nonce+ciphertext+tag)",
           "timezone.py": "时区工具模块，统一上海时区 UTC+8：SHANGHAI_TZ 常量、now_shanghai() 返回 naive 上海 datetime、today_shanghai() 返回上海 date"
         },
