@@ -63,7 +63,7 @@
       <!-- 当天打卡详情卡片（点击有打卡记录的日期时显示） -->
       <view v-if="selectedDayDetail" class="record-page__list">
         <view class="record-page__list-header">
-          <image class="record-page__list-icon" :src="jiluXqIcon" mode="aspectFit" />
+          <image class="record-page__list-icon" :src="jiluXq" mode="aspectFit" />
           <text class="record-page__list-title">{{ selectedDateText }}</text>
         </view>
 
@@ -102,7 +102,7 @@
             <image
               v-if="item.checked"
               class="record-page__list-item-check"
-              :src="jiluWcIcon"
+              :src="jiluWc"
               mode="aspectFit"
             />
           </view>
@@ -144,8 +144,13 @@ import { useLanguageStore } from '../../store/modules/language'
 import { listMonthCheckins, listDayCheckins } from '../../api/modules/checkin'
 import jiluXqIcon from '../../assets/images/jilu_xq.png'
 import jiluWcIcon from '../../assets/images/jilu_wc.png'
+import { useThemeIcon } from '../../composables/useThemeIcon'
 import { useShare } from '../../composables/useShare'
 import { t, tm } from '../../locale'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+const jiluXq = useThemeIcon('jilu_xq.png', jiluXqIcon)
+const jiluWc = useThemeIcon('jilu_wc.png', jiluWcIcon)
 
 useShare({ title: t('share.record') })
 

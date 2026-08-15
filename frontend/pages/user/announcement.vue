@@ -25,7 +25,7 @@
         v-if="!showForm && !editingId && !isEditingTemplate"
         @click="handleNewEntry"
       >
-        <image class="announcement-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
+        <image class="announcement-page__new-entry-icon" :src="jiaJihua" mode="aspectFit" />
         <text class="announcement-page__new-entry-text">{{ $t('announcement.newEntry') }}</text>
       </view>
 
@@ -229,8 +229,13 @@ import {
 } from '../../api/modules/announcement'
 import jiaJihuaIcon from '../../assets/images/jia_jihua.png'
 import shanchuIcon from '../../assets/images/shanchu.png'
+import { useThemeIcon } from '../../composables/useThemeIcon'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+// shanchu（删除红）不参与换色，保持原引用
+const jiaJihua = useThemeIcon('jia_jihua.png', jiaJihuaIcon)
 
 useShare({ title: t('share.announcement') })
 

@@ -32,7 +32,7 @@
     <view v-if="loginMode === 'fingerprint' && biometricVisible" class="login-page__wechat">
       <text class="login-page__title">{{ $t('auth.wechatLogin') }}</text>
       <view class="login-page__wechat-btn guide-target-fingerprint-login" @click="handleFingerprintLogin">
-        <image class="login-page__wechat-icon" :src="fingerprintIcon" mode="aspectFit" />
+        <image class="login-page__wechat-icon" :src="fingerprint" mode="aspectFit" />
       </view>
       <!-- 指纹登录隐私勾选（与微信端对称） -->
       <view class="login-page__remember login-page__remember--wechat" @click="toggleFingerprintAgree">
@@ -182,7 +182,11 @@ import wxIcon from '../../assets/images/dl_wx.png'
 // App 端生物识别（指纹）一键登录相关（仅 App 端使用）
 // #ifdef APP
 import { useBiometric } from '../../composables/useBiometric'
+import { useThemeIcon } from '../../composables/useThemeIcon'
 import fingerprintIcon from '../../assets/images/dl_fingerprint.png'
+
+// 指纹图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+const fingerprint = useThemeIcon('dl_fingerprint.png', fingerprintIcon)
 // #endif
 
 useShare({ title: t('share.login') })

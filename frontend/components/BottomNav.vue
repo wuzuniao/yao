@@ -7,8 +7,8 @@
     >
       <image 
         class="bottom-nav__icon bottom-nav__icon--home" 
-        :src="active === 'home' ? homeActiveIcon : homeInactiveIcon" 
-        mode="aspectFit" 
+        :src="active === 'home' ? homeActive : homeInactive"
+        mode="aspectFit"
       />
       <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'home' }">{{ $t('nav.home') }}</text>
     </view>
@@ -20,8 +20,8 @@
     >
       <image 
         class="bottom-nav__icon bottom-nav__icon--record" 
-        :src="active === 'record' ? recordActiveIcon : recordInactiveIcon" 
-        mode="aspectFit" 
+        :src="active === 'record' ? recordActive : recordInactive"
+        mode="aspectFit"
       />
       <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'record' }">{{ $t('nav.record') }}</text>
     </view>
@@ -33,7 +33,7 @@
     >
       <image
         class="bottom-nav__icon bottom-nav__icon--settings"
-        :src="active === 'settings' ? settingsActiveIcon : settingsInactiveIcon"
+        :src="active === 'settings' ? settingsActive : settingsInactive"
         mode="aspectFit"
       />
       <text class="bottom-nav__text" :class="{ 'bottom-nav__text--active': active === 'settings' }">{{ $t('nav.settings') }}</text>
@@ -49,6 +49,15 @@ import recordInactiveIcon from '../assets/images/dh_jilu_0.png'
 import settingsActiveIcon from '../assets/images/dh_shezhi_1.png'
 import settingsInactiveIcon from '../assets/images/dh_shezhi_0.png'
 import { useGuideTarget } from '../composables/useGuideTarget'
+import { useThemeIcon } from '../composables/useThemeIcon'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+const homeActive = useThemeIcon('dh_shouye_1.png', homeActiveIcon)
+const homeInactive = useThemeIcon('dh_shouye_0.png', homeInactiveIcon)
+const recordActive = useThemeIcon('dh_jilu_1.png', recordActiveIcon)
+const recordInactive = useThemeIcon('dh_jilu_0.png', recordInactiveIcon)
+const settingsActive = useThemeIcon('dh_shezhi_1.png', settingsActiveIcon)
+const settingsInactive = useThemeIcon('dh_shezhi_0.png', settingsInactiveIcon)
 
 useGuideTarget('home-tab', '.guide-target-home-tab')
 useGuideTarget('settings-tab', '.guide-target-settings-tab')

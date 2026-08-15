@@ -9,7 +9,8 @@
     "dev:h5": "node scripts/run-uni.js dev h5",
     "build:h5": "node scripts/run-uni.js build h5",
     "dev:app": "node scripts/run-uni.js dev app",
-    "build:app": "node scripts/run-uni.js build app"
+    "build:app": "node scripts/run-uni.js build app",
+    "gen:theme-icons": "node scripts/gen-theme-icons.js"
   },
   "keywords": [],
   "author": "",

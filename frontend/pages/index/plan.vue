@@ -9,7 +9,7 @@
 
       <!-- 新建计划入口卡（点击后切换为"新建计划详情"表单卡，隐藏所有已有计划） -->
       <view class="plan-page__new-entry guide-target-new-plan" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
-        <image class="plan-page__new-entry-icon" :src="jiaJihuaIcon" mode="aspectFit" />
+        <image class="plan-page__new-entry-icon" :src="jiaJihua" mode="aspectFit" />
         <text class="plan-page__new-entry-text">{{ $t('plan.newEntry') }}</text>
       </view>
 
@@ -81,7 +81,7 @@
             <view class="plan-page__time-label-row">
               <text class="plan-page__label">{{ $t('plan.time') }}</text>
               <view class="plan-page__add-time" @click="handleAddTime">
-                <image class="plan-page__add-time-icon" :src="jiaShijianIcon" mode="aspectFit" />
+                <image class="plan-page__add-time-icon" :src="jiaShijian" mode="aspectFit" />
                 <text class="plan-page__add-time-text">{{ $t('plan.addTime') }}</text>
               </view>
             </view>
@@ -280,7 +280,7 @@
               <view class="plan-page__time-label-row">
                 <text class="plan-page__label">{{ $t('plan.time') }}</text>
                 <view class="plan-page__add-time" @click="handleEditAddTime">
-                  <image class="plan-page__add-time-icon" :src="jiaShijianIcon" mode="aspectFit" />
+                  <image class="plan-page__add-time-icon" :src="jiaShijian" mode="aspectFit" />
                   <text class="plan-page__add-time-text">{{ $t('plan.addTime') }}</text>
                 </view>
                 </view>
@@ -411,8 +411,14 @@ import jiaJihuaIcon from '../../assets/images/jia_jihua.png'
 import jiaShijianIcon from '../../assets/images/jia_shijian.png'
 import shanchuIcon from '../../assets/images/shanchu.png'
 import baocunJihuaIcon from '../../assets/images/baocun_jihua.png'
+import { useThemeIcon } from '../../composables/useThemeIcon'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+// shanchu（删除红）/baocun_jihua（白色）不参与换色，保持原引用
+const jiaJihua = useThemeIcon('jia_jihua.png', jiaJihuaIcon)
+const jiaShijian = useThemeIcon('jia_shijian.png', jiaShijianIcon)
 
 useShare({ title: t('share.plan') })
 

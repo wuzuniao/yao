@@ -1,6 +1,6 @@
 <template>
   <view class="back-button" :style="positionStyle" @click="handleClick">
-    <image class="back-button__icon" :src="backIcon" mode="aspectFit" />
+    <image class="back-button__icon" :src="backSrc" mode="aspectFit" />
   </view>
 </template>
 
@@ -22,7 +22,11 @@
  *   - Vue 3 组件基础：https://cn.vuejs.org/guide/essentials/component-basics.html
  */
 import { computed } from 'vue'
+import { useThemeIcon } from '../composables/useThemeIcon'
 import backIcon from '../assets/images/fanhui.png'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+const backSrc = useThemeIcon('fanhui.png', backIcon)
 
 const props = defineProps({
   // 距顶部偏移：基于设备状态栏高度动态计算，确保各机型顶部留白一致

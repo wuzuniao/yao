@@ -19,7 +19,7 @@
         <!-- 站内信卡片（无删除图标、无点击事件，不允许修改） -->
         <view v-if="hasZnx" class="notification-page__card">
           <view class="notification-page__card-info">
-            <image class="notification-page__card-icon" :src="znxIcon" mode="aspectFit" />
+            <image class="notification-page__card-icon" :src="znx" mode="aspectFit" />
             <view class="notification-page__card-text">
               <text class="notification-page__card-title">{{ $t('notification.inApp') }}</text>
               <text class="notification-page__card-subtitle">{{ $t('notification.inAppDesc') }}</text>
@@ -31,7 +31,7 @@
         <view v-for="ch in emailChannels" :key="ch.id">
           <view class="notification-page__card" :class="{ 'notification-page__card--disabled': !ch.enabled }" @click="toggleEmailEdit(ch.id)">
             <view class="notification-page__card-info">
-              <image class="notification-page__card-icon" :src="yxIcon" mode="aspectFit" />
+              <image class="notification-page__card-icon" :src="yx" mode="aspectFit" />
               <view class="notification-page__card-text">
                 <text class="notification-page__card-title">{{ $t('notification.email') }}</text>
                 <text class="notification-page__card-subtitle">{{ ch.email_config?.email || $t('notification.emailPlaceholder') }}</text>
@@ -448,8 +448,14 @@ import { useAppPush } from '../../composables/useAppPush'
 import znxIcon from '../../assets/images/tz_znx.png'
 import yxIcon from '../../assets/images/tz_yx.png'
 import deleteIcon from '../../assets/images/shanchu.png'
+import { useThemeIcon } from '../../composables/useThemeIcon'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+// tz_yx 信封主体/描边走中性阶映射；delete（删除红）不参与换色，保持原引用
+const znx = useThemeIcon('tz_znx.png', znxIcon)
+const yx = useThemeIcon('tz_yx.png', yxIcon)
 
 useShare({ title: t('share.notification') })
 

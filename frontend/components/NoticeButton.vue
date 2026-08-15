@@ -7,8 +7,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useUserStore } from '../store/modules/user'
+import { useThemeIcon } from '../composables/useThemeIcon'
 import noticeInactiveIcon from '../assets/images/tongzhi_0.png'
 import noticeActiveIcon from '../assets/images/tongzhi_1.png'
+
+// 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
+const noticeInactive = useThemeIcon('tongzhi_0.png', noticeInactiveIcon)
+const noticeActive = useThemeIcon('tongzhi_1.png', noticeActiveIcon)
 
 const props = defineProps({
   // 距顶部偏移：基于设备状态栏高度动态计算，确保各机型顶部留白一致
@@ -25,7 +30,7 @@ const userStore = useUserStore()
 // 图标由全局未读数量驱动：有未读显示 tongzhi_1.png，无消息/全部已读显示 tongzhi_0.png
 // 未读数量仅在打开站内信页（messages.vue）或首页打卡成功时查询更新，不在含 NoticeButton 的页面切换时触发
 const iconSrc = computed(() => {
-  return userStore.unreadCount > 0 ? noticeActiveIcon : noticeInactiveIcon
+  return userStore.unreadCount > 0 ? noticeActive.value : noticeInactive.value
 })
 
 // 动态计算 top：若未传入 top，则基于 statusBarHeight 计算
