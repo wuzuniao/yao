@@ -25,7 +25,7 @@
               <text class="contact-page__item-value">{{ $t('contact.wechatName') }}</text>
               <view class="contact-page__qr-wrap">
                 <view class="contact-page__qr-bg">
-                  <image class="contact-page__qr-img" :src="wxIcon" mode="aspectFit" />
+                  <image class="contact-page__qr-img" :src="wxQrSrc" mode="aspectFit" />
                 </view>
               </view>
             </view>
@@ -38,7 +38,7 @@
               <text class="contact-page__item-value">278634838</text>
               <view class="contact-page__qr-wrap">
                 <view class="contact-page__qr-bg">
-                  <image class="contact-page__qr-img" :src="qqIcon" mode="aspectFit" />
+                  <image class="contact-page__qr-img" :src="qqQrSrc" mode="aspectFit" />
                 </view>
               </view>
             </view>
@@ -59,12 +59,25 @@
  *  - QQ群：278634838（含二维码图片）
  * 纯展示页面，无交互逻辑
  */
+import { computed } from 'vue'
 import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
+import { useThemeStore } from '../../store/modules/theme'
 import wxIcon from '../../assets/images/ewm_wx.png'
+import wxIconDark from '../../assets/images/ewm_wx_s.png'
 import qqIcon from '../../assets/images/ewm_qq.png'
+import qqIconDark from '../../assets/images/ewm_qq_s.png'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
+
+// 二维码底色随主题明暗切换：卡片为深色的主题（lavender/crimson/gold）用 _s 白底黑码，
+// 在深色卡片上以亮块浮起保证可扫；其余主题（含 ink，卡片纯白且操作图标为墨黑主色）
+// 用黑底白码，与浅色卡片形成强对比。响应式跟随 themeStore，切主题即时换图
+const DARK_THEMES = ['lavender', 'crimson', 'gold']
+const themeStore = useThemeStore()
+const isDarkTheme = computed(() => DARK_THEMES.includes(themeStore.current))
+const wxQrSrc = computed(() => (isDarkTheme.value ? wxIconDark : wxIcon))
+const qqQrSrc = computed(() => (isDarkTheme.value ? qqIconDark : qqIcon))
 
 useShare({ title: t('share.contact') })
 </script>
@@ -141,16 +154,18 @@ useShare({ title: t('share.contact') })
   font-weight: 400;
 }
 
-/* ===== 二维码区（对应设计稿 Margin + Background 140x140）===== */
+/* ===== 二维码区 ===== */
 .contact-page__qr-wrap {
   padding-top: 24rpx;
 }
 
+/* 尺寸保持图片自身大小（150x150，px 固定不随屏幕缩放）；
+ * 小程序 image 组件不设尺寸会回落 320x240 默认值，故须显式声明与原图一致的 150px */
 .contact-page__qr-bg {
-  width: 280rpx;
-  height: 280rpx;
+  width: 150px;
+  height: 150px;
   background: var(--color-separator);
-  border-radius: 16rpx;
+  border-radius: 8px;
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -158,8 +173,8 @@ useShare({ title: t('share.contact') })
 }
 
 .contact-page__qr-img {
-  width: 280rpx;
-  height: 280rpx;
+  width: 150px;
+  height: 150px;
 }
 
 /* ===== 平板/折叠屏断点（≥768px）=====
@@ -190,15 +205,6 @@ useShare({ title: t('share.contact') })
   }
   .contact-page__qr-wrap {
     padding-top: 12px;
-  }
-  .contact-page__qr-bg {
-    width: 140px;
-    height: 140px;
-    border-radius: 8px;
-  }
-  .contact-page__qr-img {
-    width: 140px;
-    height: 140px;
   }
 }
 </style>
