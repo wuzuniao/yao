@@ -40,3 +40,16 @@ export const API_BASE_URL = IS_APP
 // 在任意平台都需能静态解析到该名字，避免非微信端打包时「未导出」构建失败。
 // 实际仅微信小程序端使用，使用处由 #ifdef MP-WEIXIN 隔离，非微信端取到空串由调用方兜底。
 export const WX_SUBSCRIBE_TEMPLATE_ID = 'Tvn1TtWubjqi0RrYRRTjQgg9qaTB3Fntzt0Jju8RmEY'
+
+// 分享封面图（词云 + logo，500x400 PNG）的网络地址
+// --------------------------------------------------------------------------
+// 图片单份存放于 frontend/static/share-cover.png（App/H5 构建随 static 目录正常
+// 拷贝；H5 部署后通过 https://yao.wuzuniao.com/static/share-cover.png 访问）。
+// 小程序构建不含此本地图片：由 vite.config.js 的 removeUnusedAssetsForMpWeixin
+// 插件在打包完成后从产物清理（与 static/app-icons 同模式），避免撑大主包。
+// 各端分享统一引用此 https 网络地址。
+// 开发与生产同值：纯静态资源无环境差异；H5 未部署前小程序分享封面
+// 加载不到该图会回落自动截图，不影响其他功能。
+// 注意：小程序真机使用网络图片作为分享封面，须在小程序管理后台将
+// yao.wuzuniao.com 配置为 downloadFile 合法域名（开发者工具关闭校验时可直接预览）。
+export const SHARE_COVER_URL = 'https://yao.wuzuniao.com/static/share-cover.png'

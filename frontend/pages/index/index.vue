@@ -207,6 +207,9 @@ import { useWechatSubscribe } from '../../composables/useWechatSubscribe'
 import { useAppPush } from '../../composables/useAppPush'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 
+// 分享配置：仅传 title，封面图由 useShare 默认引用 SHARE_COVER_URL（H5 站点托管的
+// 词云图 https 网络地址，见 config/env.js）。分享钩子由 main.js 全局 shareMixin
+// 统一为所有页面注入（composable 内注册不会被编译器检测，机制详见 useShare.js）
 useShare({ title: t('share.home') })
 
 const guideStore = useGuideStore()

@@ -16,6 +16,9 @@ import pinia from './store'
 import { useThemeStore } from './store/modules/theme'
 import { useLanguageStore } from './store/modules/language'
 import { t } from './locale'
+// #ifdef MP-WEIXIN
+import { SHARE_COVER_URL } from './config/env'
+// #endif
 
 // 主题同步 mixin：为所有组件提供响应式 themeKey（= themeStore.current）。
 // 页面根 view 绑 :data-theme="themeKey" 即可全端换肤。
@@ -47,11 +50,42 @@ const langMixin = {
   }
 }
 
+// #ifdef MP-WEIXIN
+// 分享 mixin：为所有页面统一注入 onShareAppMessage / onShareTimeline options 钩子。
+// 机制：uni-app 编译器只检测页面源码中直接调用的分享钩子（__runtimeHooks），
+// composable 内注册检测不到（详见 composables/useShare.js 头注释）；而 uni-app
+// 运行时的 initMixinRuntimeHooks 会扫描全局 mixin 中的分享钩子，为每个页面注入
+// 小程序侧桥接方法 → 微信调用页面分享回调 → $callHook → 本 mixin 钩子。
+// 每页分享内容（title/path/imageUrl）由页面内 useShare() 挂到实例的
+// $shareConfig 提供；未调用 useShare 的页面回落默认标题 + 统一词云封面。
+const shareMixin = {
+  onShareAppMessage() {
+    const cfg = this.$shareConfig
+    if (!cfg) {
+      return { title: t('share.default'), imageUrl: SHARE_COVER_URL }
+    }
+    const result = { title: cfg.title, imageUrl: cfg.imageUrl }
+    if (cfg.path) result.path = cfg.path
+    return result
+  },
+  onShareTimeline() {
+    const cfg = this.$shareConfig
+    return {
+      title: cfg && cfg.title,
+      imageUrl: cfg ? cfg.imageUrl : SHARE_COVER_URL
+    }
+  }
+}
+// #endif
+
 export function createApp() {
   const app = createSSRApp(App)
   app.use(pinia)
   app.mixin(themeMixin)
   app.mixin(langMixin)
+  // #ifdef MP-WEIXIN
+  app.mixin(shareMixin)
+  // #endif
   return {
     app
   }
