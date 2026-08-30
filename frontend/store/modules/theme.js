@@ -6,18 +6,20 @@ const THEME_STORAGE_KEY = 'app-theme'
 
 // 主题清单（与 global.scss 中 [data-theme] 方案一一对应）
 // key 用于 data-theme 属性与持久化；name 为用户可见名称（按代表色命名）；
-// swatch 为选项预览色（主题代表色），用于 profile.vue 主题选择器的色块展示。
+// swatch 为选项预览色，统一取各主题 global.scss 的 --palette-brand-light（品牌亮色），
+// 展示主题最鲜明的代表色；ink 主题品牌亮色为浅灰不可辨，取墨黑本色 #171717。
+// 用于 profile.vue 主题选择器的色块展示。
 export const THEME_LIST = [
-  { key: 'green', name: '青绿', swatch: '#2f6c00' },
+  { key: 'green', name: '青绿', swatch: '#9fe870' },
   { key: 'ink', name: '墨黑', swatch: '#171717' },
-  { key: 'indigo', name: '靛蓝', swatch: '#533afd' },
-  { key: 'cyan', name: '青碧', swatch: '#0891b2' },
-  { key: 'amber', name: '琥珀', swatch: '#f59e0b' },
-  { key: 'coral', name: '珊瑚', swatch: '#ff6b5e' },
-  { key: 'rose', name: '玫瑰', swatch: '#e11d74' },
-  { key: 'crimson', name: '绯红', swatch: '#dc2626' },
-  { key: 'gold', name: '流金', swatch: '#c9a227' },
-  { key: 'lavender', name: '薰衣草', swatch: '#5e6ad2' }
+  { key: 'indigo', name: '靛蓝', swatch: '#b9b9f9' },
+  { key: 'cyan', name: '青碧', swatch: '#67d3ea' },
+  { key: 'amber', name: '琥珀', swatch: '#fbbf24' },
+  { key: 'coral', name: '珊瑚', swatch: '#ff9b91' },
+  { key: 'rose', name: '玫瑰', swatch: '#f472b6' },
+  { key: 'crimson', name: '绯红', swatch: '#f87171' },
+  { key: 'gold', name: '流金', swatch: '#e3c45c' },
+  { key: 'lavender', name: '薰衣草', swatch: '#828fff' }
 ]
 
 export const useThemeStore = defineStore('theme', () => {

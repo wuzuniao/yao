@@ -301,6 +301,10 @@
         }
       }
     },
+    ".vscode": {
+      "描述": "VS Code / CodeBuddy IDE 配置目录（不依赖 Python 扩展的任务配置）",
+      "tasks.json": "一键运行后端任务（2026-08-30 新增）：「启动后端 (run.py)」以 backend/venv 的 Python 在 backend 目录下运行 run.py，默认 build 任务（Ctrl+Shift+B 触发）；规避 CodeBuddy IDE 未装 Python 扩展时「运行」按钮报 command 'python.execInTerminal-icon' not found 的问题"
+    },
     ".gitignore": "Git忽略文件配置（Python虚拟环境/敏感配置.env/测试覆盖率/缓存/IDE/临时文件）",
     "README.md": "项目说明文档（功能特性/技术栈/项目结构/快速开始/环境配置/API文档/测试/部署指南）",
     "AGENTS.md": "AI 编程执行行为约束文件（核心原则/新会话初始化/文档同步/质量门禁/禁止事项/参考文档），仅保留 AI 必须执行的规范；固定项目技术规范已拆分至 项目规范.md，每次对话须先读取两者",
