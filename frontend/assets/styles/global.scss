@@ -105,6 +105,7 @@ page,
   --color-link: var(--palette-link);                 /* 链接文字 */
   --color-error-text: var(--palette-error-text);     /* 错误提示文字（列表态） */
   --color-text-inverse: var(--palette-neutral-0);    /* 反色文字：彩色背景上的白字/图标 */
+  --color-text-secondary-inverse: var(--palette-neutral-50); /* 反转卡上的次级文本：各主题中调（PRO 深色板签名），在 inverse 卡上任意主题均与底色拉开明度差 */
 
   /* ----- 品牌色 ----- */
   --color-brand: var(--palette-brand-base);          /* 主品牌绿：主按钮、强调态 */
@@ -120,6 +121,7 @@ page,
 
   /* ----- 卡片 / 容器 ----- */
   --color-card-bg: var(--palette-neutral-0);         /* 卡片背景 */
+  --color-card-bg-inverse: var(--palette-neutral-100); /* 反转卡片背景：会员深色卡（亮色主题取近黑，暗色主题取近白） */
   --color-card-bg-alt: var(--palette-neutral-10);    /* 输入框、次级容器背景 */
   --color-border: var(--palette-neutral-40);         /* 卡片内描边、分隔线 */
   --color-border-input: var(--palette-neutral-55);   /* 输入框外描边 */
@@ -141,6 +143,8 @@ page,
   --shadow-popup: 0 4px 6px -4px rgba(0, 0, 0, 0.1),        /* 弹层/悬浮卡阴影 */
                   0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.15);           /* 高亮浮起阴影 */
+  --shadow-elevated: 0 8px 10px -6px rgba(0, 0, 0, 0.1),    /* 大浮起阴影：管理员资料卡与描边头像 */
+                  0 20px 25px -5px rgba(0, 0, 0, 0.1);
   --shadow-body-center: 0 0 12px rgba(0, 0, 0, 0.08);       /* H5 居中容器投影 */
 
   /* ----- 遮罩（半透明黑，按透明度分档）----- */
@@ -152,6 +156,23 @@ page,
   --color-brand-glow: rgba(159, 232, 112, 0.6);     /* 光晕标准档 */
   --color-brand-glow-soft: rgba(159, 232, 112, 0.4);/* 光晕柔和档 */
   --color-brand-glow-strong: rgba(159, 232, 112, 0.8); /* 光晕强档 */
+  --color-brand-glow-faint: rgba(159, 232, 112, 0.12); /* 光晕微光档：会员卡右上装饰光斑（源自品牌浅绿 #9fe870） */
+
+  /* ----- 白色高光（PRO 绿块自上而下渐变叠层，参考图采样拟合） ----- */
+  --color-highlight-strong: rgba(255, 255, 255, 0.23); /* 强高光：PRO 绿横幅渐变顶 */
+  --color-highlight-faint: rgba(255, 255, 255, 0.07);  /* 弱高光：PRO 绿横幅渐变底 */
+
+  /* ----- 会员支付页（科技深色转化版固定皮肤，不随主题换肤；色值源自 Figma node 3-88） ----- */
+  --color-pay-bg: #0e0f0c;                  /* 页面背景：近黑（与 green 主题主文本近黑同源） */
+  --color-pay-title: #e8ebe6;               /* 主标题：近白 */
+  --color-pay-text: #c4c7c3;                /* 次级文本：副标题、权益卡正文、价格单位 */
+  --color-pay-muted: #868685;               /* 弱化提示：原价删除线、支付安全提示 */
+  --color-pay-card: #2f3131;                /* 权益卡底：深灰 */
+  --color-pay-card-border: #e2e2e2;         /* 权益卡 1px 内描边：亮灰 */
+  --color-pay-accent: #acf67c;              /* 强调亮绿：权益卡标题、价格、订阅按钮底、胶囊文字 */
+  --color-pay-accent-text: #092100;         /* 订阅按钮深绿文字 */
+  --color-pay-pill: #2d3d23;                /* 限时胶囊底：亮绿 20% 叠页面深底的实测值 */
+  --color-pay-glow: rgba(172, 246, 124, 0.4); /* 订阅按钮外发光光晕 */
 }
 
 /* ==========================================================================

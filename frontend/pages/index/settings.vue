@@ -5,14 +5,58 @@
     <view class="settings-page__main">
       <!-- 用户资料卡 + 公告管理（靠近，减少间距） -->
       <view class="settings-page__near-group">
-        <!-- 用户资料卡片 -->
-        <view class="settings-page__profile-card guide-target-profile-card" @click="goProfileOrLogin">
+        <!-- 用户资料卡片（普通版式：未登录或角色等级 ≤1） -->
+        <view v-if="!isAdminProfile" class="settings-page__profile-card guide-target-profile-card" @click="goProfileOrLogin">
+          <!-- 左侧品牌色装饰竖条（设计稿样式，覆盖卡片左缘全高） -->
+          <view class="settings-page__profile-accent"></view>
           <view class="settings-page__profile-info">
             <text class="settings-page__profile-name">{{ displayName }}</text>
             <text class="settings-page__profile-slogan">{{ displaySlogan }}</text>
           </view>
           <view class="settings-page__profile-avatar-wrap">
             <image v-if="avatarUrl" class="settings-page__profile-avatar" :src="avatarUrl" mode="aspectFit" />
+          </view>
+          <!-- 右上角 45° 斜切角（页面背景色三角覆盖形成，与右下 40px 圆角几何呼应） -->
+          <view class="settings-page__profile-notch"></view>
+        </view>
+
+        <!-- 用户资料卡片（管理员版式：已登录且角色等级 >1；Kinetic Asymmetric Cut 设计稿——上绿 PRO 横幅 + 下深信息板错位叠放） -->
+        <view v-else class="settings-page__kinetic-card guide-target-profile-card" @click="goProfileOrLogin">
+          <!-- 上半：品牌绿横幅（PRO 徽标 + 头像直接落绿底、无环无裁剪），右下 48px 圆角 -->
+          <view class="settings-page__kinetic-hero">
+            <view class="settings-page__kinetic-pro-wrap">
+              <text class="settings-page__kinetic-pro">{{ $t('settings.proBadge', { level: memberLevel }) }}</text>
+            </view>
+            <image v-if="avatarUrl" class="settings-page__kinetic-avatar" :src="avatarUrl" mode="widthFix" />
+          </view>
+          <!-- 下半：深色信息板（左上 48px 圆角，上叠 24px，弧外月牙露出绿横幅与白卡底） -->
+          <view class="settings-page__kinetic-panel">
+            <text class="settings-page__kinetic-name">{{ displayName }}</text>
+            <view v-if="displaySlogan" class="settings-page__kinetic-slogan-box">
+              <text class="settings-page__kinetic-slogan">{{ displaySlogan }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 会员卡片（仅登录的普通用户 role=0 可见；深色权益卡，样式与内容均为纯前端静态展示） -->
+        <view v-if="showMemberCard" class="settings-page__member-card">
+          <view class="settings-page__member-glow"></view>
+          <view class="settings-page__member-info">
+            <view class="settings-page__member-badge">
+              <image class="settings-page__member-badge-icon" :src="huiyuanIcon" mode="aspectFit" />
+              <text class="settings-page__member-badge-text">{{ $t('settings.memberBadgeTitle') }}</text>
+            </view>
+            <text class="settings-page__member-title">{{ $t('settings.memberTitle') }}</text>
+          </view>
+          <view class="settings-page__member-price-row">
+            <text class="settings-page__member-price">{{ $t('settings.memberPrice') }}</text>
+            <view class="settings-page__member-price-meta">
+              <text class="settings-page__member-price-original">{{ $t('settings.memberOriginalPrice') }}</text>
+              <text class="settings-page__member-price-unit">{{ $t('settings.memberPriceUnit') }}</text>
+            </view>
+          </view>
+          <view class="settings-page__member-btn" hover-class="settings-page__member-btn--hover" :hover-stay-time="70" @click="goMemberPay">
+            <text class="settings-page__member-btn-text">{{ $t('settings.memberBuyNow') }}</text>
           </view>
         </view>
 
@@ -90,6 +134,11 @@
  *  - 用户资料卡：展示昵称、个性签名、头像
  *    - 已登录：显示用户信息，点击跳转 profile.vue
  *    - 未登录：用户名显示"请登录"，点击跳转 login.vue
+ *  - 会员卡片：深色权益卡（徽章、主题权益标题、价格、抢购按钮），
+ *    仅登录的普通用户（role=0）显示，未登录及 role≥1（含管理员）隐藏
+ *  - 资料卡双版式：未登录/角色 0 用普通白卡版式；
+ *    已登录且角色 ≥1 用管理员版式（Kinetic Asymmetric Cut：上绿 PRO 横幅 + 下深信息板，
+ *    PRO 徽标后数字动态显示用户角色等级）
  *  - 分组 1（功能入口）：制定计划（含进行中状态徽章 + 绿色箭头）、通知方式
  *  - 分组 2（帮助入口）：帮助中心、联系我们、隐私政策
  *  - 底部固定导航栏（BottomNav），当前激活项为"设置"
@@ -102,6 +151,7 @@ import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import touxiangHei from '../../assets/images/touxiang/hei.png'
 import touxiangHong from '../../assets/images/touxiang/hong.png'
 import touxiangLan from '../../assets/images/touxiang/lan.png'
+import huiyuanIcon from '../../assets/images/huiyuan.png'
 import { useUserStore } from '../../store/modules/user'
 import { useGuideStore } from '../../store/modules/guide'
 import { listNotificationChannels } from '../../api/modules/notification'
@@ -126,6 +176,15 @@ const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 
 // 是否为管理员（role=7）
 const isAdmin = computed(() => userStore.userInfo?.role === 7)
+
+// 用户角色等级（未登录为 0），驱动 PRO 徽标数字与管理员版式判断
+const memberLevel = computed(() => userStore.userInfo?.role ?? 0)
+
+// 是否使用管理员版式资料卡：已登录且角色等级 ≥1（Kinetic Asymmetric Cut 设计稿版式）
+const isAdminProfile = computed(() => memberLevel.value >= 1)
+
+// 是否显示会员卡片：仅登录且角色等级为 0（普通用户）时显示，未登录及 role≥1（含管理员）隐藏
+const showMemberCard = computed(() => !!userStore.userInfo && userStore.userInfo.role === 0)
 
 // 管理员按钮出现/消失会导致设置页布局变化（公告管理卡片插入用户资料卡与功能入口之间），
 // 引导激活时需重新查询所有目标位置，确保高亮与实际按钮匹配
@@ -262,6 +321,11 @@ function goAnnouncement() {
   navigate('/pages/user/announcement')
 }
 
+// 会员卡片「立即抢购」→ 会员支付页（user 分包，前端静态页）
+function goMemberPay() {
+  navigate('/pages/user/member-pay')
+}
+
 // 用户资料卡点击跳转：已登录跳转 profile.vue，未登录跳转 login.vue
 function goProfileOrLogin() {
   const url = userStore.userInfo ? '/pages/user/profile' : '/pages/user/login'
@@ -336,17 +400,155 @@ function goAgreement() {
 .settings-page__profile-card {
   position: relative;
   width: 100%;
-  height: 290rpx;
+  height: 286rpx;
   padding: 48rpx;
   box-sizing: border-box;
-  border-radius: 48rpx;
+  /* 设计稿仅右下角 40px 大圆角，其余三角直角 */
+  border-radius: 0 0 80rpx 0;
   background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
+  /* 阴影收紧为紧贴边缘的微阴影（--shadow-card）：切角由页面背景色三角覆盖形成，
+     大范围扩散阴影（--shadow-popup）会沿矩形轮廓在右上切角处残留穿帮，
+     换用紧贴边框的 1px 级微影后切角旁阴影肉眼不可辨 */
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
   overflow: hidden;
+}
+
+/* 左缘品牌色装饰竖条（全高，绝对定位不参与 flex 布局） */
+.settings-page__profile-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12rpx;
+  height: 100%;
+  background: var(--color-brand-bg);
+}
+
+/* 右上角 45° 斜切角：40px×40px 页面背景色直角三角覆盖卡片角形成，
+   斜边自顶边距右缘 40px 处切至右缘距顶 40px 处（设计稿实测值）；
+   采用 border 三角 + var(--page-bg-color) 而非 clip-path——
+   后者会连 box-shadow 一并裁掉且小程序端兼容性弱 */
+.settings-page__profile-notch {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-top: 80rpx solid var(--page-bg-color);
+  border-left: 80rpx solid transparent;
+}
+
+/* ===== 用户资料卡片·管理员版式（Kinetic Asymmetric Cut，role>1） ===== */
+/* 外层卡：底色取页面背景色（两块层叠衔接处的月牙区不露纯白，与页面浑然一体），
+   左上/右下 48px 大圆角，overflow 裁出整体轮廓；
+   阴影用紧贴边缘的 1px 级微影（--shadow-card）：大扩散阴影（--shadow-elevated）会在
+   卡左右两侧的页面背景上残留约 4-6px 宽暗色带（尤其绿黑重叠高度的左右两端最显眼，
+   实测卡缘外 2px 处 rgb(223,226,221) vs 页面 rgb(232,235,230)），与 profile-card 切角
+   穿帮问题同源，换微影后卡外背景与页面浑然一体 */
+.settings-page__kinetic-card {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 96rpx 0 96rpx 0;
+  background: var(--page-bg-color);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 上半绿横幅（上层）：品牌浅绿 + 自上而下白高光渐变，右下 48px 圆角——弧外月牙露
+   底层黑板，形成「绿卡叠在黑卡上」的错位叠压关系；padding-right 12px 使头像
+   距横幅右缘固定 12px */
+.settings-page__kinetic-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 48rpx;
+  padding-right: 12px;
+  border-radius: 0 0 96rpx 0;
+  background-color: var(--color-brand-bg);
+  background-image: linear-gradient(180deg, var(--color-highlight-strong), var(--color-highlight-faint));
+}
+
+/* PRO 文字容器：flex:1 占满头像左侧剩余宽度，文字在自身宽度内居中对齐 */
+.settings-page__kinetic-pro-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+/* PRO 徽标大字（设计稿 56px，粗体 + 斜体强调，带 1px 级微投影）；
+   单行完整显示（不用省略号截断） */
+.settings-page__kinetic-pro {
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  font-size: 112rpx;
+  line-height: 112rpx;
+  font-weight: 700;
+  font-style: italic;
+  text-shadow: var(--shadow-card);
+  white-space: nowrap;
+}
+
+/* 头像：不做圆形裁剪（widthFix 按图片原始比例完整显示），固定像素为图像自身大小
+   （原图 88x88，不随容器宽度改变），固定距横幅右缘 12px */
+.settings-page__kinetic-avatar {
+  width: 88px;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* 下半深色信息板（底层）：左上 48px 圆弧与右下角（外层卡容器圆弧）对称；
+   上叠 24px 藏于上层绿横幅之后（绿卡叠黑卡），左上弧外区上段被绿横幅覆盖、
+   下段露卡容器页面色（与页面背景一致）；padding-top 48px 使名字位于绿横幅底缘下方 24px 呼吸位 */
+.settings-page__kinetic-panel {
+  box-sizing: border-box;
+  margin-top: -48rpx;
+  padding: 96rpx 48rpx 48rpx;
+  border-radius: 96rpx 0 0 0;
+  background: var(--color-card-bg-inverse);
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+/* 用户名：品牌浅绿大字（设计稿 32px） */
+.settings-page__kinetic-name {
+  color: var(--color-brand-bg);
+  font-size: 64rpx;
+  line-height: 64rpx;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 签名框：仅左侧 4px 品牌绿竖线（设计稿实测，非四边描边） */
+.settings-page__kinetic-slogan-box {
+  border-left: 4px solid var(--color-brand-bg);
+  padding: 8rpx 0 8rpx 32rpx;
+}
+
+.settings-page__kinetic-slogan {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary-inverse);
+  font-size: 32rpx;
+  line-height: 52rpx;
+  font-weight: 400;
+  font-style: italic;
 }
 
 .settings-page__profile-info {
@@ -364,7 +566,7 @@ function goAgreement() {
   color: var(--color-text-primary);
   font-size: 56rpx;
   line-height: 70rpx;
-  font-weight: 600;
+  font-weight: 700;
   padding-bottom: 16rpx;
   /* 用户名单行截断，过长时显示省略号 */
   overflow: hidden;
@@ -399,6 +601,140 @@ function goAgreement() {
   width: 176rpx;
   height: 176rpx;
   z-index: 1;
+}
+
+/* ===== 会员卡片（设计稿深色权益卡） ===== */
+.settings-page__member-card {
+  position: relative;
+  width: 100%;
+  /* 中文内容自然高度恰为 278px，min-height 兜底防其他语言长文案撑破 */
+  min-height: 556rpx;
+  /* near-group 间距 32rpx + 此处 32rpx = 64rpx（设计稿两卡间距 32px） */
+  margin-top: 32rpx;
+  padding: 48rpx;
+  box-sizing: border-box;
+  border-radius: 24rpx;
+  background: var(--color-card-bg-inverse);
+  box-shadow: var(--shadow-popup);
+  display: flex;
+  flex-direction: column;
+  gap: 48rpx;
+  overflow: hidden;
+}
+
+/* 右上角品牌微光装饰圆（radial 渐隐，溢出部分被卡片裁剪） */
+.settings-page__member-glow {
+  position: absolute;
+  top: -32rpx;
+  right: -32rpx;
+  width: 192rpx;
+  height: 192rpx;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--color-brand-glow-faint) 0%, transparent 100%);
+}
+
+.settings-page__member-info {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+/* 徽章行：会员图标 + 标题 */
+.settings-page__member-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.settings-page__member-badge-icon {
+  width: 32rpx;
+  height: 42rpx;
+  flex-shrink: 0;
+}
+
+.settings-page__member-badge-text {
+  color: var(--color-brand-bg);
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 400;
+}
+
+.settings-page__member-title {
+  color: var(--color-text-inverse);
+  font-size: 48rpx;
+  line-height: 64rpx;
+  font-weight: 400;
+}
+
+/* 价格行：左侧大价格顶对齐，右侧说明组贴底 */
+.settings-page__member-price-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 140rpx;
+}
+
+.settings-page__member-price {
+  color: var(--color-brand-bg);
+  font-size: 96rpx;
+  line-height: 96rpx;
+  font-weight: 700;
+}
+
+.settings-page__member-price-meta {
+  display: flex;
+  flex-direction: column;
+  /* 底对齐：说明组贴价格行底部，与设计稿位置一致 */
+  align-self: flex-end;
+  margin-left: 20rpx;
+}
+
+.settings-page__member-price-original {
+  color: var(--color-text-inverse);
+  font-size: 24rpx;
+  line-height: 32rpx;
+  font-weight: 400;
+  /* 旧价格删除线（与会员支付页原价样式一致） */
+  text-decoration: line-through;
+}
+
+.settings-page__member-price-unit {
+  color: var(--color-brand-bg);
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 400;
+}
+
+/* 抢购按钮：品牌浅绿胶囊 */
+.settings-page__member-btn {
+  position: relative;
+  z-index: 1;
+  height: 96rpx;
+  border-radius: 9999px;
+  background: var(--color-brand-bg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+/* 按压态（hover-class）：对应设计稿 hover opacity 0.8 / click scale 0.95 */
+.settings-page__member-btn--hover {
+  opacity: 0.8;
+  transform: scale(0.95);
+}
+
+.settings-page__member-btn-text {
+  color: var(--color-brand-dark);
+  font-size: 32rpx;
+  line-height: 48rpx;
+  font-weight: 400;
 }
 
 /* ===== 分组 1 ===== */
@@ -596,9 +932,47 @@ function goAgreement() {
   }
   /* 用户资料卡片 */
   .settings-page__profile-card {
-    height: 145px;
+    height: 143px;
     padding: 24px;
-    border-radius: 24px;
+    border-radius: 0 0 40px 0;
+  }
+  .settings-page__profile-accent {
+    width: 6px;
+  }
+  .settings-page__profile-notch {
+    border-top-width: 40px;
+    border-left-width: 40px;
+  }
+  /* 管理员版式资料卡（Kinetic Asymmetric Cut） */
+  .settings-page__kinetic-card {
+    border-radius: 48px 0 48px 0;
+  }
+  .settings-page__kinetic-hero {
+    padding: 24px;
+    padding-right: 12px;
+    border-radius: 0 0 48px 0;
+  }
+  .settings-page__kinetic-pro {
+    font-size: 56px;
+    line-height: 56px;
+  }
+  .settings-page__kinetic-panel {
+    margin-top: -24px;
+    padding: 48px 24px 24px;
+    border-radius: 48px 0 0 0;
+    gap: 12px;
+  }
+  .settings-page__kinetic-name {
+    font-size: 32px;
+    line-height: 32px;
+  }
+  .settings-page__kinetic-slogan-box {
+    border-left-width: 4px;
+    padding: 4px 0 4px 16px;
+  }
+  .settings-page__kinetic-slogan {
+    font-size: 16px;
+    line-height: 26px;
   }
   .settings-page__profile-name {
     font-size: 28px;
@@ -616,6 +990,59 @@ function goAgreement() {
   .settings-page__profile-avatar {
     width: 88px;
     height: 88px;
+  }
+  /* 会员卡片 */
+  .settings-page__member-card {
+    min-height: 278px;
+    margin-top: 16px;
+    padding: 24px;
+    border-radius: 12px;
+    gap: 24px;
+  }
+  .settings-page__member-glow {
+    top: -16px;
+    right: -16px;
+    width: 96px;
+    height: 96px;
+  }
+  .settings-page__member-info {
+    gap: 8px;
+  }
+  .settings-page__member-badge {
+    gap: 4px;
+  }
+  .settings-page__member-badge-icon {
+    width: 16px;
+    height: 21px;
+  }
+  .settings-page__member-title {
+    font-size: 24px;
+    line-height: 32px;
+  }
+  .settings-page__member-price-row {
+    min-height: 70px;
+  }
+  .settings-page__member-price {
+    font-size: 48px;
+    line-height: 48px;
+  }
+  .settings-page__member-price-meta {
+    margin-left: 10px;
+  }
+  .settings-page__member-price-original {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .settings-page__member-price-unit {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .settings-page__member-btn {
+    height: 48px;
+  }
+  .settings-page__member-btn-text {
+    font-size: 16px;
+    line-height: 24px;
   }
   /* 靠近用户资料卡分组 */
   .settings-page__near-group {

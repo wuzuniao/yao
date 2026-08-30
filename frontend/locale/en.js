@@ -79,6 +79,7 @@ export default {
     announcement: 'Announcements',
     agreement: 'Terms of Service',
     privacy: 'Privacy Policy',
+    memberPay: 'Membership',
     help: 'Help Center',
     contact: 'Contact Us',
     deleteAccount: 'Account Deletion & Data'
@@ -301,7 +302,30 @@ export default {
     help: 'Help Center',
     contact: 'Contact Us',
     agreement: 'Terms of Service',
-    privacy: 'Privacy Policy'
+    privacy: 'Privacy Policy',
+    memberBadgeTitle: 'Member Benefits',
+    memberTitle: 'Unlock up to 10 personalized themes',
+    memberPrice: '$1',
+    memberOriginalPrice: 'was $6',
+    memberPriceUnit: '/ month',
+    memberBuyNow: 'Buy Now',
+    proBadge: 'PRO {level}'
+  },
+
+  // ===== Member pay page =====
+  pay: {
+    title: 'Pro Membership',
+    subtitle: 'Ultimate experience, start now',
+    perk1Title: 'Total Personalization',
+    perk1Text: 'Unlock up to 10 personalized themes to define your own interface',
+    perk2Title: 'Purely Seamless',
+    perk2Text: 'Remove all ads permanently for a distraction-free experience',
+    price: '$1',
+    priceUnit: '/ month',
+    priceOrigin: 'was $6',
+    pill: 'Save 83% now',
+    subscribe: 'Subscribe Now',
+    safeTip: 'Payments are securely handled by the app store'
   },
 
   // ===== Records page =====

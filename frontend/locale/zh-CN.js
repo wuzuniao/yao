@@ -88,6 +88,7 @@ export default {
     announcement: '公告管理',
     agreement: '服务协议',
     privacy: '隐私政策',
+    memberPay: '会员支付',
     help: '帮助中心',
     contact: '联系我们',
     deleteAccount: '账号删除与数据说明'
@@ -303,7 +304,30 @@ export default {
     help: '帮助中心',
     contact: '联系我们',
     agreement: '服务协议',
-    privacy: '隐私政策'
+    privacy: '隐私政策',
+    memberBadgeTitle: '会员专享权益',
+    memberTitle: '解锁多达十种个性化主题',
+    memberPrice: '$1',
+    memberOriginalPrice: '原价 $6',
+    memberPriceUnit: '/ 每月',
+    memberBuyNow: '立即抢购',
+    proBadge: 'PRO {level}'
+  },
+
+  // ===== 会员支付页 =====
+  pay: {
+    title: 'Pro会员',
+    subtitle: '终极体验，即刻开启',
+    perk1Title: '绝对个性化',
+    perk1Text: '解锁多达十种个性化主题，定义你的专属界面',
+    perk2Title: '极致纯净',
+    perk2Text: '永久移除所有广告，享受无干扰的流畅体验',
+    price: '$1',
+    priceUnit: '/ 月',
+    priceOrigin: '原价 $6',
+    pill: '限时节省 83%',
+    subscribe: '立即订阅',
+    safeTip: '支付安全由应用商店提供极致保障'
   },
 
   // ===== 打卡记录页 =====

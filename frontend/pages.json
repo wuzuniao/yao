@@ -116,6 +116,14 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "账号删除与数据说明 - 免登录删除入口"
           }
+        },
+        {
+          "path": "member-pay",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTextStyle": "white",
+            "navigationBarTitleText": "会员支付 - Pro 会员订阅"
+          }
         }
       ]
     }
