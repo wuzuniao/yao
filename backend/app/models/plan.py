@@ -1,15 +1,21 @@
+from datetime import date
+
 from sqlalchemy import Column, BigInteger, String, Integer, Date, SmallInteger, DateTime, Time, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from ..core.database import Base
 
+# 计划结束日期哨兵值：end_mode=1（按打卡次数）/2（长期不结束）时写入 end_date，
+# 保证调度查询（end_date >= notify_date）零改动即永续；展示层按 end_mode 分支处理
+PLAN_END_DATE_SENTINEL = date(9999, 12, 31)
+
 
 class CheckinPlan(Base):
     """
     打卡计划主表 ORM 模型（对应 wuzuniao_yao.checkin_plans 表）
     --------------------------------------------------------------------------
-    用户创建的每个打卡/通知计划，包含日期范围、状态等
+    用户创建的每个打卡/通知计划，包含日期范围、重复星期、结束方式、状态等
     """
 
     __tablename__ = "checkin_plans"
@@ -19,9 +25,12 @@ class CheckinPlan(Base):
     name = Column(String(100), nullable=False, comment="计划名称")
     remark = Column(String(255), nullable=True, comment="备注/描述")
     start_date = Column(Date, nullable=False, comment="开始日期")
-    end_date = Column(Date, nullable=False, comment="结束日期")
+    end_date = Column(Date, nullable=False, comment="结束日期（end_mode=1/2时存9999-12-31哨兵）")
+    repeat_weekdays = Column(SmallInteger, nullable=False, default=127, comment="重复星期位掩码：bit0=周一…bit6=周日，127=每天，31=工作日，96=周末")
+    end_mode = Column(SmallInteger, nullable=False, default=0, comment="结束方式：0-按end_date，1-按打卡总次数，2-长期不结束")
+    total_target_count = Column(Integer, nullable=True, comment="目标打卡总次数（end_mode=1时生效，达标后自动置status=0）")
     status = Column(SmallInteger, nullable=False, default=1, comment="状态：1-进行中，2-暂停，0-已结束")
-    priority = Column(Integer, nullable=False, default=3, comment="优先级：数字越小优先级越高（范围0-7，默认3）")
+    priority = Column(Integer, nullable=False, default=3, comment="优先级：数字越小优先级越高（范围0-3，默认3）")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -34,7 +43,7 @@ class PlanNotificationTime(Base):
     """
     每日通知时间点表 ORM 模型（对应 wuzuniao_yao.plan_notification_times 表）
     --------------------------------------------------------------------------
-    每个计划可设置多个通知时刻（如 08:00、20:00）
+    每个计划可设置多个通知时刻（如 08:00、20:00），每个时刻可独立配置提醒次数与间隔
     """
 
     __tablename__ = "plan_notification_times"
@@ -42,6 +51,8 @@ class PlanNotificationTime(Base):
     id = Column(BigInteger, primary_key=True, index=True)
     plan_id = Column(BigInteger, ForeignKey("checkin_plans.id"), nullable=False, index=True, comment="所属计划ID")
     notification_time = Column(Time, nullable=False, comment="每日通知时刻（HH:MM:SS）")
+    followup_count = Column(Integer, nullable=False, default=3, comment="提醒总次数（含准时）：3=默认三段式，1/2=自定义等间隔")
+    followup_interval_min = Column(Integer, nullable=False, default=10, comment="自定义等间隔分钟（5-60，followup_count=3时不生效）")
     created_at = Column(DateTime, server_default=func.now())
 
     plan = relationship("CheckinPlan", back_populates="notification_times")

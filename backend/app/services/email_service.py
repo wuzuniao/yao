@@ -163,7 +163,7 @@ class Email:
         self,
         to_email: str,
         subject: str,
-        content: str,
+        fields: list[tuple[str, str, bool]],
         smtp_host: str,
         smtp_port: int,
         from_email: str,
@@ -175,40 +175,30 @@ class Email:
         - 收件人 = to_email（users.email，即用户绑定的邮箱）
         - 端口 465 走 SSL，其他端口走 STARTTLS（兼容主流邮箱）
 
-        正文按"字段行"逐行渲染（参考验证码邮件样式，遵循 DESIGN-vercel.md 的 Geist 设计规范）：
-        - 约定调用方传入的 content 每行为一个字段，格式"字段名：值"或"字段名: 值"；
-          本方法按首个冒号（全角：或半角:）切分字段名/值，字段名用 mute 色 500 衬底，值用 ink 色 600 的 strong 突出（突出通知内容）。
-        - 无冒号的行作为普通段落整行渲染。
+        正文按"结构化字段"逐项渲染（参考验证码邮件样式，遵循 DESIGN-vercel.md 的 Geist 设计规范）：
+        - fields 为 (字段名, 值, 是否加粗) 三元组列表；字段名用 mute 色 500 衬底，
+          加粗值用 ink 色 600 突出（突出通知内容），不加粗值用正文灰色 400（如备注说明）。
+        - 值可含多行（如备注）：整体作为该字段的值渲染，换行转 <br>——
+          多行内容中即使含冒号也不会被误拆为新字段（旧版按行+冒号切分的协议已废弃）。
         - 字段行统一置于 hairline-soft 高亮容器内，前后各附一句引导与提示语。
         :raises RuntimeError: SMTP 连接或发送失败
         """
         home_url = "https://www.wuzuniao.com"
         logo_url = "https://www.wuzuniao.com/images/logo_wuzuniao_com_s.png"
 
-        # 将传入的纯文本 content 按行拆分，逐行渲染为"字段行"
-        # 识别首个冒号（全角：或半角:）切分字段名/值；无冒号的行作为普通段落整行渲染
+        # 逐字段渲染：字段名：值；值转义后换行转 <br>，按加粗标志选择值样式
         p_style = "margin:0 0 8px;font-size:14px;font-weight:400;line-height:20px;color:#4d4d4d;"
         field_rows: list[str] = []
-        for raw_line in content.split("\n"):
-            line = raw_line.strip()
-            if not line:
-                continue
-            label = ""
-            value = ""
-            sep_matched = ""
-            for sep in ("：", ":"):
-                idx = line.find(sep)
-                if idx > 0:
-                    label = line[:idx].strip()
-                    value = line[idx + len(sep):].strip()
-                    sep_matched = sep
-                    break
-            if sep_matched:
-                field_rows.append(
-                    f'<p style="{p_style}"><span style="color:#8f8f8f;font-weight:500;">{html.escape(label)}{sep_matched}</span><strong style="color:#171717;font-weight:600;">{html.escape(value)}</strong></p>'
-                )
+        for label, value, bold in fields:
+            value_html = html.escape(value or "").replace("\n", "<br>")
+            if bold:
+                value_style = "color:#171717;font-weight:600;"
             else:
-                field_rows.append(f'<p style="{p_style}">{html.escape(line)}</p>')
+                value_style = "color:#4d4d4d;font-weight:400;"
+            field_rows.append(
+                f'<p style="{p_style}"><span style="color:#8f8f8f;font-weight:500;">{html.escape(label)}：</span>'
+                f'<span style="{value_style}">{value_html}</span></p>'
+            )
         # 最后一行去除 8px 下边距，使容器内收尾紧凑
         if field_rows:
             field_rows[-1] = field_rows[-1].replace("margin:0 0 8px;", "margin:0;", 1)

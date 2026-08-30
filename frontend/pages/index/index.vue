@@ -174,7 +174,7 @@
  *    点击词云区（含 logo）后单向切换为介绍卡片（含功能说明与开启新手引导入口）；已登录无进行中计划显示"新手引导"卡片，
  *    提供操作指引并支持一键开启引导（从步骤 1 开始，点击设置后自动跳到步骤 4 继续）
  *  - 立即打卡按钮（多状态）：
- *    - 灰色"无打卡任务"：未登录/无任务/不在计划日期范围内/无提醒时间
+ *    - 灰色"无打卡任务"：未登录/无任务/今日非提醒日且不在前日跨日补打窗口/无提醒时间
  *    - 橙色"未到打卡时间"：未到第一个提醒时间的"开始打卡时间"（提醒时间前2小时），不显示图标
  *    - 红色"立即打卡"：已到开始打卡时间且当前匹配区间未打卡
  *    - 绿色"已打卡"：当前匹配区间已匹配到打卡记录，持续到匹配区间结束（下一个中点或24:00）
@@ -424,22 +424,126 @@ const secondaryPlan = computed(() => {
   return activePlans.value.find(p => p.id !== primaryId) || activePlans.value[1]
 })
 
-// 当前是否在计划日期范围内
-const isWithinDateRange = computed(() => {
-  if (!primaryPlan.value) return false
-  const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  const plan = primaryPlan.value
-  // start_date <= today <= end_date
-  return plan.start_date <= todayStr && todayStr <= plan.end_date
-})
+// ===== 计划提醒日与匹配窗口（与后端 CheckinService.compute_day_windows 口径一致） =====
 
-// 排序后的提醒时间列表（分钟数）
+// 日期字符串加减天数（'YYYY-MM-DD' ± n 天）
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+// 今日日期字符串（YYYY-MM-DD）
+function todayDateStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 计划在某日是否为有效提醒日（日期范围内 + 重复星期位掩码命中；bit0=周一…bit6=周日）
+function isPlanOnDate(plan, dateStr) {
+  if (plan.start_date > dateStr || plan.end_date < dateStr) return false
+  const weekdays = plan.repeat_weekdays ?? 127
+  const d = new Date(dateStr + 'T00:00:00')
+  // JS getDay(): 0=周日…6=周六 → 位掩码 bit=(getDay()+6)%7（周一=0…周日=6）
+  return Boolean(weekdays & (1 << ((d.getDay() + 6) % 7)))
+}
+
+// 某提醒时间点末次催办相对提醒时间的偏移分钟（count=3→+60；2→+间隔；1→0）
+function lastFollowupOffsetMinutes(t) {
+  const count = t.followupCount ?? 3
+  if (count === 3) return 60
+  if (count === 2) return t.followupIntervalMin ?? 10
+  return 0
+}
+
+// 末次提醒匹配区间跨日延伸终点（相对当日 0 点分钟数，恒 >= 1440）
+// 终点 = min(跨日中点, 末次催办 + 30 分钟宽限)；次日非提醒日时直接取催办+宽限
+// 与后端 checkin_service._last_reminder_ext_end_minutes 完全一致
+const CROSS_DAY_GRACE_MINUTES = 30
+
+function lastReminderExtEndMinutes(plan, dateStr, times) {
+  if (times.length === 0) return 1440
+  const last = times[times.length - 1]
+  const followupEnd = last.minutes + lastFollowupOffsetMinutes(last) + CROSS_DAY_GRACE_MINUTES
+  if (isPlanOnDate(plan, addDays(dateStr, 1))) {
+    const nextFirst = times[0].minutes + 1440
+    const crossMid = Math.floor((last.minutes + nextFirst) / 2)
+    return Math.max(1440, Math.min(crossMid, followupEnd))
+  }
+  return Math.max(1440, followupEnd)
+}
+
+// 某计划某日的完整匹配窗口（与后端 CheckinService.compute_day_windows 一致）
+// - intervals：各提醒时间的匹配区间（末次 end 可 >1440 跨日延伸至次日）
+// - prevExtEnd：前一日末次提醒补打窗口在本日的结束分钟（0=前一日无延伸）
+function computeDayWindows(plan, dateStr, times) {
+  let prevExtEnd = 0
+  if (times.length > 0 && isPlanOnDate(plan, addDays(dateStr, -1))) {
+    prevExtEnd = Math.max(0, lastReminderExtEndMinutes(plan, addDays(dateStr, -1), times) - 1440)
+  }
+  const intervals = []
+  const n = times.length
+  for (let i = 0; i < n; i++) {
+    const m = times[i].minutes
+    const start = i === 0 ? prevExtEnd : Math.floor((times[i - 1].minutes + m) / 2)
+    const end = i < n - 1
+      ? Math.floor((m + times[i + 1].minutes) / 2)
+      : lastReminderExtEndMinutes(plan, dateStr, times)
+    intervals.push({ start, end })
+  }
+  return { intervals, prevExtEnd }
+}
+
+// 计算某计划当前时刻的打卡目标（含跨日补打窗口）
+// 返回 { timeId, idx, intervalStart, intervalEnd, crossDay } 或 null（当前无可打卡目标）
+// - 今日提醒日：先判前日末次提醒跨日补打段（凌晨 < prevExtEnd 时归属前日末次提醒），
+//   再按今日区间归属（末次区间跨日延伸段已过则无目标）
+// - 今日非提醒日：仅前日末次提醒的跨日补打窗口内可打卡（与后端 create_checkin 提醒日校验一致）
+function computePlanTarget(plan, times, nowMinutes) {
+  if (times.length === 0) return null
+  const today = todayDateStr()
+  const todayOn = isPlanOnDate(plan, today)
+  const yesterdayOn = isPlanOnDate(plan, addDays(today, -1))
+  const lastIdx = times.length - 1
+  if (todayOn) {
+    const win = computeDayWindows(plan, today, times)
+    if (yesterdayOn && win.prevExtEnd > 0 && nowMinutes < win.prevExtEnd) {
+      return { timeId: times[lastIdx].id, idx: lastIdx, intervalStart: 0, intervalEnd: win.prevExtEnd, crossDay: true }
+    }
+    for (let i = 0; i < win.intervals.length; i++) {
+      if (nowMinutes >= win.intervals[i].start && nowMinutes < win.intervals[i].end) {
+        return {
+          timeId: times[i].id, idx: i,
+          intervalStart: win.intervals[i].start, intervalEnd: win.intervals[i].end,
+          crossDay: false
+        }
+      }
+    }
+    return null
+  }
+  if (yesterdayOn) {
+    const prevExtToday = lastReminderExtEndMinutes(plan, addDays(today, -1), times) - 1440
+    if (prevExtToday > 0 && nowMinutes < prevExtToday) {
+      return { timeId: times[lastIdx].id, idx: lastIdx, intervalStart: 0, intervalEnd: prevExtToday, crossDay: true }
+    }
+  }
+  return null
+}
+
+// 排序后的提醒时间列表（分钟数，含提醒次数/间隔配置）
 const sortedTimes = computed(() => {
   if (!primaryPlan.value) return []
   return (primaryPlan.value.notification_times || []).map(t => {
     const [h, m] = t.notification_time.split(':').map(Number)
-    return { id: t.id, time: t.notification_time, minutes: h * 60 + m }
+    return {
+      id: t.id,
+      time: t.notification_time,
+      minutes: h * 60 + m,
+      followupCount: t.followup_count ?? 3,
+      followupIntervalMin: t.followup_interval_min ?? 10
+    }
   }).sort((a, b) => a.minutes - b.minutes)
 })
 
@@ -451,79 +555,42 @@ function parseIsoToMinutes(isoStr) {
   return (parts[0] || 0) * 60 + (parts[1] || 0)
 }
 
-// 计算每个提醒时间的匹配区间（按相邻中点划分，覆盖全天 0:00-24:00，无间隙、无留白）
-// - 第一次提醒：[0:00, midpoint(t1, t2)]
-// - 中间提醒：[midpoint(t_{i-1}, t_i), midpoint(t_i, t_{i+1})]
-// - 最后一次提醒：[midpoint(t_{n-1}, t_n), 24:00]
-function getMatchIntervals(times) {
-  const intervals = []
-  for (let i = 0; i < times.length; i++) {
-    let start
-    let end
-    if (i === 0) {
-      start = 0 // 0:00
-    } else {
-      start = Math.floor((times[i - 1].minutes + times[i].minutes) / 2)
-    }
-    if (i === times.length - 1) {
-      end = 1440 // 24:00
-    } else {
-      end = Math.floor((times[i].minutes + times[i + 1].minutes) / 2)
-    }
-    intervals.push({ start, end })
-  }
-  return intervals
-}
-
-// 找当前时间所在的匹配区间索引（全天无留白，必定能找到）
-function findCurrentTargetIndex(times, nowMinutes) {
-  const intervals = getMatchIntervals(times)
-  for (let i = 0; i < intervals.length; i++) {
-    if (nowMinutes >= intervals[i].start && nowMinutes < intervals[i].end) {
-      return i
-    }
-  }
-  // 边界情况：恰好 24:00（1440分钟），归属最后一个区间
-  return intervals.length - 1
-}
-
-// 判定某匹配区间是否已打卡（基于今日打卡记录）
-function isIntervalChecked(times, intervalIndex) {
-  if (todayCheckinMinutes.value.length === 0) return false
-  const intervals = getMatchIntervals(times)
-  const interval = intervals[intervalIndex]
-  return todayCheckinMinutes.value.some(r => r.minutes >= interval.start && r.minutes < interval.end)
-}
-
 // 打卡状态计算：'disabled' | 'waiting' | 'active' | 'done'
 // 判定优先级（从高到低）：
-// 1. disabled: 未登录/无任务/不在日期范围/无提醒时间
+// 1. disabled: 未登录/无任务/今日无可打卡目标（非提醒日且不在前日跨日补打窗口/无提醒时间/跨日延伸段已过）
 // 2. forceActive: 用户长按3秒强制重置 → active（允许从 done/waiting 重新打卡）
-// 3. done: 当前匹配区间已匹配到打卡记录（优先于时间窗口判断，不受 t_1-120 阻断）
-// 4. waiting: 未到第一个提醒时间的"开始打卡时间"（t_1 - 120）
+// 3. done: 当前匹配区间（含跨日补打窗口）已匹配到打卡记录（优先于时间窗口判断，不受 t_1-120 阻断）
+// 4. waiting: 未到第一个提醒时间的"开始打卡时间"（t_1 - 120）；跨日补打目标不受此限制
 // 5. active: 已到开始打卡时间且当前匹配区间未打卡
 const checkinState = computed(() => {
   if (!isLoggedIn.value || !hasActivePlans.value) return { status: 'disabled' }
   if (!primaryPlan.value) return { status: 'disabled' }
-  if (!isWithinDateRange.value) return { status: 'disabled' }
   const times = sortedTimes.value
   if (times.length === 0) return { status: 'disabled' }
 
   const now = new Date()
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
 
-  // 找当前时间所在的匹配区间索引（全天无留白，必定能找到）
-  const idx = findCurrentTargetIndex(times, nowMinutes)
-  const target = times[idx]
+  // 当前打卡目标（今日区间或前日末次提醒跨日补打窗口；null=今日无可打卡目标）
+  const target = computePlanTarget(primaryPlan.value, times, nowMinutes)
+  if (!target) return { status: 'disabled' }
 
   // 长按重置：强制为 active（优先级最高，允许已打卡后重新打卡）
   if (forceActive.value) {
-    return { status: 'active', timeId: target.id }
+    return { status: 'active', timeId: target.timeId }
   }
 
-  // 判定当前匹配区间是否已打卡（优先于时间窗口判断）
-  if (isIntervalChecked(times, idx)) {
-    return { status: 'done', timeId: target.id }
+  // 判定当前匹配区间是否已打卡（优先于时间窗口判断；凌晨补打记录同样命中跨日窗口）
+  const isChecked = todayCheckinMinutes.value.some(
+    r => r.minutes >= target.intervalStart && r.minutes < target.intervalEnd
+  )
+  if (isChecked) {
+    return { status: 'done', timeId: target.timeId }
+  }
+
+  // 跨日补打目标：前日提醒早已到达，不受 t_1-120 waiting 限制
+  if (target.crossDay) {
+    return { status: 'active', timeId: target.timeId }
   }
 
   // 未到第一个提醒的开始打卡时间（t_1 - 120）→ waiting
@@ -531,7 +598,7 @@ const checkinState = computed(() => {
     return { status: 'waiting' }
   }
 
-  return { status: 'active', timeId: target.id }
+  return { status: 'active', timeId: target.timeId }
 })
 
 // 按钮是否禁用（灰色"无打卡任务"）
@@ -575,50 +642,49 @@ const hasWechatNotification = computed(() => {
 
 // 计算单个计划的排序键（用于主要/次要卡片及任务列表排序）
 // 排序规则：
-//   1. 第一键 dateGroup：今天在计划日期范围内（start_date <= today <= end_date）的排前（dateGroup=0），否则排后（dateGroup=1）
+//   1. 第一键 dateGroup：今日有可打卡目标（提醒日或前日跨日补打窗口内，computePlanTarget 非 null）的排前（dateGroup=0），
+//      否则排后（dateGroup=1，如非提醒日/不在日期范围/跨日延伸段已过）
 //   2. 第二键 group：提醒时间已到且当前匹配区间未打卡的排前（group=0），其余排后（group=1）
-//      —— "提醒时间已到"判定为 nowMinutes >= 当前匹配区间对应的提醒时间（times[currentIdx].minutes）
+//      —— "提醒时间已到"判定为 nowMinutes >= 当前目标对应提醒时间（跨日补打目标恒已到）
 //   3. 第三键 sortKey：
 //      - group=0（提醒已到且未打卡）：按 priority 升序（冲突时优先级高的在前）
-//      - group=1（提醒未到/已打卡/无提醒）：按"下一个最近提醒时间"升序（未来最近的任务在前，无提醒时间设为 Infinity 排最后）
+//      - group=1（提醒未到/已打卡/今日无目标）：按"下一个最近提醒时间"升序（未来最近的任务在前，无提醒时间设为 Infinity 排最后）
 //   4. 第四键 priority：group=1 同提醒时间时按优先级升序
 //   5. 第五键 createdAt：保持稳定排序
 function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
   const priority = plan.priority ?? 3
   const createdAt = new Date(plan.created_at || 0).getTime()
 
-  // 第一键：今天是否在计划日期范围内
-  const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  const dateGroup = (plan.start_date <= todayStr && todayStr <= plan.end_date) ? 0 : 1
-
   const times = (plan.notification_times || []).map(t => {
     const [h, m] = t.notification_time.split(':').map(Number)
-    return { id: t.id, minutes: h * 60 + m }
+    return {
+      id: t.id,
+      minutes: h * 60 + m,
+      followupCount: t.followup_count ?? 3,
+      followupIntervalMin: t.followup_interval_min ?? 10
+    }
   }).sort((a, b) => a.minutes - b.minutes)
 
   if (times.length === 0) {
     // 无提醒时间：归到 group=1，最近提醒时间设为 Infinity 排最后
-    return { dateGroup, group: 1, sortKey: Infinity, priority, createdAt }
+    return { dateGroup: 1, group: 1, sortKey: Infinity, priority, createdAt }
   }
 
-  // 计算当前匹配区间索引（全天无留白，必定能找到）
-  const intervals = getMatchIntervals(times)
-  let currentIdx = intervals.length - 1
-  for (let i = 0; i < intervals.length; i++) {
-    if (nowMinutes >= intervals[i].start && nowMinutes < intervals[i].end) {
-      currentIdx = i
-      break
-    }
+  // 当前打卡目标（含提醒日与跨日补打窗口判定；null=今日无可打卡目标）
+  const target = computePlanTarget(plan, times, nowMinutes)
+  if (!target) {
+    // 今日非提醒日且不在跨日补打窗口：整组排后
+    return { dateGroup: 1, group: 1, sortKey: Infinity, priority, createdAt }
   }
 
   // 判定当前匹配区间是否已打卡（checkinMinutesList 元素为 { timeId, minutes }，需取 .minutes 比较）
-  const interval = intervals[currentIdx]
-  const isChecked = (checkinMinutesList || []).some(m => m.minutes >= interval.start && m.minutes < interval.end)
+  const isChecked = (checkinMinutesList || []).some(
+    m => m.minutes >= target.intervalStart && m.minutes < target.intervalEnd
+  )
 
-  // 判定"提醒时间是否已到"：当前时间 >= 当前匹配区间对应的提醒时间
+  // 判定"提醒时间是否已到"：当前时间 >= 当前目标对应的提醒时间（跨日补打目标恒已到）
   // 例：提醒 8:00/16:00，当前 14:00 在 16:00 的匹配区间内，16:00 未到 → isReminderReached=false
-  const isReminderReached = nowMinutes >= times[currentIdx].minutes
+  const isReminderReached = target.crossDay || nowMinutes >= times[target.idx].minutes
 
   // 计算下一个最近提醒时间（>= nowMinutes 的最小提醒时间，无则回绕到明天第一个 +1440）
   let nextReminder = Infinity
@@ -634,10 +700,10 @@ function computePlanSortKey(plan, nowMinutes, checkinMinutesList) {
 
   if (isReminderReached && !isChecked) {
     // group=0：提醒时间已到且当前匹配区间未打卡，sortKey 用 priority（冲突时优先级高的在前）
-    return { dateGroup, group: 0, sortKey: priority, priority, createdAt }
+    return { dateGroup: 0, group: 0, sortKey: priority, priority, createdAt }
   }
-  // group=1：提醒时间未到、已打卡、或无提醒，sortKey 用下一个最近提醒时间
-  return { dateGroup, group: 1, sortKey: nextReminder, priority, createdAt }
+  // group=1：提醒时间未到、已打卡、或今日无目标，sortKey 用下一个最近提醒时间
+  return { dateGroup: 0, group: 1, sortKey: nextReminder, priority, createdAt }
 }
 
 // 按新规则排序 plans：
@@ -876,8 +942,8 @@ async function handleCheckin() {
 function handleLongPress() {
   // 新手引导期间禁用长按重置，避免干扰引导流程
   if (guideStore.isActive && guideStore.currentStepData?.target === 'checkin-button') return
-  // 仅在非 disabled 状态下生效（必须有计划且在日期范围内）
-  if (!primaryPlan.value || !isWithinDateRange.value) return
+  // 仅在非 disabled 状态下生效（必须有计划且今日有可打卡目标）
+  if (!primaryPlan.value || checkinState.value.status === 'disabled') return
   // active 状态无需重置
   if (checkinState.value.status === 'active') return
   // 清除上一次的计时器

@@ -7,172 +7,22 @@
       <!-- 页面标题区（复用 PageHeader 组件，结构与 notification/profile 等页面保持一致） -->
       <PageHeader :title="$t('plan.title')" :desc="$t('plan.desc')" />
 
-      <!-- 新建计划入口卡（点击后切换为"新建计划详情"表单卡，隐藏所有已有计划） -->
+      <!-- 新建计划入口卡（点击后切换为"新建计划"表单卡，隐藏所有已有计划） -->
       <view class="plan-page__new-entry guide-target-new-plan" v-if="!showForm && !editingPlanId" @click="handleNewEntry">
         <image class="plan-page__new-entry-icon" :src="jiaJihua" mode="aspectFit" />
         <text class="plan-page__new-entry-text">{{ $t('plan.newEntry') }}</text>
       </view>
 
-      <!-- 新建计划详情表单卡（默认隐藏，点击"新建计划"后显示，已有计划全部隐藏） -->
+      <!-- 新建计划表单卡（默认隐藏，点击"新建计划"后显示，已有计划全部隐藏；表单字段由 PlanForm 组件承载） -->
       <view class="plan-page__form-wrap" v-if="showForm">
         <view class="plan-page__form plan-page__form--fade-in">
-          <text class="plan-page__form-heading">{{ $t('plan.newFormHeading') }}</text>
-
-          <!-- 计划名称 -->
-          <view class="plan-page__field">
-            <text class="plan-page__label">{{ $t('plan.name') }}</text>
-            <input
-              class="plan-page__input"
-              v-model="form.name"
-              :placeholder="$t('plan.namePlaceholder')"
-              placeholder-class="plan-page__placeholder"
-              :placeholder-style="phStyle('name')"
-              :maxlength="nameLimit.max"
-              @input="e => form.name = nameLimit.handleInput(e)"
-              @focus="onFocus('name')"
-              @blur="onBlur"
-            />
-            <text v-if="nameLimit.limitReached" class="plan-page__limit-text">{{ nameLimit.limitHint }}</text>
-          </view>
-
-          <!-- 备注说明 -->
-          <view class="plan-page__field">
-            <text class="plan-page__label">{{ $t('plan.remark') }}</text>
-            <textarea
-              class="plan-page__textarea"
-              v-model="form.remark"
-              :placeholder="$t('plan.remarkPlaceholder')"
-              placeholder-class="plan-page__placeholder"
-              :placeholder-style="phStyle('remark')"
-              :maxlength="remarkLimit.max"
-              @input="e => form.remark = remarkLimit.handleInput(e)"
-              @focus="onFocus('remark')"
-              @blur="onBlur"
-            />
-            <text v-if="remarkLimit.limitReached" class="plan-page__limit-text">{{ remarkLimit.limitHint }}</text>
-          </view>
-
-          <!-- 计划持续起始日期（起止日期双控件，禁止手动输入） -->
-          <view class="plan-page__field">
-            <text class="plan-page__label">{{ $t('plan.dateRange') }}</text>
-            <view class="plan-page__date-range">
-              <picker mode="date" :value="form.startDate" @change="handleStartDateChange" class="plan-page__date-picker">
-                <view class="plan-page__picker-display">
-                  <text
-                    class="plan-page__picker-text"
-                    :class="{ 'plan-page__picker-text--placeholder': !form.startDate }"
-                  >{{ form.startDate || $t('plan.startDate') }}</text>
-                </view>
-              </picker>
-              <text class="plan-page__date-separator">{{ $t('plan.dateTo') }}</text>
-              <picker mode="date" :value="form.endDate" @change="handleEndDateChange" class="plan-page__date-picker">
-                <view class="plan-page__picker-display">
-                  <text
-                    class="plan-page__picker-text"
-                    :class="{ 'plan-page__picker-text--placeholder': !form.endDate }"
-                  >{{ form.endDate || $t('plan.endDate') }}</text>
-                </view>
-              </picker>
-            </view>
-          </view>
-
-          <!-- 提醒时间（多个单个时间控件，可动态添加/删除） -->
-          <view class="plan-page__field">
-            <view class="plan-page__time-label-row">
-              <text class="plan-page__label">{{ $t('plan.time') }}</text>
-              <view class="plan-page__add-time" @click="handleAddTime">
-                <image class="plan-page__add-time-icon" :src="jiaShijian" mode="aspectFit" />
-                <text class="plan-page__add-time-text">{{ $t('plan.addTime') }}</text>
-              </view>
-            </view>
-            <view
-              v-for="(t, idx) in form.times"
-              :key="idx"
-              class="plan-page__time-row"
-            >
-              <picker mode="time" :value="t" @change="handleTimeChange($event, idx)" class="plan-page__time-picker">
-                <view class="plan-page__time-picker-display">
-                  <text
-                    class="plan-page__time-picker-text"
-                    :class="{ 'plan-page__time-picker-text--placeholder': !t }"
-                  >{{ t || $t('plan.selectTime') }}</text>
-                </view>
-              </picker>
-              <view class="plan-page__time-delete" @click="handleDeleteTime(idx)">
-                <image class="plan-page__time-delete-icon" :src="shanchuIcon" mode="aspectFit" />
-              </view>
-            </view>
-          </view>
-
-          <!-- 优先级单选框（0-7，数字越小优先级越高，默认3） -->
-          <view class="plan-page__field">
-            <text class="plan-page__label">{{ $t('plan.priority') }}</text>
-            <view class="plan-page__priority-row">
-              <view
-                v-for="n in 8"
-                :key="n - 1"
-                class="plan-page__priority-item"
-                @click="form.priority = n - 1"
-              >
-                <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.priority === n - 1 }">
-                  <view v-if="form.priority === n - 1" class="plan-page__radio-dot"></view>
-                </view>
-                <text class="plan-page__priority-text">{{ n - 1 }}</text>
-              </view>
-            </view>
-          </view>
-
-          <!-- 通知方式（从数据库动态加载） -->
-          <view class="plan-page__field">
-            <text class="plan-page__label">{{ $t('plan.channel') }}</text>
-            <view class="plan-page__notify-row" v-if="availableChannels.length > 0">
-              <view
-                v-for="ch in availableChannels"
-                :key="ch.id"
-                class="plan-page__notify-item"
-                @click="toggleChannel(ch.id)"
-              >
-                <view class="plan-page__checkbox" :class="{ 'plan-page__checkbox--checked': selectedChannelIds.includes(ch.id) }">
-                  <view v-if="selectedChannelIds.includes(ch.id)" class="plan-page__checkmark"></view>
-                </view>
-                <text class="plan-page__notify-text">{{ ch.channel_type }}</text>
-              </view>
-            </view>
-            <view v-else class="plan-page__notify-empty">
-              <text class="plan-page__notify-empty-text">{{ $t('plan.channelEmpty') }}</text>
-            </view>
-          </view>
-
-          <!-- 任务状态（单选框：进行中/暂停/已结束，对应 1/2/0） -->
-          <view class="plan-page__field">
-            <text class="plan-page__label">{{ $t('plan.status') }}</text>
-            <view class="plan-page__status-row">
-              <view class="plan-page__status-item" @click="form.status = 1">
-                <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.status === 1 }">
-                  <view v-if="form.status === 1" class="plan-page__radio-dot"></view>
-                </view>
-                <text class="plan-page__status-text">{{ $t('plan.statusActive') }}</text>
-              </view>
-              <view class="plan-page__status-item" @click="form.status = 2">
-                <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.status === 2 }">
-                  <view v-if="form.status === 2" class="plan-page__radio-dot"></view>
-                </view>
-                <text class="plan-page__status-text">{{ $t('plan.statusPaused') }}</text>
-              </view>
-              <view class="plan-page__status-item" @click="form.status = 0">
-                <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': form.status === 0 }">
-                  <view v-if="form.status === 0" class="plan-page__radio-dot"></view>
-                </view>
-                <text class="plan-page__status-text">{{ $t('plan.statusEnded') }}</text>
-              </view>
-            </view>
-          </view>
-
-          <!-- 保存按钮 -->
-          <view class="plan-page__save" @click="handleSave">
-            <image class="plan-page__save-icon" :src="baocunJihuaIcon" mode="aspectFit" />
-            <text class="plan-page__save-text">{{ $t('plan.save') }}</text>
-          </view>
+          <PlanForm
+            key="create"
+            :plan="null"
+            :available-channels="availableChannels"
+            show-heading
+            @submit="handleCreateSubmit"
+          />
         </view>
       </view>
 
@@ -209,7 +59,10 @@
                   <image class="plan-page__card-delete-icon" :src="shanchuIcon" mode="aspectFit" />
                 </view>
               </view>
-              <view class="plan-page__card-pills" v-if="plan.notification_times && plan.notification_times.length > 0">
+              <view
+                class="plan-page__card-pills"
+                v-if="(plan.notification_times && plan.notification_times.length > 0) || (planExtraPills[plan.id] && planExtraPills[plan.id].length > 0)"
+              >
                 <view
                   v-for="t in plan.notification_times"
                   :key="t.id"
@@ -217,161 +70,26 @@
                 >
                   {{ t.notification_time }}
                 </view>
+                <view
+                  v-for="(p, i) in planExtraPills[plan.id] || []"
+                  :key="'x' + i"
+                  class="plan-page__pill"
+                >
+                  {{ p }}
+                </view>
               </view>
             </view>
           </view>
 
-          <!-- 编辑表单（就地展开，无标题，从卡片延伸出来的视觉效果） -->
+          <!-- 编辑表单（就地展开，无标题，从卡片延伸出来的视觉效果；字段由 PlanForm 组件承载） -->
           <view v-if="editingPlanId === plan.id" class="plan-page__card-edit plan-page__form--fade-in">
-            <!-- 计划名称 -->
-            <view class="plan-page__field">
-              <text class="plan-page__label">{{ $t('plan.name') }}</text>
-              <input
-                class="plan-page__input"
-                v-model="editingForm.name"
-                :placeholder="$t('plan.namePlaceholder')"
-                placeholder-class="plan-page__placeholder"
-                :maxlength="editNameLimit.max"
-                @input="e => editingForm.name = editNameLimit.handleInput(e)"
-              />
-              <text v-if="editNameLimit.limitReached" class="plan-page__limit-text">{{ editNameLimit.limitHint }}</text>
-            </view>
-
-            <!-- 备注说明 -->
-            <view class="plan-page__field">
-              <text class="plan-page__label">{{ $t('plan.remark') }}</text>
-              <textarea
-                class="plan-page__textarea"
-                v-model="editingForm.remark"
-                :placeholder="$t('plan.remarkPlaceholder')"
-                placeholder-class="plan-page__placeholder"
-                :maxlength="editRemarkLimit.max"
-                @input="e => editingForm.remark = editRemarkLimit.handleInput(e)"
-              />
-              <text v-if="editRemarkLimit.limitReached" class="plan-page__limit-text">{{ editRemarkLimit.limitHint }}</text>
-            </view>
-
-            <!-- 计划持续起始日期 -->
-            <view class="plan-page__field">
-              <text class="plan-page__label">{{ $t('plan.dateRange') }}</text>
-              <view class="plan-page__date-range">
-                <picker mode="date" :value="editingForm.startDate" @change="handleEditStartDateChange" class="plan-page__date-picker">
-                  <view class="plan-page__picker-display">
-                    <text
-                      class="plan-page__picker-text"
-                      :class="{ 'plan-page__picker-text--placeholder': !editingForm.startDate }"
-                    >{{ editingForm.startDate || $t('plan.startDate') }}</text>
-                  </view>
-                </picker>
-                <text class="plan-page__date-separator">{{ $t('plan.dateTo') }}</text>
-                <picker mode="date" :value="editingForm.endDate" @change="handleEditEndDateChange" class="plan-page__date-picker">
-                  <view class="plan-page__picker-display">
-                    <text
-                      class="plan-page__picker-text"
-                      :class="{ 'plan-page__picker-text--placeholder': !editingForm.endDate }"
-                    >{{ editingForm.endDate || $t('plan.endDate') }}</text>
-                  </view>
-                </picker>
-              </view>
-            </view>
-
-            <!-- 提醒时间 -->
-            <view class="plan-page__field">
-              <view class="plan-page__time-label-row">
-                <text class="plan-page__label">{{ $t('plan.time') }}</text>
-                <view class="plan-page__add-time" @click="handleEditAddTime">
-                  <image class="plan-page__add-time-icon" :src="jiaShijian" mode="aspectFit" />
-                  <text class="plan-page__add-time-text">{{ $t('plan.addTime') }}</text>
-                </view>
-                </view>
-                <view
-                v-for="(t, idx) in editingForm.times"
-                :key="idx"
-                class="plan-page__time-row"
-                >
-                <picker mode="time" :value="t" @change="handleEditTimeChange($event, idx)" class="plan-page__time-picker">
-                  <view class="plan-page__time-picker-display">
-                    <text
-                      class="plan-page__time-picker-text"
-                      :class="{ 'plan-page__time-picker-text--placeholder': !t }"
-                    >{{ t || $t('plan.selectTime') }}</text>
-                  </view>
-                </picker>
-                <view class="plan-page__time-delete" @click="handleEditDeleteTime(idx)">
-                  <image class="plan-page__time-delete-icon" :src="shanchuIcon" mode="aspectFit" />
-                </view>
-              </view>
-            </view>
-
-            <!-- 优先级单选框 -->
-            <view class="plan-page__field">
-              <text class="plan-page__label">{{ $t('plan.priority') }}</text>
-              <view class="plan-page__priority-row">
-                <view
-                  v-for="n in 8"
-                  :key="n - 1"
-                  class="plan-page__priority-item"
-                  @click="editingForm.priority = n - 1"
-                >
-                  <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.priority === n - 1 }">
-                    <view v-if="editingForm.priority === n - 1" class="plan-page__radio-dot"></view>
-                  </view>
-                  <text class="plan-page__priority-text">{{ n - 1 }}</text>
-                </view>
-              </view>
-            </view>
-
-            <!-- 通知方式 -->
-            <view class="plan-page__field">
-              <text class="plan-page__label">{{ $t('plan.channel') }}</text>
-              <view class="plan-page__notify-row" v-if="availableChannels.length > 0">
-                <view
-                  v-for="ch in availableChannels"
-                  :key="ch.id"
-                  class="plan-page__notify-item"
-                  @click="toggleEditChannel(ch.id)"
-                >
-                  <view class="plan-page__checkbox" :class="{ 'plan-page__checkbox--checked': editingSelectedChannelIds.includes(ch.id) }">
-                    <view v-if="editingSelectedChannelIds.includes(ch.id)" class="plan-page__checkmark"></view>
-                  </view>
-                <text class="plan-page__notify-text">{{ ch.channel_type }}</text>
-              </view>
-              </view>
-              <view v-else class="plan-page__notify-empty">
-                <text class="plan-page__notify-empty-text">{{ $t('plan.channelEmpty') }}</text>
-              </view>
-            </view>
-
-            <!-- 任务状态 -->
-            <view class="plan-page__field">
-              <text class="plan-page__label">{{ $t('plan.status') }}</text>
-              <view class="plan-page__status-row">
-                <view class="plan-page__status-item" @click="editingForm.status = 1">
-                  <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.status === 1 }">
-                    <view v-if="editingForm.status === 1" class="plan-page__radio-dot"></view>
-                  </view>
-                  <text class="plan-page__status-text">{{ $t('plan.statusActive') }}</text>
-                </view>
-                <view class="plan-page__status-item" @click="editingForm.status = 2">
-                  <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.status === 2 }">
-                    <view v-if="editingForm.status === 2" class="plan-page__radio-dot"></view>
-                  </view>
-                  <text class="plan-page__status-text">{{ $t('plan.statusPaused') }}</text>
-                </view>
-                <view class="plan-page__status-item" @click="editingForm.status = 0">
-                  <view class="plan-page__radio" :class="{ 'plan-page__radio--checked': editingForm.status === 0 }">
-                    <view v-if="editingForm.status === 0" class="plan-page__radio-dot"></view>
-                  </view>
-                  <text class="plan-page__status-text">{{ $t('plan.statusEnded') }}</text>
-                </view>
-              </view>
-            </view>
-
-            <!-- 更新按钮 -->
-            <view class="plan-page__save" @click="handleSaveEdit(plan.id)">
-              <image class="plan-page__save-icon" :src="baocunJihuaIcon" mode="aspectFit" />
-              <text class="plan-page__save-text">{{ $t('plan.update') }}</text>
-            </view>
+            <PlanForm
+              :key="plan.id"
+              :plan="plan"
+              :available-channels="availableChannels"
+              @submit="payload => handleUpdateSubmit(plan.id, payload)"
+              @status-change="editingStatus = $event"
+            />
           </view>
         </view>
       </view>
@@ -389,41 +107,41 @@
  * 功能：用药 / 健康提醒计划的制定与管理
  *  - 已有计划列表：从数据库动态加载，按状态（进行中>暂停>已结束）+ 优先级（数字越小越靠前）+ 创建时间（新在前）排序
  *  - 就地展开编辑：点击已有计划卡片在卡片下方展开编辑表单（无标题，从卡片延伸），再次点击收缩
- *  - 新建计划：点击"新建计划"入口卡后隐藏所有已有计划，显示"新建计划详情"表单卡
- *  - 表单字段：计划名称、备注、起止日期、提醒时间（多时间控件，宽度50%）、优先级（0-7单选框）、通知方式、任务状态
- *  - 通知方式：从 notification_channels 表查询当前用户已配置的通知渠道，站内信默认勾选
+ *  - 新建计划：点击"新建计划"入口卡后隐藏所有已有计划，显示"新建计划"表单卡
+ *  - 表单字段（新建/编辑共用 PlanForm 组件）：计划名称、备注、结束方式、起始日期（90/365天快捷）、
+ *    重复星期（预设+多选）、提醒时间（每时间点独立的提醒次数 1/2/3 与等间隔 5-60 分钟）、
+ *    优先级（0-3单选框）、通知方式、任务状态
+ *  - 通知方式：从 notification_channels 表查询当前用户已配置的通知渠道（站内信默认勾选逻辑在 PlanForm 内）
  *  - 保存计划：调用后端 API 写入 checkin_plans + plan_notification_times + plan_notification_channels
- * 输入框 placeholder 聚焦交互复用 composables/usePlaceholder.js
+ *  - 卡片标签联动：提醒时间 pills + 重复规则/结束方式标签（非默认配置时显示）
  */
-import { reactive, ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import BeginnerGuide from '../../components/BeginnerGuide.vue'
-import { usePlaceholder } from '../../composables/usePlaceholder'
+import PlanForm from '../../components/PlanForm.vue'
 import { useGuideTarget } from '../../composables/useGuideTarget'
 import { useGuideStore } from '../../store/modules/guide'
-import { useInputLimit } from '../../composables/useInputLimit'
 import { useUserStore } from '../../store/modules/user'
+import { useLanguageStore } from '../../store/modules/language'
 import { listNotificationChannels } from '../../api/modules/notification'
 import { listPlans, createPlan, updatePlan, deletePlan } from '../../api/modules/plan'
 import jiaJihuaIcon from '../../assets/images/jia_jihua.png'
-import jiaShijianIcon from '../../assets/images/jia_shijian.png'
 import shanchuIcon from '../../assets/images/shanchu.png'
-import baocunJihuaIcon from '../../assets/images/baocun_jihua.png'
 import { useThemeIcon } from '../../composables/useThemeIcon'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
 
 // 图标按当前主题换色（green 用原图，其余主题用 static/theme-icons 产物）
-// shanchu（删除红）/baocun_jihua（白色）不参与换色，保持原引用
+// shanchu（删除红）不参与换色，保持原引用
 const jiaJihua = useThemeIcon('jia_jihua.png', jiaJihuaIcon)
-const jiaShijian = useThemeIcon('jia_shijian.png', jiaShijianIcon)
 
 useShare({ title: t('share.plan') })
 
 const userStore = useUserStore()
 const guideStore = useGuideStore()
+const languageStore = useLanguageStore()
 
 // 新手引导：上报「新建计划」入口位置
 useGuideTarget('new-plan', '.guide-target-new-plan')
@@ -438,67 +156,53 @@ onShow(() => {
 
 // 已有计划列表（从数据库加载，后端已按 status>priority>created_at 排序）
 const plans = ref([])
-// 用户已配置的通知渠道列表（从数据库加载，用于"通知方式"选项）
+// 用户已配置的通知渠道列表（从数据库加载，传给 PlanForm 供"通知方式"选项）
 const availableChannels = ref([])
 
-// 卡片切换：默认显示"新建计划"入口卡，点击后切换为"新建计划详情"表单卡
+// 卡片切换：默认显示"新建计划"入口卡，点击后切换为"新建计划"表单卡
 const showForm = ref(false)
 // 当前展开编辑的计划ID（null 表示无展开；非 null 表示对应计划卡片下方展开编辑表单）
 const editingPlanId = ref(null)
-
-// 新建计划表单
-const form = reactive({
-  name: '',
-  remark: '',
-  startDate: '',
-  endDate: '',
-  times: [''],
-  priority: 3,  // 优先级：0-7，数字越小优先级越高，默认3
-  status: 1  // 任务状态：1-进行中，2-暂停，0-已结束（默认进行中）
-})
-// 用户已选中的通知渠道ID列表（新建模式）
-const selectedChannelIds = ref([])
-
-// 编辑计划表单（点击已有计划卡片时填充）
-const editingForm = reactive({
-  name: '',
-  remark: '',
-  startDate: '',
-  endDate: '',
-  times: [''],
-  priority: 3,
-  status: 1
-})
-// 编辑模式下已选中的通知渠道ID列表
-const editingSelectedChannelIds = ref([])
+// 编辑中计划的任务状态（PlanForm status-change 事件同步，卡片色条实时跟随表单单选）
+const editingStatus = ref(null)
 
 // 表单提交中标志位（防止保存按钮频繁点击导致重复提交）
 const isSubmitting = ref(false)
 
-// 获取当前系统时间（HH:MM 格式，用于时间控件默认值）
-function getCurrentTime() {
-  const now = new Date()
-  const h = String(now.getHours()).padStart(2, '0')
-  const m = String(now.getMinutes()).padStart(2, '0')
-  return `${h}:${m}`
-}
-
-// 输入框 placeholder 聚焦交互：聚焦变浅灰 var(--color-text-disabled)，失焦恢复 placeholder-class 原始色
-const { onFocus, onBlur, phStyle } = usePlaceholder()
-
-// 输入框字符限制（与后端字段限制严格匹配：计划名称100字符，备注255字符）
-const nameLimit = useInputLimit(100)
-const remarkLimit = useInputLimit(255)
-const editNameLimit = useInputLimit(100)
-const editRemarkLimit = useInputLimit(255)
-
-// 每个计划当前显示的状态映射（编辑中时使用 editingForm.status 实时反映单选框选择，否则使用 plan.status）
-// 使用 computed 显式建立对 editingForm.status / editingPlanId / plans 的响应式依赖，
+// 每个计划当前显示的状态映射（编辑中时使用 editingStatus 实时反映单选框选择，否则使用 plan.status）
+// 使用 computed 显式建立对 editingStatus / editingPlanId / plans 的响应式依赖，
 // 避免普通函数在 v-for 中调用时 reactive 属性变化不触发正在编辑卡片的重渲染
 const planDisplayStatus = computed(() => {
   const map = {}
   for (const plan of plans.value) {
-    map[plan.id] = editingPlanId.value === plan.id ? editingForm.status : plan.status
+    map[plan.id] = editingPlanId.value === plan.id
+      ? (editingStatus.value != null ? editingStatus.value : plan.status)
+      : plan.status
+  }
+  return map
+})
+
+// 计划卡片的附加标签（重复规则/结束方式联动展示；默认配置不显示，避免视觉噪音）
+const planExtraPills = computed(() => {
+  void languageStore.current // 建立语言依赖，切换语言时即时更新
+  const map = {}
+  for (const plan of plans.value) {
+    const pills = []
+    const weekdays = plan.repeat_weekdays ?? 127
+    if (weekdays === 31) {
+      pills.push(t('plan.pillWeekday'))
+    } else if (weekdays === 96) {
+      pills.push(t('plan.pillWeekend'))
+    } else if (weekdays !== 127) {
+      pills.push(t('plan.pillCustomRepeat'))
+    }
+    const endMode = plan.end_mode ?? 0
+    if (endMode === 2) {
+      pills.push(t('plan.pillLongTerm'))
+    } else if (endMode === 1 && plan.total_target_count) {
+      pills.push(t('plan.pillCountEnd', { n: plan.total_target_count }))
+    }
+    map[plan.id] = pills
   }
   return map
 })
@@ -516,7 +220,7 @@ async function loadPlans() {
   }
 }
 
-// 加载用户已配置的通知渠道（仅显示可用状态，加载后默认勾选站内信，供新建表单使用）
+// 加载用户已配置的通知渠道（仅显示可用状态，站内信默认勾选逻辑在 PlanForm 组件内处理）
 async function loadChannels() {
   if (!userStore.userInfo) return
   try {
@@ -524,11 +228,6 @@ async function loadChannels() {
     if (res.code === 0 && res.data) {
       // 仅显示状态为可用的通知方式
       availableChannels.value = res.data.filter(ch => ch.enabled)
-      // 默认勾选站内信（供新建表单使用）
-      const znxChannel = availableChannels.value.find(c => c.channel_type === '站内信')
-      if (znxChannel && !selectedChannelIds.value.includes(znxChannel.id)) {
-        selectedChannelIds.value.push(znxChannel.id)
-      }
     }
   } catch (e) {
     console.warn('加载通知渠道失败', e)
@@ -558,6 +257,7 @@ function handleDeletePlan(planId) {
           // 如果正在编辑被删除的计划，收起编辑表单
           if (editingPlanId.value === planId) {
             editingPlanId.value = null
+            editingStatus.value = null
           }
           await loadPlans()
         }
@@ -573,161 +273,42 @@ async function toggleEditPlan(plan) {
   if (editingPlanId.value === plan.id) {
     // 再次点击同一卡片：收起编辑表单
     editingPlanId.value = null
+    editingStatus.value = null
     return
   }
   // 展开前先刷新通知渠道列表，确保用户在通知方式页新添加的渠道（如 App推送）
   // 能立即出现在编辑表单的可选项中（App 端页面常驻栈内、onMounted 不重跑，不刷新会看不到）
   await loadChannels()
-  // 展开新卡片：填充编辑表单数据
+  // 展开新卡片：表单数据填充由 PlanForm 组件按 plan prop 完成（:key=plan.id 重建实例）
   editingPlanId.value = plan.id
+  editingStatus.value = plan.status != null ? plan.status : 1
   showForm.value = false  // 隐藏新建表单
-  editingForm.name = plan.name || ''
-  editingForm.remark = plan.remark || ''
-  editingForm.startDate = plan.start_date || ''
-  editingForm.endDate = plan.end_date || ''
-  editingForm.times = (plan.notification_times && plan.notification_times.length > 0)
-    ? plan.notification_times.map(t => t.notification_time)
-    : [getCurrentTime()]
-  editingForm.priority = plan.priority != null ? plan.priority : 3
-  editingForm.status = plan.status != null ? plan.status : 1
-  // 设置已选中的通知渠道：保留旧计划中仍有效的渠道，剔除已删除/失效的关联
-  // （用户在通知方式页删过某方式后，旧计划的 channel_ids 可能含已不存在的 id，
-  //  直接提交会被后端校验拒绝导致报错；此处仅保留当前 availableChannels 内存在的 id）
-  const validIds = new Set(availableChannels.value.map(c => c.id))
-  const baseIds = (plan.channel_ids || []).filter(id => validIds.has(id))
-  editingSelectedChannelIds.value = baseIds
-  // 确保站内信默认勾选（如果存在且未包含）
-  const znxChannel = availableChannels.value.find(c => c.channel_type === '站内信')
-  if (znxChannel && !editingSelectedChannelIds.value.includes(znxChannel.id)) {
-    editingSelectedChannelIds.value.push(znxChannel.id)
-  }
 }
 
 // 新建计划入口：点击"新建计划"入口卡，隐藏所有已有计划，显示新建表单
 async function handleNewEntry() {
   // 每次打开新建计划页面时重新从数据库加载通知方式（仅显示可用状态）
-  // 先清空选中状态，loadChannels 会重新勾选站内信
-  selectedChannelIds.value = []
   await loadChannels()
   showForm.value = true
   editingPlanId.value = null
-  form.name = ''
-  form.remark = ''
-  form.startDate = ''
-  form.endDate = ''
-  form.times = [getCurrentTime()]
-  form.priority = 3
-  form.status = 1
+  editingStatus.value = null
   // 新手引导：当前步骤为「新建计划」时，点击后进入下一步（步骤 6：返回首页）
   if (guideStore.isActive && guideStore.currentStepData?.target === 'new-plan') {
     guideStore.nextStep()
   }
 }
 
-// ===== 新建表单事件处理 =====
-function handleStartDateChange(e) {
-  form.startDate = e.detail.value
-}
-function handleEndDateChange(e) {
-  form.endDate = e.detail.value
-}
-function handleTimeChange(e, idx) {
-  form.times[idx] = e.detail.value
-}
-function handleAddTime() {
-  form.times.push('')
-}
-function handleDeleteTime(idx) {
-  if (form.times.length <= 1) {
-    uni.showToast({ title: t('plan.keepOneTime'), icon: 'none' })
-    return
-  }
-  form.times.splice(idx, 1)
-}
-function toggleChannel(channelId) {
-  const i = selectedChannelIds.value.indexOf(channelId)
-  if (i >= 0) {
-    selectedChannelIds.value.splice(i, 1)
-  } else {
-    selectedChannelIds.value.push(channelId)
-  }
-}
-
-// ===== 编辑表单事件处理 =====
-function handleEditStartDateChange(e) {
-  editingForm.startDate = e.detail.value
-}
-function handleEditEndDateChange(e) {
-  editingForm.endDate = e.detail.value
-}
-function handleEditTimeChange(e, idx) {
-  editingForm.times[idx] = e.detail.value
-}
-function handleEditAddTime() {
-  editingForm.times.push('')
-}
-function handleEditDeleteTime(idx) {
-  if (editingForm.times.length <= 1) {
-    uni.showToast({ title: t('plan.keepOneTime'), icon: 'none' })
-    return
-  }
-  editingForm.times.splice(idx, 1)
-}
-function toggleEditChannel(channelId) {
-  const i = editingSelectedChannelIds.value.indexOf(channelId)
-  if (i >= 0) {
-    editingSelectedChannelIds.value.splice(i, 1)
-  } else {
-    editingSelectedChannelIds.value.push(channelId)
-  }
-}
-
-// 保存新建计划
-async function handleSave() {
+// 保存新建计划（表单校验与 payload 组装由 PlanForm 完成）
+async function handleCreateSubmit(payload) {
   // 防重复提交：提交中直接返回
   if (isSubmitting.value) return
   if (!userStore.userInfo) {
     uni.showToast({ title: t('plan.needLogin'), icon: 'none' })
     return
   }
-  if (!form.name.trim()) {
-    uni.showToast({ title: t('plan.needName'), icon: 'none' })
-    return
-  }
-  if (!form.startDate) {
-    uni.showToast({ title: t('plan.needStart'), icon: 'none' })
-    return
-  }
-  if (!form.endDate) {
-    uni.showToast({ title: t('plan.needEnd'), icon: 'none' })
-    return
-  }
-  if (form.endDate < form.startDate) {
-    uni.showToast({ title: t('plan.endBeforeStart'), icon: 'none' })
-    return
-  }
-  const validTimes = form.times.filter(t => t)
-  if (validTimes.length === 0) {
-    uni.showToast({ title: t('plan.needTime'), icon: 'none' })
-    return
-  }
-  if (selectedChannelIds.value.length === 0) {
-    uni.showToast({ title: t('plan.needChannel'), icon: 'none' })
-    return
-  }
-
   isSubmitting.value = true
   try {
-    const res = await createPlan({
-      name: form.name,
-      remark: form.remark,
-      start_date: form.startDate,
-      end_date: form.endDate,
-      notification_times: validTimes,
-      channel_ids: selectedChannelIds.value,
-      status: form.status,
-      priority: form.priority
-    })
+    const res = await createPlan(payload)
     if (res.code === 0) {
       uni.showToast({ title: t('plan.created'), icon: 'success' })
       showForm.value = false
@@ -740,49 +321,14 @@ async function handleSave() {
   }
 }
 
-// 保存编辑计划（更新）
-async function handleSaveEdit(planId) {
+// 保存编辑计划（更新；表单校验与 payload 组装由 PlanForm 完成）
+async function handleUpdateSubmit(planId, payload) {
   // 防重复提交：提交中直接返回
   if (isSubmitting.value) return
   if (!userStore.userInfo) return
-  if (!editingForm.name.trim()) {
-    uni.showToast({ title: t('plan.needName'), icon: 'none' })
-    return
-  }
-  if (!editingForm.startDate) {
-    uni.showToast({ title: t('plan.needStart'), icon: 'none' })
-    return
-  }
-  if (!editingForm.endDate) {
-    uni.showToast({ title: t('plan.needEnd'), icon: 'none' })
-    return
-  }
-  if (editingForm.endDate < editingForm.startDate) {
-    uni.showToast({ title: t('plan.endBeforeStart'), icon: 'none' })
-    return
-  }
-  const validTimes = editingForm.times.filter(t => t)
-  if (validTimes.length === 0) {
-    uni.showToast({ title: t('plan.needTime'), icon: 'none' })
-    return
-  }
-  if (editingSelectedChannelIds.value.length === 0) {
-    uni.showToast({ title: t('plan.needChannel'), icon: 'none' })
-    return
-  }
-
   isSubmitting.value = true
   try {
-    const res = await updatePlan(planId, {
-      name: editingForm.name,
-      remark: editingForm.remark,
-      start_date: editingForm.startDate,
-      end_date: editingForm.endDate,
-      notification_times: validTimes,
-      channel_ids: editingSelectedChannelIds.value,
-      status: editingForm.status,
-      priority: editingForm.priority
-    })
+    const res = await updatePlan(planId, payload)
     if (res.code === 0) {
       uni.showToast({ title: t('plan.updated'), icon: 'success' })
       // 先刷新计划列表数据，再收起编辑表单。
@@ -791,6 +337,7 @@ async function handleSaveEdit(planId) {
       // 调换顺序后 planDisplayStatus[A.id] 始终为新 status 值，色条无中间态闪烁。
       await loadPlans()
       editingPlanId.value = null
+      editingStatus.value = null
     }
   } catch (e) {
     uni.showToast({ title: e.message || t('plan.updateFailed'), icon: 'none' })
@@ -808,6 +355,7 @@ async function handleSaveEdit(planId) {
  * 转 rpx：width/height/padding/margin/gap/font-size/line-height/border-radius/定位偏移
  * 保留 px：1px 边框、box-shadow 偏移/模糊、9999px、百分比、vh、z-index
  * 平板/折叠屏断点：≥768px 锁定关键尺寸为 px，避免 rpx 过度放大
+ * 注：表单字段样式（输入框/选择器/单选框等）已随 PlanForm 组件迁移至 components/PlanForm.vue
  * ========================================================================== */
 .plan-page {
   min-height: 100vh;
@@ -852,7 +400,7 @@ async function handleSaveEdit(planId) {
   font-weight: 500;
 }
 
-/* ===== 新建计划表单 ===== */
+/* ===== 新建计划表单（外壳卡片，字段内容由 PlanForm 组件渲染） ===== */
 .plan-page__form-wrap {
   padding-top: 0;
 }
@@ -863,9 +411,6 @@ async function handleSaveEdit(planId) {
   border-radius: 24rpx;
   background: var(--color-card-bg);
   box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 32rpx;
 }
 
 /* 卡片切换淡入过渡 */
@@ -882,351 +427,6 @@ async function handleSaveEdit(planId) {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.plan-page__form-heading {
-  color: var(--color-text-primary);
-  font-size: 36rpx;
-  line-height: 48rpx;
-  font-weight: 600;
-  padding-bottom: 16rpx;
-}
-
-.plan-page__field {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.plan-page__label {
-  color: var(--color-text-secondary);
-  font-size: 28rpx;
-  line-height: 40rpx;
-  font-weight: 400;
-}
-
-.plan-page__placeholder {
-  color: var(--color-text-tertiary);
-  font-size: 32rpx;
-}
-
-.plan-page__input {
-  height: 82rpx;
-  /* padding 0 12px + line-height 41px：使 input 文本垂直居中（参考 notification.vue 邮件输入框实现） */
-  padding: 0 24rpx;
-  box-sizing: border-box;
-  background: var(--color-card-bg-alt);
-  border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 82rpx;
-}
-
-/* 字符限制提示文字 */
-.plan-page__limit-text {
-  color: var(--color-warning);
-  font-size: 24rpx;
-  line-height: 32rpx;
-  margin-top: 8rpx;
-}
-
-.plan-page__textarea {
-  width: 100%;
-  /* 高度 88px = 3行 × 24px line-height + 上下 padding 各 8px，使备注说明默认显示3行 */
-  height: 176rpx;
-  padding: 16rpx 24rpx;
-  box-sizing: border-box;
-  background: var(--color-card-bg-alt);
-  border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 48rpx;
-}
-
-/* ===== 日期选择器 ===== */
-.plan-page__date-range {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 16rpx;
-}
-
-/* picker 元素本身设置 flex:1，使两个日期控件平分剩余宽度，共同占满表单单行100% */
-.plan-page__date-picker {
-  flex: 1;
-}
-
-.plan-page__date-separator {
-  color: var(--color-text-secondary);
-  font-size: 28rpx;
-  line-height: 40rpx;
-  font-weight: 400;
-  flex-shrink: 0;
-}
-
-.plan-page__picker-display {
-  flex: 1;
-  height: 82rpx;
-  padding: 20rpx 24rpx;
-  box-sizing: border-box;
-  background: var(--color-card-bg-alt);
-  border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  display: flex;
-  align-items: center;
-}
-
-.plan-page__picker-text {
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 42rpx;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.plan-page__picker-text--placeholder {
-  color: var(--color-text-tertiary);
-}
-
-/* ===== 提醒时间 ===== */
-.plan-page__time-label-row {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.plan-page__add-time {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.plan-page__add-time-icon {
-  width: 28rpx;
-  height: 28rpx;
-  display: block;
-}
-
-.plan-page__add-time-text {
-  color: var(--color-brand);
-  font-size: 28rpx;
-  line-height: 40rpx;
-  font-weight: 500;
-}
-
-.plan-page__time-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 16rpx;
-  height: 82rpx;
-}
-
-/* picker 标签本身设置 width: 50%，确保时间控件宽度为卡片内容区宽度的50% */
-.plan-page__time-picker {
-  width: 50%;
-}
-
-.plan-page__time-picker-display {
-  width: 100%;
-  height: 82rpx;
-  padding: 20rpx 24rpx;
-  box-sizing: border-box;
-  background: var(--color-card-bg-alt);
-  border-radius: 12rpx;
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  display: flex;
-  align-items: center;
-}
-
-.plan-page__time-picker-text {
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 42rpx;
-}
-
-.plan-page__time-picker-text--placeholder {
-  color: var(--color-text-tertiary);
-}
-
-.plan-page__time-delete {
-  width: 64rpx;
-  height: 82rpx;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.plan-page__time-delete-icon {
-  width: 32rpx;
-  height: 36rpx;
-  display: block;
-}
-
-/* ===== 优先级单选框（0-7） ===== */
-.plan-page__priority-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 20rpx;
-  padding-top: 8rpx;
-  flex-wrap: wrap;
-}
-
-.plan-page__priority-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.plan-page__priority-text {
-  color: var(--color-text-primary);
-  font-size: 28rpx;
-  line-height: 40rpx;
-  font-weight: 400;
-}
-
-/* ===== 通知方式 ===== */
-.plan-page__notify-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 62rpx;
-  padding-top: 8rpx;
-  flex-wrap: wrap;
-}
-
-.plan-page__notify-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 14rpx;
-}
-
-.plan-page__checkbox {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 12rpx;
-  background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.plan-page__checkbox--checked {
-  background: var(--color-brand);
-  box-shadow: inset 0 0 0 1px var(--color-brand);
-}
-
-.plan-page__checkmark {
-  width: 12rpx;
-  height: 20rpx;
-  border-right: 2px solid var(--color-text-inverse);
-  border-bottom: 2px solid var(--color-text-inverse);
-  transform: rotate(45deg) translate(-1px, -1px);
-}
-
-.plan-page__notify-text {
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 48rpx;
-  font-weight: 400;
-}
-
-.plan-page__notify-empty {
-  padding-top: 8rpx;
-}
-
-.plan-page__notify-empty-text {
-  color: var(--color-text-tertiary);
-  font-size: 28rpx;
-  line-height: 40rpx;
-}
-
-/* ===== 任务状态单选框 ===== */
-.plan-page__status-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 48rpx;
-  padding-top: 8rpx;
-}
-
-.plan-page__status-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 14rpx;
-}
-
-.plan-page__radio {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 50%;
-  background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.plan-page__radio--checked {
-  background: var(--color-brand);
-  box-shadow: inset 0 0 0 1px var(--color-brand);
-}
-
-.plan-page__radio-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background: var(--color-card-bg);
-}
-
-.plan-page__status-text {
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 48rpx;
-  font-weight: 400;
-}
-
-/* ===== 保存按钮 ===== */
-.plan-page__save {
-  margin-top: 32rpx;
-  height: 96rpx;
-  padding: 24rpx 0;
-  box-sizing: border-box;
-  border-radius: 9999px;
-  background: var(--color-brand);
-  box-shadow: var(--shadow-popup);
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.plan-page__save-icon {
-  width: 40rpx;
-  height: 40rpx;
-  display: block;
-}
-
-.plan-page__save-text {
-  color: var(--color-text-inverse);
-  font-size: 32rpx;
-  line-height: 48rpx;
-  font-weight: 500;
 }
 
 /* ===== 已有计划列表 ===== */
@@ -1352,16 +552,13 @@ async function handleSaveEdit(planId) {
   font-weight: 400;
 }
 
-/* ===== 就地展开编辑表单（从卡片延伸，无标题） ===== */
+/* ===== 就地展开编辑表单（从卡片延伸，无标题；字段内容由 PlanForm 组件渲染） ===== */
 .plan-page__card-edit {
   padding: 32rpx;
   box-sizing: border-box;
   border-radius: 0 0 24rpx 24rpx;
   background: var(--color-card-bg);
   box-shadow: inset 0 0 0 1px var(--color-border), var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  gap: 32rpx;
   /* 顶部无 margin，与卡片底部紧密衔接，呈现从卡片延伸的视觉效果 */
 }
 
@@ -1393,166 +590,6 @@ async function handleSaveEdit(planId) {
   .plan-page__form {
     padding: 16px;
     border-radius: 12px;
-    gap: 16px;
-  }
-  .plan-page__form-heading {
-    font-size: 18px;
-    line-height: 24px;
-    padding-bottom: 8px;
-  }
-  .plan-page__field {
-    gap: 4px;
-  }
-  .plan-page__label {
-    font-size: 14px;
-    line-height: 20px;
-  }
-  .plan-page__placeholder {
-    font-size: 16px;
-  }
-  .plan-page__input {
-    height: 41px;
-    padding: 0 12px;
-    border-radius: 6px;
-    font-size: 16px;
-    line-height: 41px;
-  }
-  .plan-page__limit-text {
-    font-size: 12px;
-    line-height: 16px;
-    margin-top: 4px;
-  }
-  .plan-page__textarea {
-    height: 88px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 16px;
-    line-height: 24px;
-  }
-  /* 日期选择器 */
-  .plan-page__date-range {
-    gap: 8px;
-  }
-  .plan-page__date-separator {
-    font-size: 14px;
-    line-height: 20px;
-  }
-  .plan-page__picker-display {
-    height: 41px;
-    padding: 10px 12px;
-    border-radius: 6px;
-  }
-  .plan-page__picker-text {
-    font-size: 16px;
-    line-height: 21px;
-  }
-  /* 提醒时间 */
-  .plan-page__add-time {
-    gap: 4px;
-  }
-  .plan-page__add-time-icon {
-    width: 14px;
-    height: 14px;
-  }
-  .plan-page__add-time-text {
-    font-size: 14px;
-    line-height: 20px;
-  }
-  .plan-page__time-row {
-    gap: 8px;
-    height: 41px;
-  }
-  .plan-page__time-picker-display {
-    height: 41px;
-    padding: 10px 12px;
-    border-radius: 6px;
-  }
-  .plan-page__time-picker-text {
-    font-size: 16px;
-    line-height: 21px;
-  }
-  .plan-page__time-delete {
-    width: 32px;
-    height: 41px;
-  }
-  .plan-page__time-delete-icon {
-    width: 16px;
-    height: 18px;
-  }
-  /* 优先级单选框 */
-  .plan-page__priority-row {
-    gap: 10px;
-    padding-top: 4px;
-  }
-  .plan-page__priority-item {
-    gap: 4px;
-  }
-  .plan-page__priority-text {
-    font-size: 14px;
-    line-height: 20px;
-  }
-  /* 通知方式 */
-  .plan-page__notify-row {
-    gap: 31px;
-    padding-top: 4px;
-  }
-  .plan-page__notify-item {
-    gap: 7px;
-  }
-  .plan-page__checkbox {
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
-  }
-  .plan-page__checkmark {
-    width: 6px;
-    height: 10px;
-  }
-  .plan-page__notify-text {
-    font-size: 16px;
-    line-height: 24px;
-  }
-  .plan-page__notify-empty {
-    padding-top: 4px;
-  }
-  .plan-page__notify-empty-text {
-    font-size: 14px;
-    line-height: 20px;
-  }
-  /* 任务状态单选框 */
-  .plan-page__status-row {
-    gap: 24px;
-    padding-top: 4px;
-  }
-  .plan-page__status-item {
-    gap: 7px;
-  }
-  .plan-page__radio {
-    width: 20px;
-    height: 20px;
-  }
-  .plan-page__radio-dot {
-    width: 8px;
-    height: 8px;
-  }
-  .plan-page__status-text {
-    font-size: 16px;
-    line-height: 24px;
-  }
-  /* 保存按钮 */
-  .plan-page__save {
-    margin-top: 16px;
-    height: 48px;
-    padding: 12px 0;
-    gap: 8px;
-  }
-  .plan-page__save-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .plan-page__save-text {
-    font-size: 16px;
-    line-height: 24px;
   }
   /* 已有计划列表 */
   .plan-page__list {
@@ -1604,7 +641,6 @@ async function handleSaveEdit(planId) {
   .plan-page__card-edit {
     padding: 16px;
     border-radius: 0 0 12px 12px;
-    gap: 16px;
   }
 }
 </style>

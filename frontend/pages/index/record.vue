@@ -92,6 +92,7 @@
             <view class="record-page__list-item-content">
               <view class="record-page__list-item-time-row">
                 <text class="record-page__list-item-time">{{ item.notification_time }}</text>
+                <text v-if="item.is_cross_day" class="record-page__list-item-cross-tag">{{ $t('record.crossDayTag') }}</text>
                 <text v-if="item.checked && item.first_actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.first_actual_time) }}</text>
                 <text v-if="item.checked && item.last_actual_time && item.last_actual_time !== item.first_actual_time" class="record-page__list-item-actual-time">→ {{ formatActualTime(item.last_actual_time) }}</text>
                 <text v-if="item.checkin_count > 2" class="record-page__list-item-count">{{ $t('record.countTimes', { count: item.checkin_count }) }}</text>
@@ -133,6 +134,7 @@
  *    - 无计划时不显示明细卡片
  *    - 已打卡：绿点 + 提醒时间 + 首次/末次打卡时间（→ HH:MM，绿色小字）+ 次数>2时显示"共N次" + 计划名称/备注 + jilu_wc.png 图标
  *    - 未打卡：灰点 + 提醒时间 + 计划名称/备注（无图标）
+ *    - 跨天补打行（is_cross_day）：前一日末次提醒在查看日凌晨的补打记录，置顶展示并带"昨日补打"标签
  *  - 底部固定导航栏（BottomNav），当前激活项为"记录"
  */
 import { ref, computed } from 'vue'
@@ -641,6 +643,18 @@ onShow(() => {
   font-weight: 500;
 }
 
+/* 跨天补打标签（前一日末次提醒在查看日凌晨的补打记录行） */
+.record-page__list-item-cross-tag {
+  padding: 2rpx 12rpx;
+  border-radius: 9999px;
+  background: var(--color-selected-bg);
+  color: var(--color-brand-darker);
+  font-size: 20rpx;
+  line-height: 28rpx;
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
 .record-page__list-item-actual-time {
   color: var(--color-success);
   font-size: 28rpx;
@@ -823,6 +837,11 @@ onShow(() => {
   .record-page__list-item-time {
     font-size: 16px;
     line-height: 24px;
+  }
+  .record-page__list-item-cross-tag {
+    padding: 1px 6px;
+    font-size: 10px;
+    line-height: 14px;
   }
   .record-page__list-item-actual-time {
     font-size: 14px;

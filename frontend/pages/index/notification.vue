@@ -1411,7 +1411,7 @@ async function handleUpdateWechat() {
   font-weight: 500;
 }
 
-/* ===== 新建通知方式表单卡（样式参照 plan 页"新建计划详情"卡片，保持设计一致） ===== */
+/* ===== 新建通知方式表单卡（样式参照 plan 页"新建计划"卡片，保持设计一致） ===== */
 .notification-page__form {
   padding: 32rpx;
   box-sizing: border-box;

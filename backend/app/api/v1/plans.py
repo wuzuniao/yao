@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 def _plan_to_dict(plan) -> dict:
-    """将 CheckinPlan 对象转换为响应字典（含时间点和关联渠道）"""
+    """将 CheckinPlan 对象转换为响应字典（含时间点、重复规则、结束方式与关联渠道）"""
     return {
         "id": plan.id,
         "user_id": plan.user_id,
@@ -19,10 +19,18 @@ def _plan_to_dict(plan) -> dict:
         "remark": plan.remark or "",
         "start_date": plan.start_date.isoformat() if plan.start_date else None,
         "end_date": plan.end_date.isoformat() if plan.end_date else None,
+        "repeat_weekdays": plan.repeat_weekdays,
+        "end_mode": plan.end_mode,
+        "total_target_count": plan.total_target_count,
         "status": plan.status,
         "priority": plan.priority,
         "notification_times": [
-            {"id": nt.id, "notification_time": nt.notification_time.strftime("%H:%M")}
+            {
+                "id": nt.id,
+                "notification_time": nt.notification_time.strftime("%H:%M"),
+                "followup_count": nt.followup_count,
+                "followup_interval_min": nt.followup_interval_min,
+            }
             for nt in (plan.notification_times or [])
         ],
         "channel_ids": [ch.channel_id for ch in (plan.channels or [])],
@@ -52,7 +60,7 @@ async def create_plan(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建计划（user_id 来自 JWT，含通知时间点和关联渠道）"""
+    """创建计划（user_id 来自 JWT，含通知时间点、重复规则、结束方式与关联渠道）"""
     service = PlanService(db)
     try:
         plan = await service.create_plan(
@@ -60,11 +68,14 @@ async def create_plan(
             name=payload.name,
             remark=payload.remark,
             start_date=payload.start_date,
-            end_date=payload.end_date,
+            end_date=payload.effective_end_date,
             notification_times=payload.notification_times,
             channel_ids=payload.channel_ids,
             status=payload.status,
             priority=payload.priority,
+            repeat_weekdays=payload.repeat_weekdays,
+            end_mode=payload.end_mode,
+            total_target_count=payload.total_target_count,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -99,7 +110,7 @@ async def update_plan(
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新计划（user_id 来自 JWT，含通知时间点和关联渠道）"""
+    """更新计划（user_id 来自 JWT，含通知时间点、重复规则、结束方式与关联渠道）"""
     service = PlanService(db)
     try:
         plan = await service.update_plan(
@@ -108,11 +119,14 @@ async def update_plan(
             name=payload.name,
             remark=payload.remark,
             start_date=payload.start_date,
-            end_date=payload.end_date,
+            end_date=payload.effective_end_date,
             notification_times=payload.notification_times,
             channel_ids=payload.channel_ids,
             status=payload.status,
             priority=payload.priority,
+            repeat_weekdays=payload.repeat_weekdays,
+            end_mode=payload.end_mode,
+            total_target_count=payload.total_target_count,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -29,7 +29,8 @@ class NotificationLogService:
     async def _auto_mark_read_if_checked(self, user_id: int) -> None:
         """
         自动标记已读：扫描未读站内信，若对应提醒时间的匹配区间内已有打卡记录，则标记为已读
-        - 匹配区间复用 CheckinService._get_match_intervals（按相邻中点划分，覆盖全天 0:00-24:00）
+        - 匹配区间复用 CheckinService.compute_day_windows（按相邻中点划分，末次区间跨日延伸），
+          次日凌晨的补打记录同样会将前一日末次提醒的催办站内信标记为已读
         - plan_time_id 为 NULL / 计划已删除 / notify_date 为 NULL / 无打卡记录 → 保持未读
         - 已读（status=0）记录不参与判定
         """
@@ -52,9 +53,9 @@ class NotificationLogService:
         if not unread_logs:
             return
 
-        # 2. 批量加载相关计划的提醒时间（selectinload 避免 N+1）
+        # 2. 批量加载相关计划（含提醒时间，selectinload 避免 N+1）
         plan_ids = {log.plan_id for log in unread_logs if log.plan_time_id is not None}
-        plan_times_map: dict[int, list] = {}
+        plans_map: dict[int, CheckinPlan] = {}
         if plan_ids:
             plans_result = await self.db.execute(
                 select(CheckinPlan)
@@ -62,28 +63,27 @@ class NotificationLogService:
                 .options(selectinload(CheckinPlan.notification_times))
             )
             for plan in plans_result.scalars().all():
-                plan_times_map[plan.id] = sorted(
-                    plan.notification_times, key=lambda nt: nt.notification_time
-                )
+                plans_map[plan.id] = plan
 
         # 3. 逐条判定匹配区间内是否有打卡记录
         marked = False
         for log in unread_logs:
             if log.plan_time_id is None or log.notify_date is None:
                 continue
-            times = plan_times_map.get(log.plan_id)
-            if not times:
+            plan = plans_map.get(log.plan_id)
+            if not plan:
                 # 计划已删除 → 无法获取提醒时间，保持未读
                 continue
+            times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
             # 定位 plan_time_id 在排序后提醒时间列表中的索引
             idx = next(
                 (i for i, nt in enumerate(times) if nt.id == log.plan_time_id), None
             )
             if idx is None:
                 continue
-            # 计算匹配区间并查询该区间内是否有打卡记录
-            intervals = CheckinService._get_match_intervals(times)
-            start_min, end_min = intervals[idx]
+            # 计算匹配区间（含跨日延伸）并查询该区间内是否有打卡记录
+            windows = CheckinService.compute_day_windows(plan, log.notify_date, times)
+            start_min, end_min = windows["intervals"][idx]
             day_start = datetime.combine(log.notify_date, dt_time(0, 0, 0))
             interval_start = day_start + timedelta(minutes=start_min)
             interval_end = day_start + timedelta(minutes=end_min)
