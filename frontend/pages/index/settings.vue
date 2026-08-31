@@ -38,7 +38,7 @@
           </view>
         </view>
 
-        <!-- 会员卡片（仅登录的普通用户 role=0 可见；深色权益卡，样式与内容均为纯前端静态展示） -->
+        <!-- 会员卡片（仅谷歌/鸿蒙商店分发渠道且登录的普通用户 role=0 可见；深色权益卡，样式与内容均为纯前端静态展示） -->
         <view v-if="showMemberCard" class="settings-page__member-card">
           <view class="settings-page__member-glow"></view>
           <view class="settings-page__member-info">
@@ -135,7 +135,8 @@
  *    - 已登录：显示用户信息，点击跳转 profile.vue
  *    - 未登录：用户名显示"请登录"，点击跳转 login.vue
  *  - 会员卡片：深色权益卡（徽章、主题权益标题、价格、抢购按钮），
- *    仅登录的普通用户（role=0）显示，未登录及 role≥1（含管理员）隐藏
+ *    仅「谷歌商店/鸿蒙商店」分发渠道且登录的普通用户（role=0）显示；
+ *    微信小程序/H5/其他安卓商店渠道包/iOS 及未登录、role≥1（含管理员）隐藏
  *  - 资料卡双版式：未登录/角色 0 用普通白卡版式；
  *    已登录且角色 ≥1 用管理员版式（Kinetic Asymmetric Cut：上绿 PRO 横幅 + 下深信息板，
  *    PRO 徽标后数字动态显示用户角色等级）
@@ -183,8 +184,25 @@ const memberLevel = computed(() => userStore.userInfo?.role ?? 0)
 // 是否使用管理员版式资料卡：已登录且角色等级 ≥1（Kinetic Asymmetric Cut 设计稿版式）
 const isAdminProfile = computed(() => memberLevel.value >= 1)
 
-// 是否显示会员卡片：仅登录且角色等级为 0（普通用户）时显示，未登录及 role≥1（含管理员）隐藏
-const showMemberCard = computed(() => !!userStore.userInfo && userStore.userInfo.role === 0)
+// 会员卡片渠道可见性：仅「谷歌商店」「鸿蒙商店」两种分发方式可见——
+// Android：云打包须勾选 Google Play 渠道出包（渠道 id 'google'，提交 Google Play 上架也必须用该渠道包），
+//   运行时经 plus.runtime.channel 读取（官方文档 tutorial/build/AndroidChannel.html）；
+//   其他安卓商店渠道包（huawei/xiaomi/oppo/vivo/yyb/360 等）与未勾渠道的普通包/调试基座该值非
+//   'google' → 不显示；iOS 无渠道包概念，恒不显示
+// 鸿蒙：唯一分发渠道即华为应用市场，编译期直接放行
+let memberChannelVisible = false
+// #ifdef APP-HARMONY
+memberChannelVisible = true
+// #endif
+// #ifdef APP-PLUS
+memberChannelVisible = plus.runtime.channel === 'google'
+// #endif
+
+// 是否显示会员卡片：允许的分发渠道（谷歌/鸿蒙商店）且登录且角色等级为 0（普通用户）时显示，
+// 未登录、role≥1（含管理员）或非允许渠道（小程序/H5/其他安卓商店/iOS）均隐藏
+const showMemberCard = computed(
+  () => memberChannelVisible && !!userStore.userInfo && userStore.userInfo.role === 0
+)
 
 // 管理员按钮出现/消失会导致设置页布局变化（公告管理卡片插入用户资料卡与功能入口之间），
 // 引导激活时需重新查询所有目标位置，确保高亮与实际按钮匹配

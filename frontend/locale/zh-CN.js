@@ -307,8 +307,8 @@ export default {
     privacy: '隐私政策',
     memberBadgeTitle: '会员专享权益',
     memberTitle: '解锁多达十种个性化主题',
-    memberPrice: '$1',
-    memberOriginalPrice: '原价 $6',
+    memberPrice: '¥6',
+    memberOriginalPrice: '原价 ¥36',
     memberPriceUnit: '/ 每月',
     memberBuyNow: '立即抢购',
     proBadge: 'PRO {level}'
@@ -322,9 +322,9 @@ export default {
     perk1Text: '解锁多达十种个性化主题，定义你的专属界面',
     perk2Title: '极致纯净',
     perk2Text: '永久移除所有广告，享受无干扰的流畅体验',
-    price: '$1',
+    price: '¥6',
     priceUnit: '/ 月',
-    priceOrigin: '原价 $6',
+    priceOrigin: '原价 ¥36',
     pill: '限时节省 83%',
     subscribe: '立即订阅',
     safeTip: '支付安全由应用商店提供极致保障'
