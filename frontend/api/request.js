@@ -114,7 +114,8 @@ export function request({ url, method = 'GET', data, header, timeout }) {
         } else if (errMsg.includes('timeout')) {
           msg = t('request.timeout')
         } else if (errMsg.includes('refused') || errMsg.includes('ECONNREFUSED')) {
-          msg = t('request.connectRefusedMp')
+          // 仅本地后端（开发环境）提示确认后端已启动；生产/远程后端走通用文案，避免 localhost:8000 误导用户
+          msg = BASE_URL.includes('localhost') ? t('request.connectRefusedMp') : t('request.connectRefusedRemote')
         } else if (errMsg) {
           msg = t('request.networkFailedDetail', { detail: errMsg })
         }

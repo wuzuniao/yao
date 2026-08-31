@@ -165,7 +165,7 @@ class TestSchemaPlanCoverage:
                 remark="",
                 start_date="2026-01-01",
                 end_date="2026-12-31",
-                notification_times=["08"],  # 格式错误：只有 1 个 part
+                notification_times=[{"time": "08"}],  # 格式错误：只有 1 个 part
                 channel_ids=[1],
             )
         assert "时间格式不正确" in str(exc_info.value)

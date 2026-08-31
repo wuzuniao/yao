@@ -21,6 +21,13 @@
 const { spawn } = require('node:child_process')
 const path = require('node:path')
 
+// uni CLI 的 bin 入口（node_modules/@dcloudio/vite-plugin-uni/bin/uni.js）。
+// 直接以 node 调用该入口，与 `npx uni` 完全等价（npx 的 .cmd/sh shim 最终同样是
+// `node .../bin/uni.js`），并可规避两个问题：① Node 24 起 spawn(command, args数组,
+// { shell: true }) 触发 DEP0190 弃用警告（Windows 下执行 .cmd 必须 shell:true，
+// 无法回避），直接调 node 无需 shell；② npx 的解析开销。
+// require.resolve 从本脚本位置向上查找 node_modules，与 cwd 无关，稳定可靠。
+
 const [, , mode, platform] = process.argv
 
 if (!mode || !platform) {
@@ -37,12 +44,13 @@ if (mode !== 'dev' && mode !== 'build') {
 const projectRoot = path.resolve(__dirname, '..')
 
 // uni CLI 参数：dev 模式无子命令，build 模式为 `build`
-const args = mode === 'build' ? ['uni', 'build', '-p', platform] : ['uni', '-p', platform]
+// （不包含 npx 时代的 `uni` 前缀——直接调 bin/uni.js 时首个参数须是子命令本身）
+const args = mode === 'build' ? ['build', '-p', platform] : ['-p', platform]
 
-const child = spawn('npx', args, {
+const uniBin = require.resolve('@dcloudio/vite-plugin-uni/bin/uni.js')
+const child = spawn(process.execPath, [uniBin, ...args], {
   cwd: projectRoot,
   stdio: 'inherit',
-  shell: true,
   env: {
     ...process.env,
     UNI_INPUT_DIR: projectRoot,

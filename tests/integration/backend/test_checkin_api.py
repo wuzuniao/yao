@@ -26,7 +26,7 @@ async def _create_plan_with_times(auth_client):
         "remark": "测试备注",
         "start_date": f"{today.year}-01-01",
         "end_date": f"{today.year}-12-31",
-        "notification_times": ["08:00", "20:00"],
+        "notification_times": [{"time": "08:00"}, {"time": "20:00"}],
         "channel_ids": [channel_id],
         "status": 1,
         "priority": 3,

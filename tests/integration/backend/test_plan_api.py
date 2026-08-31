@@ -32,7 +32,7 @@ async def _create_plan(auth_client, **overrides):
         "remark": "测试备注",
         "start_date": "2026-01-01",
         "end_date": "2026-12-31",
-        "notification_times": ["08:00", "20:00"],
+        "notification_times": [{"time": "08:00"}, {"time": "20:00"}],
         "channel_ids": [],  # Will be filled with actual channel_id
         "status": 1,
         "priority": 3,
@@ -158,7 +158,12 @@ class TestCreatePlan:
         """创建含多个通知时间点的计划"""
         data = await _create_plan(
             auth_client,
-            notification_times=["06:00", "12:00", "18:00", "22:00"],
+            notification_times=[
+                {"time": "06:00"},
+                {"time": "12:00"},
+                {"time": "18:00"},
+                {"time": "22:00"},
+            ],
         )
         times = [t["notification_time"] for t in data["notification_times"]]
         assert set(times) == {"06:00", "12:00", "18:00", "22:00"}
@@ -172,7 +177,7 @@ class TestCreatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["08:00"],
+            "notification_times": [{"time": "08:00"}],
             "channel_ids": [channel_id + 999999],  # 不存在的渠道ID
             "status": 1,
             "priority": 3,
@@ -188,7 +193,7 @@ class TestCreatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["08:00"],
+            "notification_times": [{"time": "08:00"}],
             "channel_ids": [],
             "status": 1,
             "priority": 3,
@@ -222,7 +227,7 @@ class TestCreatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["25:00"],  # 小时越界
+            "notification_times": [{"time": "25:00"}],  # 小时越界
             "channel_ids": [channel_id],
             "status": 1,
             "priority": 3,
@@ -239,7 +244,7 @@ class TestCreatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["08:00"],
+            "notification_times": [{"time": "08:00"}],
             "channel_ids": [channel_id],
             "status": 3,  # 只允许 0/1/2
             "priority": 3,
@@ -256,7 +261,7 @@ class TestCreatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["08:00"],
+            "notification_times": [{"time": "08:00"}],
             "channel_ids": [channel_id],
             "status": 1,
             "priority": 8,  # 只允许 0-7
@@ -278,7 +283,7 @@ class TestUpdatePlan:
             "remark": "更新后的备注",
             "start_date": "2026-02-01",
             "end_date": "2026-11-30",
-            "notification_times": ["09:00"],
+            "notification_times": [{"time": "09:00"}],
             "channel_ids": [channel_id],
             "status": 2,
             "priority": 1,
@@ -308,7 +313,7 @@ class TestUpdatePlan:
             "remark": "测试备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["10:00", "14:00", "18:00"],
+            "notification_times": [{"time": "10:00"}, {"time": "14:00"}, {"time": "18:00"}],
             "channel_ids": [channel_id],
             "status": 1,
             "priority": 3,
@@ -333,7 +338,7 @@ class TestUpdatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["08:00"],
+            "notification_times": [{"time": "08:00"}],
             "channel_ids": [channel_id],
             "status": 1,
             "priority": 3,
@@ -351,7 +356,7 @@ class TestUpdatePlan:
             "remark": "备注",
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",
-            "notification_times": ["08:00"],
+            "notification_times": [{"time": "08:00"}],
             "channel_ids": [channel_id],
             "status": 1,
             "priority": 3,

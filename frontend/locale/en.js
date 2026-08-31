@@ -96,6 +96,7 @@ export default {
       'Request domain not allowed. In WeChat DevTools, go to Details → Local Settings and check "Do not verify valid domains, web-view, TLS versions, or HTTPS certificates."',
     timeout: 'The request timed out. Check whether the backend service is running.',
     connectRefusedMp: 'Cannot reach the backend service. Make sure it is running (localhost:8000).',
+    connectRefusedRemote: 'Cannot reach the server. Please try again later.',
     connectRefusedH5: 'Cannot reach the backend service. Make sure it is running and your network is available.',
     tooManyRequests: 'Too many requests. Please try again later.'
   },

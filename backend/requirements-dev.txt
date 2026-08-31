@@ -1,0 +1,6 @@
+# 开发/测试依赖（生产部署无需安装）
+# 运行测试套件：在项目根目录执行 backend\venv\Scripts\python.exe -m pytest
+# （pytest.ini 位于项目根目录，测试数据库 wuzuniao_yao_test / wuzuniao_yonghu_test 自动创建）
+pytest>=9.0.0
+pytest-asyncio>=1.4.0
+pytest-cov>=7.0.0

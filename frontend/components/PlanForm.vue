@@ -706,7 +706,7 @@ function handleSubmit() {
 /* #ifdef H5 */
 .plan-form__input:hover .plan-form__placeholder,
 .plan-form__textarea:hover .plan-form__placeholder {
-  color: #c0c0c0;
+  color: var(--color-text-quaternary);
 }
 /* #endif */
 

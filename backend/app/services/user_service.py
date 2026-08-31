@@ -187,19 +187,19 @@ class User:
         :param username: 用户名或邮箱
         :param password: 明文密码
         :return: UserModel（验证成功）
-        :raises ValueError: 用户不存在或密码错误
+        :raises ValueError: 用户名或密码错误（两种情况统一文案，防登录接口枚举已注册用户名/邮箱）
         """
         # 1. 尝试按用户名查找
         user = await self.get_by_username(username)
         # 2. 如果未找到，尝试按邮箱查找
         if not user:
             user = await self.get_by_email(username)
-        # 3. 用户不存在
+        # 3. 用户不存在（与密码错误统一文案，防用户枚举）
         if not user:
-            raise ValueError("用户不存在")
+            raise ValueError("用户名或密码错误")
         # 4. 校验密码
         if not Security.verify_password(password, user.password_hash):
-            raise ValueError("密码错误")
+            raise ValueError("用户名或密码错误")
         # 5. 更新最后登录时间
         user.last_login_at = now_shanghai()
         await self.db.commit()

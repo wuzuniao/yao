@@ -227,12 +227,15 @@ class TestCreatePlanSchema:
             name="吃药计划",
             start_date=date(2026, 1, 1),
             end_date=date(2026, 12, 31),
-            notification_times=["08:00", "20:00"],
+            notification_times=[{"time": "08:00"}, {"time": "20:00"}],
             channel_ids=[1],
         )
         assert p.name == "吃药计划"
         assert p.status == 1
         assert p.priority == 3
+        # notification_times 为 NotificationTimeItem 对象数组，未传字段取默认值
+        assert [nt.time for nt in p.notification_times] == ["08:00", "20:00"]
+        assert p.notification_times[0].followup_count == 3
 
     @pytest.mark.unit
     def test_empty_name(self):
@@ -241,7 +244,7 @@ class TestCreatePlanSchema:
                 name="  ",
                 start_date="2026-01-01",
                 end_date="2026-12-31",
-                notification_times=["08:00"],
+                notification_times=[{"time": "08:00"}],
                 channel_ids=[1],
             )
 
@@ -263,7 +266,7 @@ class TestCreatePlanSchema:
                 name="计划",
                 start_date="2026-01-01",
                 end_date="2026-12-31",
-                notification_times=["25:00"],
+                notification_times=[{"time": "25:00"}],
                 channel_ids=[1],
             )
 
@@ -274,7 +277,7 @@ class TestCreatePlanSchema:
                 name="计划",
                 start_date="2026-01-01",
                 end_date="2026-12-31",
-                notification_times=["08:00"],
+                notification_times=[{"time": "08:00"}],
                 channel_ids=[],
             )
 
@@ -285,7 +288,7 @@ class TestCreatePlanSchema:
                 name="计划",
                 start_date="2026-01-01",
                 end_date="2026-12-31",
-                notification_times=["08:00"],
+                notification_times=[{"time": "08:00"}],
                 channel_ids=[1],
                 status=5,
             )
@@ -297,7 +300,7 @@ class TestCreatePlanSchema:
                 name="计划",
                 start_date="2026-01-01",
                 end_date="2026-12-31",
-                notification_times=["08:00"],
+                notification_times=[{"time": "08:00"}],
                 channel_ids=[1],
                 priority=10,
             )

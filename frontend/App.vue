@@ -53,6 +53,10 @@
  * App.vue 仅全局引入 global.scss，自身无尺寸样式，故无 rpx 转换内容与断点锁定。
  * 全局 CSS 变量的转换在 global.scss 中完成，具体尺寸的宽屏断点锁定由各页面/组件级样式处理。
  */
+/* 全局设计令牌唯一引入点。用 @use（Sass 现代语法；@import 已弃用，Dart Sass 3.0
+   将移除且构建期打印 [import] 弃用警告）。@use 只能出现在样式规则之前，故置于 .app-root 前 */
+@use './assets/styles/global.scss';
+
 .app-root {
 	min-height: 100vh;
 	width: 100%;
@@ -60,6 +64,4 @@
 	   避免 App/H5 端 page 根（默认绿主题令牌）透出绿底与墨黑主题内容冲突 */
 	background-color: var(--page-bg-color);
 }
-
-@import './assets/styles/global.scss';
 </style>

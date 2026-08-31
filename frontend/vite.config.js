@@ -42,6 +42,19 @@ export default defineConfig(({ mode }) => {
     plugins: [uni(), removeUnusedAssetsForMpWeixin()],
     root: '.',
     ...(isH5 ? { publicDir: 'public' } : {}),
+    // Sass 编译选项：legacy-js-api 弃用警告源于上游工具链——vite-plugin-uni 的
+    // peerDependencies 精确锁定 vite 5.2.8（低于支持 modern-compiler API 的 5.4），
+    // vite 5.2 只能以 legacy JS API 调用 sass，sass >= 1.79 对此打印弃用警告。
+    // 项目侧无法根治（升级 vite 会破坏 uni-app 编译链），故静音；
+    // 待 uni-app 官方放开 vite 版本约束后移除本配置。'import' 弃用不静音：
+    // 项目代码已全部改用 @use，保留该警告可及时发现未来误引入的 @import。
+    css: {
+      preprocessorOptions: {
+        scss: {
+          silenceDeprecations: ['legacy-js-api'],
+        },
+      },
+    },
     resolve: {
       alias: {
         // 指向项目根目录（即源码目录），供 `@/utils/xxx` 等导入使用

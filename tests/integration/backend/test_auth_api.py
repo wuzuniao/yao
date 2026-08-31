@@ -191,13 +191,13 @@ async def test_login_wrong_password(client, test_user):
 
 
 async def test_login_nonexistent_user(client):
-    """登录 - 用户不存在应返回 400"""
+    """登录 - 用户不存在应返回 400（文案与密码错误统一，防用户枚举）"""
     resp = await client.post(
         f"{API_PREFIX}/login",
         json={"username": "不存在用户", "password": "Test1234!"},
     )
     assert resp.status_code == 400
-    assert "用户不存在" in resp.json()["detail"]
+    assert "用户名或密码错误" in resp.json()["detail"]
 
 
 # =============================================================================

@@ -27,6 +27,7 @@ from app.services.checkin_service import CheckinService
 from app.services.notification_log_service import NotificationLogService
 from app.services.notification_channel_service import NotificationChannelService
 from app.schemas.notification_channel import CHANNEL_TYPE_ZNX, CHANNEL_TYPE_EMAIL
+from app.schemas.plan import NotificationTimeItem
 from sqlalchemy import select
 
 
@@ -217,7 +218,7 @@ class TestPlanServiceCoverage:
         with pytest.raises(ValueError, match="至少选择一个通知方式"):
             await service.create_plan(
                 test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-                ["08:00"], [],
+                [NotificationTimeItem(time="08:00")], [],
             )
 
     @pytest.mark.asyncio
@@ -227,7 +228,7 @@ class TestPlanServiceCoverage:
         service = PlanService(db_session)
         plan = await service.create_plan(
             test_user.id, "测试计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00:30"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00:30")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         plan = await service.get_by_id(plan.id)
@@ -241,12 +242,12 @@ class TestPlanServiceCoverage:
         service = PlanService(db_session)
         plan = await service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         with pytest.raises(ValueError, match="至少选择一个通知方式"):
             await service.update_plan(
                 plan.id, test_user.id, "更新", "", date(2026, 1, 1), date(2026, 12, 31),
-                ["08:00"], [],
+                [NotificationTimeItem(time="08:00")], [],
             )
 
     @pytest.mark.asyncio
@@ -256,12 +257,12 @@ class TestPlanServiceCoverage:
         service = PlanService(db_session)
         plan = await service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         with pytest.raises(ValueError, match="包含无效或非本用户的通知渠道"):
             await service.update_plan(
                 plan.id, test_user.id, "更新", "", date(2026, 1, 1), date(2026, 12, 31),
-                ["08:00"], [999999],
+                [NotificationTimeItem(time="08:00")], [999999],
             )
 
     @pytest.mark.asyncio
@@ -271,11 +272,11 @@ class TestPlanServiceCoverage:
         service = PlanService(db_session)
         plan = await service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         updated = await service.update_plan(
             plan.id, test_user.id, "更新", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["20:00:45"], [znx_channel.id],
+            [NotificationTimeItem(time="20:00:45")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         updated = await service.get_by_id(updated.id)
@@ -290,7 +291,7 @@ class TestPlanServiceCoverage:
         yesterday = date.today() - timedelta(days=1)
         plan = await service.create_plan(
             test_user.id, "过期计划", "", date(2026, 1, 1), yesterday,
-            ["08:00"], [znx_channel.id], status=1,
+            [NotificationTimeItem(time="08:00")], [znx_channel.id], status=1,
         )
         affected = await service.auto_close_expired_plans()
         assert affected >= 1
@@ -311,7 +312,7 @@ class TestCheckinServiceCoverage:
         plan_service = PlanService(db_session)
         plan = await plan_service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         plan = await plan_service.get_by_id(plan.id)
@@ -330,7 +331,7 @@ class TestCheckinServiceCoverage:
         plan_service = PlanService(db_session)
         plan = await plan_service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         plan = await plan_service.get_by_id(plan.id)
@@ -350,7 +351,7 @@ class TestCheckinServiceCoverage:
         plan_service = PlanService(db_session)
         plan = await plan_service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         plan = await plan_service.get_by_id(plan.id)
@@ -390,7 +391,7 @@ class TestNotificationLogServiceCoverage:
         znx_channel = await NotificationChannelService(db_session).ensure_znx_channel(test_user.id)
         plan = await PlanService(db_session).create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         # 创建站内信，plan_time_id 指向不存在的通知时间点（但计划存在）
         log = NotificationLog(
@@ -411,7 +412,7 @@ class TestNotificationLogServiceCoverage:
         plan_service = PlanService(db_session)
         plan = await plan_service.create_plan(
             test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
-            ["08:00"], [znx_channel.id],
+            [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         plan = await plan_service.get_by_id(plan.id)

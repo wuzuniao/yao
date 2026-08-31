@@ -96,6 +96,7 @@ page,
   --color-text-primary: var(--palette-neutral-100); /* 主文本：标题、卡片正文 */
   --color-text-secondary: var(--palette-neutral-90); /* 次要文本：描述、辅助说明 */
   --color-text-tertiary: var(--palette-neutral-75);  /* 占位/弱化文本：placeholder、箭头 */
+  --color-text-quaternary: var(--palette-neutral-50); /* 四级文本：比 tertiary 更弱的淡化占位态（表单 hover 时 placeholder 变淡），随主题联动 */
   --color-text-muted: var(--palette-neutral-80);     /* 弱化文本变体：时间戳、徽标小字 */
   --color-text-faded: var(--palette-neutral-70);     /* 灰色文字：计数、次要数值 */
   --color-text-disabled: var(--palette-neutral-65);  /* 禁用态标题文字 */
