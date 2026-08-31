@@ -461,8 +461,8 @@ function goAgreement() {
 }
 
 /* 上半绿横幅（上层）：品牌浅绿 + 自上而下白高光渐变，右下 48px 圆角——弧外月牙露
-   底层黑板，形成「绿卡叠在黑卡上」的错位叠压关系；padding-right 12px 使头像
-   距横幅右缘固定 12px */
+   底层黑板，形成「绿卡叠在黑卡上」的错位叠压关系；padding-right 24px 使头像
+   距横幅右缘固定 24px */
 .settings-page__kinetic-hero {
   position: relative;
   z-index: 1;
@@ -470,15 +470,16 @@ function goAgreement() {
   flex-direction: row;
   align-items: center;
   padding: 48rpx;
-  padding-right: 12px;
+  padding-right: 24px;
   border-radius: 0 0 96rpx 0;
   background-color: var(--color-brand-bg);
   background-image: linear-gradient(180deg, var(--color-highlight-strong), var(--color-highlight-faint));
 }
 
-/* PRO 文字容器：flex:1 占满头像左侧剩余宽度，文字在自身宽度内居中对齐 */
+/* PRO 文字容器：flex 基准取剩余宽度 100%（flex:1 1 100%，与固定 88px 头像按
+   百分比分宽后收缩让位），文字在自身宽度内居中对齐 */
 .settings-page__kinetic-pro-wrap {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
   display: flex;
   flex-direction: row;
@@ -499,7 +500,7 @@ function goAgreement() {
 }
 
 /* 头像：不做圆形裁剪（widthFix 按图片原始比例完整显示），固定像素为图像自身大小
-   （原图 88x88，不随容器宽度改变），固定距横幅右缘 12px */
+   （原图 88x88，不随容器宽度改变），固定距横幅右缘 24px */
 .settings-page__kinetic-avatar {
   width: 88px;
   flex-shrink: 0;
@@ -949,7 +950,6 @@ function goAgreement() {
   }
   .settings-page__kinetic-hero {
     padding: 24px;
-    padding-right: 12px;
     border-radius: 0 0 48px 0;
   }
   .settings-page__kinetic-pro {
