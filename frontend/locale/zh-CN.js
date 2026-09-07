@@ -104,7 +104,7 @@ export default {
     domainNotConfigured:
       '请求域名未配置：请在微信开发者工具 → 详情 → 本地设置，勾选「不校验合法域名、web-view、TLS 版本以及 HTTPS 证书」',
     timeout: '请求超时，请检查后端服务是否启动',
-    connectRefusedMp: '无法连接后端服务，请确认后端已启动（localhost:8000）',
+    connectRefusedMp: '无法连接本地后端服务，请确认后端已启动且地址与端口配置一致',
     connectRefusedRemote: '无法连接服务器，请稍后重试',
     connectRefusedH5: '无法连接后端服务，请确认后端已启动或网络正常',
     tooManyRequests: '操作过于频繁，请稍后再试'

@@ -203,7 +203,7 @@ export function request({ url, method = 'GET', data, header, timeout, baseUrl, s
         } else if (errMsg.includes('timeout')) {
           msg = t('request.timeout')
         } else if (errMsg.includes('refused') || errMsg.includes('ECONNREFUSED')) {
-          // 仅本地后端（开发环境）提示确认后端已启动；生产/远程后端走通用文案，避免 localhost:8000 误导用户
+          // 仅本地后端（开发环境）提示确认后端已启动；生产/远程后端走通用文案，避免本地地址误导用户
           msg = (baseUrl || BASE_URL).includes('localhost') ? t('request.connectRefusedMp') : t('request.connectRefusedRemote')
         } else if (errMsg) {
           msg = t('request.networkFailedDetail', { detail: errMsg })
