@@ -24,7 +24,8 @@ class NotificationChannelService:
     """
     通知渠道业务逻辑服务
     --------------------------------------------------------------------------
-    - 站内信：注册时自动创建，channel_value=用户ID，不允许用户删除/修改
+    - 站内信：懒创建（用户注册/登录已迁 auth 服务，首次访问渠道列表时自动补建），
+      channel_value=用户ID，不允许用户删除/修改
     - 邮件：用户主动配置，channel_value=JSON 字符串（含 SMTP 配置），可增删改
     - App 推送：App 端用户主动添加，每用户仅一行，channel_value=JSON（设备 token 数组）
     """
@@ -53,9 +54,11 @@ class NotificationChannelService:
 
     async def ensure_znx_channel(self, user_id: int) -> NotificationChannel:
         """
-        为用户创建/获取站内信通知渠道（注册时调用）
-        - 若已存在则返回现有记录，否则创建新记录
+        为用户创建/获取站内信通知渠道（懒创建）
+        - 若已存在则返回现有记录，否则创建新记录并提交落库
         - channel_value = 用户ID（字符串形式）
+        - 用户系统迁移至 auth 服务后注册不再联动创建，
+          进入设置页/通知方式页加载渠道列表（list_by_user）时在此自动补建
         """
         result = await self.db.execute(
             select(NotificationChannel).where(
@@ -74,7 +77,10 @@ class NotificationChannelService:
             enabled=True,
         )
         self.db.add(channel)
-        await self.db.flush()
+        # 必须显式 commit 落库：get_db 请求结束时只 close 不提交，
+        # 仅 flush 的话新渠道会随事务回滚丢失（懒创建此前从未持久化的根因）
+        await self.db.commit()
+        await self.db.refresh(channel)
         return channel
 
     async def create_email_channel(

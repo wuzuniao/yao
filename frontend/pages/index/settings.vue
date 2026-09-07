@@ -278,12 +278,15 @@ async function loadPlans() {
 }
 
 onMounted(() => {
-  loadChannels()
   loadPlans()
 })
 
 // 新手引导：页面显示时上报当前页面（引导激活时推进/回退步骤）
+// 进入设置页时加载通知渠道列表：后端 list_by_user 懒创建站内信渠道
+// （用户系统迁移后新用户不再由 auth 联动创建，每次进入设置页检查、无则自动补建；
+//   置于 onShow 而非 onMounted，覆盖登录后返回、从通知方式页返回等页面实例已存在的场景）
 onShow(() => {
+  loadChannels()
   guideStore.onPageEnter('settings')
 })
 
