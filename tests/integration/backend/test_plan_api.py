@@ -8,14 +8,12 @@ from datetime import date, time
 
 import pytest
 
-from app.core.security import Security
 from app.models.notification_channel import NotificationChannel
 from app.models.plan import (
     CheckinPlan,
     PlanNotificationChannel,
     PlanNotificationTime,
 )
-from app.models.user import User as UserModel
 
 
 async def _get_channel_id(auth_client) -> int:
@@ -48,31 +46,24 @@ async def _create_plan(auth_client, **overrides):
 
 
 async def _create_other_user_plan(db_session) -> int:
-    """创建另一个用户及其计划（直接操作数据库），返回计划ID
+    """创建另一个用户（虚拟 ID，用户库已归 auth 服务）及其计划（直接操作数据库），返回计划ID
 
     用于测试“越权操作他人计划”场景：该计划属于非当前登录用户，
     通过 auth_client（当前用户 token）访问应被拒绝。
     """
-    other_user = UserModel(
-        username="其他用户",
-        email="other@example.com",
-        password_hash=Security.hash_password("Test1234!"),
-        status=1,
-    )
-    db_session.add(other_user)
-    await db_session.flush()
+    other_user_id = 20002
 
     other_channel = NotificationChannel(
-        user_id=other_user.id,
+        user_id=other_user_id,
         channel_type="站内信",
-        channel_value=str(other_user.id),
+        channel_value=str(other_user_id),
         enabled=True,
     )
     db_session.add(other_channel)
     await db_session.flush()
 
     plan = CheckinPlan(
-        user_id=other_user.id,
+        user_id=other_user_id,
         name="其他用户的计划",
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),

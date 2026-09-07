@@ -9,9 +9,7 @@ from datetime import date, time as dt_time
 
 import pytest
 
-from app.core.security import Security
 from app.models.plan import CheckinPlan, PlanNotificationTime
-from app.models.user import User as UserModel
 from app.utils.timezone import today_shanghai
 
 
@@ -38,19 +36,12 @@ async def _create_plan_with_times(auth_client):
 
 
 async def _create_other_user_plan(db_session):
-    """创建另一个用户的计划（直接通过 ORM 写入），返回 (plan_id, plan_time_ids)"""
-    other_user = UserModel(
-        username="其他用户",
-        email="other@example.com",
-        password_hash=Security.hash_password("Test1234!"),
-        status=1,
-    )
-    db_session.add(other_user)
-    await db_session.flush()
+    """创建另一个用户（虚拟 ID，用户库已归 auth 服务）的计划（直接通过 ORM 写入），返回 (plan_id, plan_time_ids)"""
+    other_user_id = 20002
 
     today = today_shanghai()
     plan = CheckinPlan(
-        user_id=other_user.id,
+        user_id=other_user_id,
         name="其他用户的计划",
         start_date=date(today.year, 1, 1),
         end_date=date(today.year, 12, 31),

@@ -35,6 +35,19 @@ export const API_BASE_URL = IS_APP
       ? 'https://yao.wuzuniao.com'
       : 'http://localhost:8000')
 
+// auth 统一认证服务基础地址（登录/注册/刷新令牌等用户模块接口直连此域名）
+// App 端恒定使用生产 HTTPS 域名（与 API_BASE_URL 同逻辑：真机 localhost 指向手机自身，
+// 且 Android 9+/iOS ATS/鸿蒙默认禁明文 HTTP，不随 NODE_ENV 变化）
+export const AUTH_BASE_URL = IS_APP
+  ? 'https://auth.wuzuniao.com'
+  : (process.env.NODE_ENV === 'production'
+      ? 'https://auth.wuzuniao.com'
+      : 'http://localhost:10000')
+
+// OIDC 接入方 client_id（本应用在 auth 服务 oauth_clients 表注册的公共 client，
+// 登录/刷新令牌请求携带；公开信息，可安全提交 Git）
+export const AUTH_CLIENT_ID = 'yao'
+
 // 微信订阅消息模板 ID（一次性订阅，打卡提醒模板）
 // 全端始终导出：模板 ID 属公开信息，无敏感风险；import 处（useWechatSubscribe.js）
 // 在任意平台都需能静态解析到该名字，避免非微信端打包时「未导出」构建失败。

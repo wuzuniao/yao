@@ -2,13 +2,13 @@
 定时任务调度服务（定时计划类）
 --------------------------------------------------------------------------
 集中管理所有后台定时任务循环，main.py 启动时调用 start_all() 拉起全部任务。
-其他业务类（User/Email/PlanService 等）如需定时触发能力，由本服务统一调度。
 
-当前包含四类后台任务：
-1. 账号清理循环（每 30 秒）：清理 status=0 且超时的删除计划账号
-2. 计划自动关闭循环（每 30 分钟）：将 end_date<today 的按日期结束计划置为已结束
-3. 定时通知派发循环（每 60 秒）：根据打卡计划提醒时间发送站内信/邮件/微信/App推送通知
-4. 生物识别凭证清理循环（每 30 分钟）：删除已过期的 user_biometric_tokens 记录
+当前包含三类后台任务：
+1. 计划自动关闭循环（每 30 分钟）：将 end_date<today 的按日期结束计划置为已结束
+2. 定时通知派发循环（每 60 秒）：根据打卡计划提醒时间发送站内信/邮件/微信/App推送通知
+3. 令牌撤销同步循环（每 REVOCATION_SYNC_INTERVAL_SECONDS 秒，默认 5 分钟）：
+   拉取 auth 服务的撤销增量，本地比对 iat 拒绝旧令牌（用户模块已独立为 auth 服务，
+   账号清理/生物识别凭证清理循环随之迁出，分别由 auth 服务的后台任务承担）
 
 通知派发逻辑（批量预取 + 分钟水位回放架构）：
 - 分钟水位：进程内记录上一次已处理的分钟；稳态每轮只处理新增的 1 分钟，
@@ -27,8 +27,10 @@
   跨日延伸至「末次催办+30 分钟」），次日凌晨补打会拦停跨天催办
 - 防重：以 (plan_time_id, trigger_type, notify_date, channel_id) 为去重键
 - 站内信：直接写 notification_logs（status=2 未读）
-- 邮件：读取用户 notification_channels.channel_value 作为 SMTP 发送，收件人取 users.email
-- 微信：一次性订阅额度制（granted-sent>0 才发，成功 sent+1）
+- 邮件：读取用户 notification_channels.channel_value 作为 SMTP 发送；
+  收件人 email 经 auth_client 向 auth 服务查询（TTL 缓存 5 分钟）
+- 微信：一次性订阅额度制（granted-sent>0 才发，成功 sent+1）；
+  openid 经 auth_client 向 auth 服务查询（TTL 缓存 5 分钟）
 - App 推送：读取 channel_value 内的设备 token 数组，逐个走友盟+ U-Push 下发，
   失败计数满 3 次剔除该设备，数组清空则删除整行渠道；按渠道只记 1 条日志
 """
@@ -42,11 +44,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..core.database import AsyncSessionLocal
+from ..core import auth_client
 from ..models.plan import CheckinPlan, PlanNotificationTime, PlanNotificationChannel
 from ..models.notification_channel import NotificationChannel
 from ..models.notification_log import NotificationLog
 from ..models.checkin_record import CheckinRecord
-from ..models.user import User as UserModel
 from ..schemas.notification_channel import (
     CHANNEL_TYPE_ZNX,
     CHANNEL_TYPE_EMAIL,
@@ -65,7 +67,6 @@ from ..schemas.notification_log import (
     TRIGGER_DESC,
 )
 from ..core.config import settings
-from ..models.user_miniapp_account import UserMiniappAccount
 from ..services.wechat_service import WeChatService, ERRCODE_NO_PERMISSION
 from ..services.umeng_service import UmengService, UmengPushError
 from ..utils.timezone import now_shanghai
@@ -73,16 +74,15 @@ from ..utils.crypto import decrypt
 from ..utils.logger import logger
 from .checkin_service import CheckinService
 from .email_service import Email
-from .user_service import User
 from .plan_service import PlanService
 from .notification_channel_service import NotificationChannelService
 
 
 # 后台循环间隔（秒）
-INTERVAL_PURGE: int = 30        # 账号清理：每 30 秒
 INTERVAL_PLAN_CLOSE: int = 1800  # 计划关闭：每 30 分钟
 INTERVAL_NOTIFICATION: int = 60   # 通知派发：每 60 秒
-INTERVAL_BIOMETRIC_PURGE: int = 1800  # 生物识别凭证清理：每 30 分钟
+# 令牌撤销同步间隔（秒）：从 settings 读取（.env 可调，默认 300 = 5 分钟）
+INTERVAL_REVOCATION_SYNC: int = settings.REVOCATION_SYNC_INTERVAL_SECONDS
 
 # 通知派发回放窗口（分钟）：进程重启/宕机恢复后向前回放的分钟数（含当前分钟），
 # 窗口内的漏发通知自动补发（防重键挡住已发条目），超出窗口的不再补发
@@ -102,12 +102,16 @@ class SchedulerService:
     async def start_all(self) -> None:
         """启动全部后台循环任务（由 main.py lifespan 调用）"""
         self._tasks = [
-            asyncio.create_task(self._loop_purge_deletions()),
             asyncio.create_task(self._loop_close_expired_plans()),
             asyncio.create_task(self._loop_dispatch_notifications()),
-            asyncio.create_task(self._loop_purge_expired_biometric_tokens()),
+            asyncio.create_task(self._loop_sync_revocations()),
         ]
-        logger.info("定时任务调度服务已启动：账号清理/计划关闭/通知派发/生物识别凭证清理")
+        # 启动即拉取一次 JWKS 公钥（磁盘+内存缓存），供 access_token 本地验签
+        await auth_client.fetch_jwks()
+        logger.info(
+            "定时任务调度服务已启动：计划关闭/通知派发/令牌撤销同步"
+            f"（撤销同步间隔 {INTERVAL_REVOCATION_SYNC} 秒）"
+        )
 
     async def stop_all(self) -> None:
         """停止全部后台循环任务（由 main.py lifespan 调用）"""
@@ -121,18 +125,6 @@ class SchedulerService:
         self._tasks = []
 
     # ==================== 后台循环 ====================
-
-    async def _loop_purge_deletions(self) -> None:
-        """循环：定期清理到期删除账号（委托 User 服务）"""
-        while True:
-            try:
-                async with AsyncSessionLocal() as session:
-                    count = await User(session).purge_expired_deletions()
-                    if count > 0:
-                        logger.info(f"已清理 {count} 个到期删除账号")
-            except Exception:
-                logger.exception("清理到期删除账号任务异常")
-            await asyncio.sleep(INTERVAL_PURGE)
 
     async def _loop_close_expired_plans(self) -> None:
         """循环：定期自动关闭过期计划（委托 PlanService）"""
@@ -155,17 +147,21 @@ class SchedulerService:
                 logger.exception("定时通知派发任务异常")
             await asyncio.sleep(INTERVAL_NOTIFICATION)
 
-    async def _loop_purge_expired_biometric_tokens(self) -> None:
-        """循环：定期清理已过期的生物识别登录凭证（委托 User 服务）"""
+    async def _loop_sync_revocations(self) -> None:
+        """
+        循环：拉取 auth 服务的令牌撤销增量（本地验签 + 后台撤销同步的「同步」侧）
+        - 每轮调用 auth_client.pull_revocations，合并 {user_id: 撤销时刻} 本地状态
+        - deps 每请求经 is_revoked 本地比对 iat，零网络调用
+        - 拉取失败保留旧水位下一轮重试（容忍 auth 短暂不可达）
+        """
         while True:
             try:
-                async with AsyncSessionLocal() as session:
-                    count = await User(session).purge_expired_biometric_tokens()
-                    if count > 0:
-                        logger.info(f"已清理 {count} 条过期生物识别凭证")
+                added = await auth_client.pull_revocations()
+                if added > 0:
+                    logger.info(f"令牌撤销同步完成：本轮新增 {added} 条撤销记录")
             except Exception:
-                logger.exception("清理过期生物识别凭证任务异常")
-            await asyncio.sleep(INTERVAL_BIOMETRIC_PURGE)
+                logger.exception("令牌撤销同步任务异常")
+            await asyncio.sleep(INTERVAL_REVOCATION_SYNC)
 
 
 def _trigger_desc(plan_time: PlanNotificationTime, trigger_type: int) -> str:
@@ -431,12 +427,10 @@ class NotificationDispatcher:
                                   LOG_STATUS_FAILED, "邮件渠道配置解析失败")
             return
 
-        # 2. 查收件人邮箱（users.email）
-        user_result = await self.db.execute(
-            select(UserModel).where(UserModel.id == plan.user_id)
-        )
-        user = user_result.scalar_one_or_none()
-        if not user or not user.email:
+        # 2. 查收件人邮箱（经 auth_client 向 auth 服务查询，TTL 缓存 5 分钟；
+        #    用户库已拆分至 auth，本服务不再直连）
+        user_email = await auth_client.get_user_email(plan.user_id)
+        if not user_email:
             logger.warning(f"用户 {plan.user_id} 未绑定邮箱，跳过邮件通知")
             await self._write_log(plan, plan_time, channel, trigger_type, notify_date, now,
                                   LOG_STATUS_FAILED, "用户未绑定邮箱")
@@ -634,15 +628,8 @@ class NotificationDispatcher:
             logger.info("App推送渠道全部设备失效，已删除该通知方式")
 
     async def _get_openid(self, user_id: int) -> str | None:
-        """按 user_id + appid 在用户库 user_miniapp_accounts 中查询 openid"""
-        result = await self.db.execute(
-            select(UserMiniappAccount.openid).where(
-                UserMiniappAccount.app_id == settings.WX_APPID,
-                UserMiniappAccount.user_id == user_id,
-            )
-        )
-        row = result.first()
-        return row[0] if row else None
+        """查询用户 openid（经 auth_client 向 auth 服务查询，TTL 缓存 5 分钟）"""
+        return await auth_client.get_user_openid(user_id, settings.WX_APPID)
 
     async def _write_log(self, plan: CheckinPlan, plan_time: PlanNotificationTime,
                          channel: NotificationChannel, trigger_type: int, notify_date,

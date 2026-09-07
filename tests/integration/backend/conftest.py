@@ -1,40 +1,30 @@
 """
 集成测试共享 fixtures
 --------------------------------------------------------------------------
-- 使用测试数据库 wuzuniao_yao_test（由根 conftest.py 设置 DATABASE_URL 环境变量）
-- 复用 app 自身的 database.py 引擎，使用 NullPool 避免跨事件循环连接失效
+- 使用测试业务数据库 wuzuniao_yao_test（由根 conftest.py 设置 DATABASE_URL 环境变量）
+- 用户库已归 auth 服务：测试用户不再写用户表，直接分配虚拟 user_id 并以
+  测试 RSA 私钥签发 access_token（密钥见 tests/rsa_keys.py，根 conftest 已注入 JWKS）
+- 复用 app 自身的 database.py 基础，使用 NullPool 避免跨事件循环连接失效
 - 每个测试后自动清理数据（TRUNCATE 所有表）
-- 自动 mock Email 服务，避免发送真实邮件
 - 提供已认证的测试客户端
 """
-from unittest.mock import patch, MagicMock
+from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.database import Base, get_db
-from app.core.security import Security
 from app.models.checkin_record import CheckinRecord  # noqa: F401
-from app.models.notification_channel import NotificationChannel
+from app.models.notification_channel import NotificationChannel  # noqa: F401
 from app.models.notification_log import NotificationLog  # noqa: F401
 from app.models.plan import CheckinPlan, PlanNotificationChannel, PlanNotificationTime  # noqa: F401
-from app.models.user import User as UserModel
-from app.models.user_miniapp_account import UserMiniappAccount  # noqa: F401
+from tests import rsa_keys
 
 TEST_DATABASE_URL = (
     "mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao_test?charset=utf8mb4"
 )
-# 测试专用用户库（与开发库 wuzuniao_yonghu 完全隔离）
-TEST_USER_DB = "wuzuniao_yonghu_test"
-
-# 用户库测试隔离：将 User/UserMiniappAccount 的 schema 从开发库 wuzuniao_yonghu
-# 重映射到测试库 wuzuniao_yonghu_test，确保测试不污染开发环境用户数据
-for _table in Base.metadata.tables.values():
-    if _table.schema == "wuzuniao_yonghu":
-        _table.schema = TEST_USER_DB
 
 # 测试专用引擎（NullPool 不缓存连接，避免跨事件循环的连接失效问题）
 _test_engine = create_async_engine(
@@ -46,19 +36,15 @@ _test_engine = create_async_engine(
 
 _tables_created = False
 
+# 测试用户虚拟 ID（业务表 user_id 无外键约束，无需真实用户行）
+TEST_USER_ID = 10001
+
 
 async def _ensure_tables():
     """确保所有表已创建（仅执行一次）"""
     global _tables_created
     if not _tables_created:
         async with _test_engine.begin() as conn:
-            # 确保测试用户库存在（users/user_miniapp_accounts 通过 schema 跨库创建于此库）
-            await conn.execute(
-                text(
-                    f"CREATE DATABASE IF NOT EXISTS {TEST_USER_DB} "
-                    "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-                )
-            )
             await conn.run_sync(Base.metadata.create_all)
         _tables_created = True
 
@@ -68,15 +54,6 @@ async def _truncate_all():
     async with _test_engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(table.delete())
-
-
-@pytest.fixture(autouse=True)
-def mock_email_service():
-    """自动 mock Email 服务，避免发送真实邮件"""
-    with patch("app.services.user_service.Email") as mock:
-        instance = mock.return_value
-        instance.send_verification_code = MagicMock(return_value=None)
-        yield mock
 
 
 @pytest.fixture
@@ -107,34 +84,30 @@ async def client(db_session):
 
 @pytest.fixture
 async def test_user(db_session):
-    """创建测试用户并返回用户对象"""
-    user = UserModel(
+    """
+    测试用户（虚拟对象）+ 站内信通知渠道（业务库行）
+    - 用户库已归 auth 服务：不再创建用户表行，业务表仅以 user_id 关联（无外键约束）
+    - 令牌由 rsa_keys 以测试私钥签发（auth_token fixture）
+    - 站内信渠道在此创建（与拆分前 fixture 行为一致，供既有测试直接查询；
+      运行时渠道已由 NotificationChannelService.list_by_user 懒创建）
+    """
+    from app.services.notification_channel_service import NotificationChannelService
+
+    user = SimpleNamespace(
+        id=TEST_USER_ID,
         username="测试用户",
         email="test@example.com",
-        password_hash=Security.hash_password("Test1234!"),
-        avatar_url="hei",
-        signature="测试签名",
         status=1,
+        role=0,
     )
-    db_session.add(user)
-    await db_session.flush()
-    # 自动创建站内信通知渠道（与注册流程一致）
-    channel = NotificationChannel(
-        user_id=user.id,
-        channel_type="站内信",
-        channel_value=str(user.id),
-        enabled=True,
-    )
-    db_session.add(channel)
-    await db_session.commit()
-    await db_session.refresh(user)
+    await NotificationChannelService(db_session).ensure_znx_channel(user.id)
     return user
 
 
 @pytest.fixture
 def auth_token(test_user):
-    """生成测试用户的 JWT token"""
-    return Security.generate_token(test_user.id)
+    """生成测试用户的 RS256 access_token（测试私钥签发，claims 与 auth 服务一致）"""
+    return rsa_keys.sign_token(test_user.id, role=test_user.role)
 
 
 @pytest.fixture
@@ -147,8 +120,9 @@ async def auth_client(client, auth_token):
 @pytest.fixture
 async def bypass_auth(client):
     """
-    绕过认证 DB 校验，直接返回 user_id=999999（不存在的用户）
-    - 用于测试 service 层"用户不存在"分支，使请求绕过 auth 层的 DB 查询直达 service 层
+    绕过认证，直接返回 user_id=999999（不存在的用户）
+    - 新版认证依赖不查库（本地 RS256 验签 + 撤销比对），无需绕过 DB 校验；
+      本 fixture 保留用于直达 service 层测试"用户不存在/无归属数据"分支
     - 依赖 client fixture（已覆盖 get_db），仅额外覆盖 get_current_user_id
     """
     from app.core.deps import get_current_user_id

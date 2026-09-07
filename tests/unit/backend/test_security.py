@@ -1,153 +1,16 @@
 """
 Security 类单元测试
 --------------------------------------------------------------------------
-覆盖密码哈希、密码校验、密码复杂度、用户名校验、验证码校验、邮箱校验、
-SMTP 校验、输入净化、正整数校验、JWT 生成与校验、输出过滤
+覆盖 SMTP 校验、输入净化、正整数校验（业务 Schema 仍用的通用校验），
+以及 verify_access_token 的 RS256 本地验签（测试密钥见 tests/rsa_keys.py；
+密码/用户名/验证码/邮箱/头像校验已随用户模块迁移至 auth 服务）
 """
+import time
+
 import pytest
 
 from app.core.security import Security
-
-
-class TestPasswordHashing:
-    """密码哈希与校验"""
-
-    @pytest.mark.unit
-    def test_hash_password_returns_bcrypt_hash(self):
-        hashed = Security.hash_password("Test1234!")
-        assert hashed != "Test1234!"
-        assert hashed.startswith("$2")
-
-    @pytest.mark.unit
-    def test_hash_password_different_each_time(self):
-        h1 = Security.hash_password("Test1234!")
-        h2 = Security.hash_password("Test1234!")
-        assert h1 != h2
-
-    @pytest.mark.unit
-    def test_verify_password_correct(self):
-        hashed = Security.hash_password("Test1234!")
-        assert Security.verify_password("Test1234!", hashed) is True
-
-    @pytest.mark.unit
-    def test_verify_password_wrong(self):
-        hashed = Security.hash_password("Test1234!")
-        assert Security.verify_password("WrongPass!", hashed) is False
-
-
-class TestValidatePassword:
-    """密码复杂度校验"""
-
-    @pytest.mark.unit
-    def test_valid_password(self):
-        assert Security.validate_password("Abc1234!") == "Abc1234!"
-
-    @pytest.mark.unit
-    def test_too_short(self):
-        with pytest.raises(ValueError, match="密码长度需为 8-20 位"):
-            Security.validate_password("Ab1!")
-
-    @pytest.mark.unit
-    def test_too_long(self):
-        with pytest.raises(ValueError, match="密码长度需为 8-20 位"):
-            Security.validate_password("Abc12345!Abc12345!Abc")
-
-    @pytest.mark.unit
-    def test_only_two_categories(self):
-        with pytest.raises(ValueError, match="至少三种"):
-            Security.validate_password("abcdef12")
-
-    @pytest.mark.unit
-    def test_not_string(self):
-        with pytest.raises(ValueError, match="密码必须为字符串"):
-            Security.validate_password(12345678)
-
-    @pytest.mark.unit
-    def test_strips_control_chars(self):
-        # 控制字符被移除后仍需满足复杂度
-        result = Security.validate_password("Abc1234!\x00")
-        assert "\x00" not in result
-
-
-class TestValidateUsername:
-    """用户名校验"""
-
-    @pytest.mark.unit
-    def test_valid_username(self):
-        assert Security.validate_username("测试用户") == "测试用户"
-
-    @pytest.mark.unit
-    def test_valid_english_username(self):
-        assert Security.validate_username("testuser") == "testuser"
-
-    @pytest.mark.unit
-    def test_too_short(self):
-        with pytest.raises(ValueError, match="用户名长度需为 2-15"):
-            Security.validate_username("a")
-
-    @pytest.mark.unit
-    def test_invalid_chars(self):
-        with pytest.raises(ValueError, match="仅允许中文、英文及数字"):
-            Security.validate_username("user@name")
-
-    @pytest.mark.unit
-    def test_strips_whitespace(self):
-        assert Security.validate_username("  testuser  ") == "testuser"
-
-    @pytest.mark.unit
-    def test_not_string(self):
-        with pytest.raises(ValueError, match="用户名必须为字符串"):
-            Security.validate_username(123)
-
-    @pytest.mark.unit
-    def test_too_long(self):
-        with pytest.raises(ValueError, match="用户名长度不能超过"):
-            Security.validate_username("a" * 16)
-
-
-class TestValidateCode:
-    """验证码校验"""
-
-    @pytest.mark.unit
-    def test_valid_code(self):
-        assert Security.validate_code("123456") == "123456"
-
-    @pytest.mark.unit
-    def test_not_six_digits(self):
-        with pytest.raises(ValueError):
-            Security.validate_code("12345")
-
-    @pytest.mark.unit
-    def test_contains_letters(self):
-        with pytest.raises(ValueError):
-            Security.validate_code("12ab56")
-
-    @pytest.mark.unit
-    def test_strips_whitespace(self):
-        assert Security.validate_code("  123456  ") == "123456"
-
-    @pytest.mark.unit
-    def test_not_string(self):
-        with pytest.raises(ValueError, match="验证码必须为字符串"):
-            Security.validate_code(123456)
-
-
-class TestValidateEmail:
-    """邮箱校验"""
-
-    @pytest.mark.unit
-    def test_valid_email(self):
-        assert Security.validate_email("test@example.com") == "test@example.com"
-
-    @pytest.mark.unit
-    def test_no_at_sign(self):
-        with pytest.raises(ValueError, match="邮箱地址格式不正确"):
-            Security.validate_email("invalidemail")
-
-    @pytest.mark.unit
-    def test_not_string(self):
-        with pytest.raises(ValueError, match="邮箱必须为字符串"):
-            Security.validate_email(123)
+from tests import rsa_keys
 
 
 class TestValidateSmtp:
@@ -232,38 +95,88 @@ class TestValidatePositiveInt:
             Security.validate_positive_int("1")
 
 
-class TestJWT:
-    """JWT 生成与校验"""
+class TestVerifyAccessToken:
+    """verify_access_token：auth 服务签发的 RS256 access_token 本地验签"""
 
     @pytest.mark.unit
-    def test_generate_and_verify_token(self):
-        token = Security.generate_token(1)
-        payload = Security.verify_token(token)
+    @pytest.mark.asyncio
+    async def test_valid_token(self):
+        token = rsa_keys.sign_token(1, role=7)
+        payload = await Security.verify_access_token(token)
         assert payload["sub"] == "1"
+        assert payload["role"] == 7
+        assert payload["azp"] == "yao"
         assert "iat" in payload
         assert "exp" in payload
 
     @pytest.mark.unit
-    def test_generate_token_invalid_user_id(self):
-        with pytest.raises(ValueError, match="用户ID必须为正整数"):
-            Security.generate_token(0)
-
-    @pytest.mark.unit
-    def test_generate_token_negative_user_id(self):
-        with pytest.raises(ValueError, match="用户ID必须为正整数"):
-            Security.generate_token(-1)
-
-    @pytest.mark.unit
-    def test_verify_token_empty(self):
+    @pytest.mark.asyncio
+    async def test_empty_token(self):
         with pytest.raises(ValueError, match="令牌不能为空"):
-            Security.verify_token("")
+            await Security.verify_access_token("")
 
     @pytest.mark.unit
-    def test_verify_token_invalid(self):
+    @pytest.mark.asyncio
+    async def test_invalid_token(self):
         with pytest.raises(ValueError, match="登录凭证无效"):
-            Security.verify_token("invalid.token.here")
+            await Security.verify_access_token("invalid.token.here")
 
     @pytest.mark.unit
-    def test_verify_token_not_string(self):
-        with pytest.raises(ValueError, match="令牌不能为空"):
-            Security.verify_token(None)
+    @pytest.mark.asyncio
+    async def test_expired_token(self):
+        """过期 token 应抛出 ValueError（登录已过期；须超出 60s 时钟容差）"""
+        token = rsa_keys.sign_token(1, expires_in=-120)
+        with pytest.raises(ValueError, match="登录已过期"):
+            await Security.verify_access_token(token)
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_wrong_issuer(self):
+        """签发方不匹配的 token 应抛出 ValueError"""
+        token = rsa_keys.sign_token(1, issuer="https://someone-else.example.com")
+        with pytest.raises(ValueError, match="签发方不正确"):
+            await Security.verify_access_token(token)
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_forged_signature(self):
+        """非 auth（测试密钥）签名的 token 应验签失败"""
+        import jwt as pyjwt
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa as rsa_gen
+
+        rogue = rsa_gen.generate_private_key(public_exponent=65537, key_size=2048)
+        rogue_pem = rogue.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        payload = {
+            "iss": rsa_keys.TEST_ISSUER,
+            "sub": "1",
+            "iat": int(time.time()),
+            "exp": int(time.time()) + 3600,
+        }
+        forged = pyjwt.encode(
+            payload, rogue_pem, algorithm="RS256", headers={"kid": rsa_keys.KID}
+        )
+        with pytest.raises(ValueError, match="登录凭证无效"):
+            await Security.verify_access_token(forged)
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_unknown_kid(self):
+        """未知 kid：重拉 JWKS 失败（测试 AUTH_BASE_URL 不可达）后仍无该公钥 → 登录凭证无效"""
+        import jwt as pyjwt
+
+        payload = {
+            "iss": rsa_keys.TEST_ISSUER,
+            "sub": "1",
+            "iat": int(time.time()),
+            "exp": int(time.time()) + 3600,
+        }
+        token = pyjwt.encode(
+            payload, rsa_keys.PRIVATE_PEM, algorithm="RS256", headers={"kid": "unknown-kid"}
+        )
+        with pytest.raises(ValueError, match="登录凭证无效"):
+            await Security.verify_access_token(token)

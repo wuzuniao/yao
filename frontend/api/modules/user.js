@@ -1,4 +1,13 @@
 import { request } from '../request'
+import { AUTH_BASE_URL, AUTH_CLIENT_ID } from '../../config/env'
+
+/**
+ * 用户模块接口（全部直连 auth 统一认证服务，不经 yao 后端转发）
+ * - baseUrl 固定为 AUTH_BASE_URL（开发 http://localhost:10000 / 生产 https://auth.wuzuniao.com）
+ * - 登录类请求携带 client_id（auth 服务 oauth_clients 表注册的本应用公共 client）
+ * - 登录/注册/重置密码/绑定邮箱成功响应的 data 含 OIDC 令牌三件套：
+ *   access_token / refresh_token / expires_in / token_type
+ */
 
 /**
  * 发送注册验证码
@@ -8,6 +17,7 @@ export function sendRegisterCode(email) {
   return request({
     url: '/api/v1/users/send-code',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: { email }
   })
 }
@@ -24,7 +34,8 @@ export function registerUser({ username, password, email, code }) {
   return request({
     url: '/api/v1/users/register',
     method: 'POST',
-    data: { username, password, email, code }
+    baseUrl: AUTH_BASE_URL,
+    data: { username, password, email, code, client_id: AUTH_CLIENT_ID }
   })
 }
 
@@ -38,7 +49,8 @@ export function loginUser({ username, password, device_id }) {
   return request({
     url: '/api/v1/users/login',
     method: 'POST',
-    data: { username, password, device_id }
+    baseUrl: AUTH_BASE_URL,
+    data: { username, password, device_id, client_id: AUTH_CLIENT_ID }
   })
 }
 
@@ -50,6 +62,7 @@ export function sendResetCode(email) {
   return request({
     url: '/api/v1/users/send-reset-code',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: { email }
   })
 }
@@ -65,7 +78,8 @@ export function resetPassword({ email, code, new_password, device_id }) {
   return request({
     url: '/api/v1/users/reset-password',
     method: 'POST',
-    data: { email, code, new_password, device_id }
+    baseUrl: AUTH_BASE_URL,
+    data: { email, code, new_password, device_id, client_id: AUTH_CLIENT_ID }
   })
 }
 
@@ -78,6 +92,7 @@ export function updateSignature({ signature }) {
   return request({
     url: '/api/v1/users/update-signature',
     method: 'PUT',
+    baseUrl: AUTH_BASE_URL,
     data: { signature }
   })
 }
@@ -92,6 +107,7 @@ export function changePassword({ old_password, new_password }) {
   return request({
     url: '/api/v1/users/change-password',
     method: 'PUT',
+    baseUrl: AUTH_BASE_URL,
     data: { old_password, new_password }
   })
 }
@@ -103,6 +119,7 @@ export function sendChangeEmailOldCode() {
   return request({
     url: '/api/v1/users/send-change-email-old-code',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: {}
   })
 }
@@ -116,6 +133,7 @@ export function sendChangeEmailNewCode(new_email, allow_existing = false) {
   return request({
     url: '/api/v1/users/send-change-email-new-code',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: { new_email, allow_existing }
   })
 }
@@ -131,6 +149,7 @@ export function changeEmail({ old_code, new_email, new_code }) {
   return request({
     url: '/api/v1/users/change-email',
     method: 'PUT',
+    baseUrl: AUTH_BASE_URL,
     data: { old_code, new_email, new_code }
   })
 }
@@ -144,6 +163,7 @@ export function updateAvatar({ avatar_url }) {
   return request({
     url: '/api/v1/users/update-avatar',
     method: 'PUT',
+    baseUrl: AUTH_BASE_URL,
     data: { avatar_url }
   })
 }
@@ -155,6 +175,7 @@ export function scheduleDeletion() {
   return request({
     url: '/api/v1/users/schedule-deletion',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: {}
   })
 }
@@ -166,6 +187,7 @@ export function cancelDeletion() {
   return request({
     url: '/api/v1/users/cancel-deletion',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: {}
   })
 }
@@ -178,7 +200,8 @@ export function wechatLogin(code) {
   return request({
     url: '/api/v1/users/wechat-login',
     method: 'POST',
-    data: { code },
+    baseUrl: AUTH_BASE_URL,
+    data: { code, client_id: AUTH_CLIENT_ID },
     timeout: 10000
   })
 }
@@ -192,6 +215,7 @@ export function bindWechat(code) {
   return request({
     url: '/api/v1/users/bind-wechat',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: { code },
     timeout: 10000
   })
@@ -206,6 +230,7 @@ export function updateUsername({ new_username }) {
   return request({
     url: '/api/v1/users/update-username',
     method: 'PUT',
+    baseUrl: AUTH_BASE_URL,
     data: { new_username }
   })
 }
@@ -219,12 +244,14 @@ export function setPassword({ new_password }) {
   return request({
     url: '/api/v1/users/set-password',
     method: 'PUT',
+    baseUrl: AUTH_BASE_URL,
     data: { new_password }
   })
 }
 
 /**
- * 绑定邮箱（user_id 由 JWT 提供，用于无邮箱用户首次绑定邮箱）
+ * 绑定邮箱（user_id 由 JWT 提供，用于无邮箱用户首次绑定邮箱；
+ * 若邮箱已存在会触发账号合并，成功响应含新令牌三件套）
  * @param {Object} param0 绑定邮箱数据
  * @param {string} param0.new_email 新邮箱地址
  * @param {string} param0.new_code 新邮箱验证码
@@ -233,7 +260,8 @@ export function bindEmail({ new_email, new_code }) {
   return request({
     url: '/api/v1/users/bind-email',
     method: 'PUT',
-    data: { new_email, new_code }
+    baseUrl: AUTH_BASE_URL,
+    data: { new_email, new_code, client_id: AUTH_CLIENT_ID }
   })
 }
 
@@ -243,34 +271,49 @@ export function bindEmail({ new_email, new_code }) {
 export function getUserInfo() {
   return request({
     url: '/api/v1/users/info',
-    method: 'GET'
+    method: 'GET',
+    baseUrl: AUTH_BASE_URL
   })
 }
 
 /**
- * 刷新访问令牌有效期（静默续期，不要求重新登录）
+ * 刷新访问令牌（静默续期，不要求重新登录）
+ * 经 auth 服务标准 OIDC 令牌端点（POST /oauth/token 的 refresh_token grant，轮换制：
+ * 每次刷新换新 refresh_token 并撤销旧的，新旧令牌均本地更新）
+ * 注意：响应为令牌三件套原始结构（access_token/refresh_token/expires_in/token_type），
+ * 非 {code,msg,data} 业务格式
  * @param {Object} param0 续期参数
- * @param {string} [param0.device_id] 设备标识，传入后后端同步顺延生物识别凭证有效期
+ * @param {string} [param0.device_id] 设备标识，传入后 auth 同步顺延生物识别凭证有效期
  */
 export function refreshToken({ device_id } = {}) {
+  const data = {
+    grant_type: 'refresh_token',
+    refresh_token: uni.getStorageSync('refreshToken') || '',
+    client_id: AUTH_CLIENT_ID
+  }
+  if (device_id) data.device_id = device_id
   return request({
-    url: '/api/v1/users/refresh-token',
+    url: '/oauth/token',
     method: 'POST',
-    data: { device_id }
+    baseUrl: AUTH_BASE_URL,
+    // 刷新请求自身带跳过 401 静默重试标记（防递归），失败由调用方处理
+    skipAuthRefresh: true,
+    data
   })
 }
 
 /**
  * 生物识别（指纹）登录
  * @param {Object} param0 指纹登录参数
- * @param {string} param0.token 本地解密出的生物识别凭证
+ * @param {string} param0.token 本地存储的生物识别凭证
  * @param {string} param0.device_id 设备标识（与凭证绑定）
  */
 export function biometricLogin({ token, device_id }) {
   return request({
     url: '/api/v1/users/biometric-login',
     method: 'POST',
-    data: { token, device_id },
+    baseUrl: AUTH_BASE_URL,
+    data: { token, device_id, client_id: AUTH_CLIENT_ID },
     timeout: 10000
   })
 }
@@ -284,6 +327,19 @@ export function revokeBiometric({ device_id }) {
   return request({
     url: '/api/v1/users/biometric-revoke',
     method: 'POST',
+    baseUrl: AUTH_BASE_URL,
     data: { device_id }
+  })
+}
+
+/**
+ * 退出登录（撤销全部令牌；前端需同步清除本地 accessToken/refreshToken/userInfo）
+ */
+export function logout() {
+  return request({
+    url: '/api/v1/users/logout',
+    method: 'POST',
+    baseUrl: AUTH_BASE_URL,
+    data: {}
   })
 }

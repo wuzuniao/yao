@@ -5,15 +5,14 @@
 """
 import json
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
 
-from app.core.security import Security
 from app.models.notification_channel import NotificationChannel
 from app.models.notification_log import NotificationLog
 from app.models.plan import CheckinPlan
-from app.models.user import User as UserModel
 from app.utils.timezone import now_shanghai, today_shanghai
 
 
@@ -41,15 +40,8 @@ async def _create_notification_log(
 
 
 async def _create_another_user(db_session):
-    """创建另一个测试用户及其站内信渠道（用于跨用户权限隔离测试）"""
-    user = UserModel(
-        username="其他用户",
-        email="other@example.com",
-        password_hash=Security.hash_password("Test1234!"),
-        status=1,
-    )
-    db_session.add(user)
-    await db_session.flush()
+    """创建另一个测试用户（虚拟 ID，用户库已归 auth 服务）及其站内信渠道（用于跨用户权限隔离测试）"""
+    user = SimpleNamespace(id=20002)
     channel = NotificationChannel(
         user_id=user.id,
         channel_type="站内信",
@@ -58,7 +50,6 @@ async def _create_another_user(db_session):
     )
     db_session.add(channel)
     await db_session.commit()
-    await db_session.refresh(user)
     await db_session.refresh(channel)
     return user, channel
 

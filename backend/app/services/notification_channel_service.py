@@ -33,7 +33,12 @@ class NotificationChannelService:
         self.db = db
 
     async def list_by_user(self, user_id: int) -> list[NotificationChannel]:
-        """查询用户的所有通知渠道"""
+        """
+        查询用户的所有通知渠道（懒创建站内信渠道）
+        - 用户注册/微信登录已迁移至 auth 服务，不再联动创建站内信渠道；
+          用户首次打开通知方式页或建计划加载渠道列表时在此自动补建，业务零回调
+        """
+        await self.ensure_znx_channel(user_id)
         result = await self.db.execute(
             select(NotificationChannel).where(NotificationChannel.user_id == user_id)
         )

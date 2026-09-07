@@ -4,24 +4,16 @@ import smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
-from ..core.config import settings
 from ..utils.logger import logger
 
 
 class Email:
     """
-    邮箱操作类（封装邮件发送功能）
+    邮箱操作类（封装打卡通知邮件发送）
     --------------------------------------------------------------------------
-    - send_verification_code：使用系统腾讯企业邮（smtp.exmail.qq.com:465 SSL）发送验证码
     - send_notification：使用用户自配 SMTP（notification_channels.channel_value）发送打卡通知
+    - 验证码邮件已随用户模块迁移至 auth 服务（其 email_service.send_verification_code）
     """
-
-    def __init__(self) -> None:
-        self.host: str = settings.SMTP_HOST
-        self.port: int = settings.SMTP_PORT
-        self.user: str = settings.SMTP_USER
-        self.password: str = settings.SMTP_PASSWORD
-        self.sender_name: str = settings.SMTP_SENDER_NAME
 
     @staticmethod
     def _smtp_authenticate(server: smtplib.SMTP, user: str, password: str) -> None:
@@ -64,100 +56,6 @@ class Email:
 
         # 服务器未声明认证方式（罕见），退回 login()
         _ = server.login(user, password)
-
-    def send_verification_code(self, to_email: str, code: str) -> None:
-        """
-        发送验证码邮件（注册、密码找回、修改邮箱等场景共用）
-        :param to_email: 收件人邮箱
-        :param code:     6 位数字验证码
-        """
-        if not self.user or not self.password:
-            # 源邮箱未配置，给出明确提示
-            raise ValueError(
-                "SMTP 邮箱未配置，请在 .env 中设置 SMTP_USER 与 SMTP_PASSWORD（腾讯企业邮账号与客户端专用密码）"
-            )
-
-        subject = "【按时吃药】验证码"
-        home_url = "https://www.wuzuniao.com"
-        logo_url = "https://www.wuzuniao.com/images/logo_wuzuniao_com_s.png"
-        content = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>按时吃药 - 验证码</title>
-</head>
-<body style="margin:0;padding:0;background-color:#fafafa;font-family:Geist,Arial,'PingFang SC','Microsoft YaHei',sans-serif;-webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#fafafa;">
-    <tr>
-      <td align="center" style="padding:64px 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;background-color:#ffffff;border:1px solid #ebebeb;border-radius:12px;overflow:hidden;">
-          <tr>
-            <td align="center" style="padding:32px 24px 20px;">
-              <a href="{home_url}" style="display:inline-block;">
-                <img src="{logo_url}" alt="无足鸟" style="display:block;border:0;outline:none;">
-              </a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 24px 20px;">
-              <p style="margin:0;font-size:14px;font-weight:400;line-height:20px;color:#4d4d4d;">请在页面中输入以下验证码完成验证：</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:4px 24px 24px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background-color:#f2f2f2;border-radius:12px;">
-                <tr>
-                  <td style="padding:16px 32px;">
-                    <span style="font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:32px;font-weight:600;letter-spacing:8px;color:#171717;">{code}</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 24px 24px;">
-              <p style="margin:0 0 8px;font-size:14px;font-weight:400;line-height:20px;color:#4d4d4d;">验证码有效期为 <strong style="color:#171717;font-weight:600;">5 分钟</strong>，请勿泄露给他人。</p>
-              <p style="margin:0;font-size:14px;font-weight:400;line-height:20px;color:#8f8f8f;">如非本人操作，请忽略本邮件。</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 24px 32px;border-top:1px solid #ebebeb;">
-              <p style="margin:24px 0 0;font-size:12px;font-weight:400;line-height:16px;color:#a1a1a1;text-align:center;">
-                此邮件由 <a href="{home_url}" style="color:#0070f3;text-decoration:none;">无足鸟</a> 自动发送
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""
-
-        msg = MIMEText(content, "html", "utf-8")
-        msg["Subject"] = subject
-        msg["From"] = formataddr((self.sender_name, self.user))
-        msg["To"] = to_email
-
-        try:
-            # 腾讯企业邮使用 SSL（端口 465）
-            with smtplib.SMTP_SSL(self.host, self.port, timeout=10) as server:
-                self._smtp_authenticate(server, self.user, self.password)
-                _ = server.sendmail(self.user, [to_email], msg.as_string())
-            logger.info(f"验证码邮件发送成功：{to_email}")
-        except smtplib.SMTPAuthenticationError as e:
-            if isinstance(e.smtp_error, bytes):
-                err_detail = e.smtp_error.decode("utf-8", errors="replace")
-            elif e.smtp_error:
-                err_detail = str(e.smtp_error)
-            else:
-                err_detail = str(e)
-            logger.error(f"验证码邮件发送失败：{to_email}，SMTP 认证失败（{e.smtp_code}）：{err_detail}")
-            raise RuntimeError(f"邮件发送失败：SMTP 认证失败（{e.smtp_code}）：{err_detail}")
-        except Exception as e:
-            logger.error(f"验证码邮件发送失败：{to_email}，错误：{e}")
-            raise RuntimeError(f"邮件发送失败：{e}")
 
     def send_notification(
         self,

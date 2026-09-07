@@ -523,6 +523,16 @@ server {
         proxy_redirect off;
     }
 
+    # 服务间内部接口（auth 统一认证服务回调：账号删除清理/账号合并；X-Service-Token 守卫）
+    location /internal/ {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+    }
+
     # 后端健康检查（路径保持不变：/health）
     location = /health {
         proxy_pass http://backend:8000;
@@ -622,7 +632,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - __DEPLOY_DIR__/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro,z
+      # 目录级挂载（非单文件）：auth.conf 等附加站点配置（auth 统一认证服务部署时写入）可被自动加载
+      - __DEPLOY_DIR__/nginx:/etc/nginx/conf.d:ro,z
       - __DEPLOY_DIR__/certs:/etc/nginx/certs:ro,z
       - __INSTALL_DIR__/frontend/dist/build/h5:/usr/share/nginx/html:ro,z
     depends_on:
@@ -648,6 +659,70 @@ EOF
     -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
     "$DEPLOY_DIR/docker-compose.yml"
   log_ok "docker-compose.yml 已生成：$DEPLOY_DIR/docker-compose.yml"
+}
+
+# ============== 9.1 生成 auth 统一认证服务的 nginx 站点配置（同机部署时） ==============
+# 说明：auth 服务与 yao 同机部署时，其 TLS（auth.wuzuniao.com）由 yao-nginx 统一承载；
+#       证书由 auth 的 deploy.sh 写入本部署目录 certs/ 下，本函数据此生成/清理 auth.conf
+#       （auth 侧 deploy.sh 亦会写入同内容文件，两侧幂等一致）
+generate_auth_nginx_conf() {
+  local auth_conf="$DEPLOY_DIR/nginx/auth.conf"
+
+  if [[ ! -f "$DEPLOY_DIR/certs/auth.wuzuniao.com.pem" ]]; then
+    # 证书不存在（auth 未部署）：清理旧站点配置避免 nginx 加载失败
+    if [[ -f "$auth_conf" ]]; then
+      rm -f "$auth_conf"
+      log_info "未检测到 auth 证书，已移除 auth.wuzuniao.com 站点配置（auth 部署后将自动恢复）"
+    fi
+    return 0
+  fi
+
+  cat > "$auth_conf" <<'EOF'
+# auth.wuzuniao.com —— 统一认证服务（由 yao-nginx 统一承载 TLS 与反向代理）
+# 说明：
+#   - auth-backend 容器经 yao-net 网络加入（auth 服务与 yao 同机部署）
+#   - 使用变量 + resolver 动态解析上游：auth-backend 未运行时 nginx 仍可正常启动（请求时 502）
+#   - auth 服务全部路由（/api/、/oauth/、/.well-known/、/internal/、/health）均挂应用根路径，整体反代即可
+#   - 本文件由 auth 服务的 scripts/deploy.sh 与 yao 服务的 scripts/deploy.sh 共同维护（内容一致，幂等）
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+# HTTP -> HTTPS 重定向
+server {
+    listen 80;
+    server_name auth.wuzuniao.com;
+    return 301 https://$host$request_uri;
+}
+
+# HTTPS：统一认证服务反向代理
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name auth.wuzuniao.com;
+
+    ssl_certificate     /etc/nginx/certs/auth.wuzuniao.com.pem;
+    ssl_certificate_key /etc/nginx/certs/auth.wuzuniao.com.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    client_max_body_size 5m;
+
+    set $auth_upstream http://auth-backend:10000;
+
+    location / {
+        proxy_pass $auth_upstream;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+    }
+}
+EOF
+
+  log_ok "auth.wuzuniao.com 站点配置已生成：$auth_conf"
 }
 
 # ============== 10. 生成 compose 环境变量文件 ==============
@@ -801,16 +876,7 @@ init_databases() {
   else
     log_warn "未找到 $sql_dir/create_yao_db.sql，跳过"
   fi
-
-  # 导入用户库
-  if [[ -f "$sql_dir/create_user_db.sql" ]]; then
-    log_info "导入 $DB_NAME_USER 数据库结构与表 ..."
-    docker exec -i -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb \
-      mysql -uroot < "$sql_dir/create_user_db.sql"
-    log_ok "$DB_NAME_USER 导入完成"
-  else
-    log_warn "未找到 $sql_dir/create_user_db.sql，跳过"
-  fi
+  # 用户库 wuzuniao_yonghu 已归 auth 服务（其 scripts/deploy.sh 负责建库与授权），此处不再导入
 }
 
 # ============== 14. 创建后端专用数据库用户 ==============
@@ -820,12 +886,12 @@ create_db_user() {
   docker exec -i -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb mysql -uroot <<EOF
 CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
 ALTER USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON $DB_NAME_MAIN.*  TO '$DB_USER'@'%';
-GRANT ALL PRIVILEGES ON $DB_NAME_USER.* TO '$DB_USER'@'%';
+GRANT ALL PRIVILEGES ON $DB_NAME_MAIN.* TO '$DB_USER'@'%';
 FLUSH PRIVILEGES;
 EOF
 
-  log_ok "后端用户 '$DB_USER' 已创建并授予 $DB_NAME_MAIN / $DB_NAME_USER 全部权限"
+  # 用户库 wuzuniao_yonghu 权限已移除（数据库拆分：用户库仅 auth 服务的 auth_backend 用户可连）
+  log_ok "后端用户 '$DB_USER' 已创建并授予 $DB_NAME_MAIN 权限"
 }
 
 # ============== 15. 生成后端 .env（更新数据库连接到环境变量） ==============
@@ -834,25 +900,37 @@ generate_backend_env() {
 
   local env_file="$INSTALL_DIR/backend/.env"
 
-  # 保留已有的 SMTP / 微信 / 加密密钥配置（若 .env 已存在）
-  local smtp_user="" smtp_pass="" wx_appid="" wx_secret="" enc_key=""
+  # 保留已有的 微信 / 加密密钥 / auth 配置（若 .env 已存在）
+  local wx_appid="" wx_secret="" enc_key="" auth_token=""
   if [[ -f "$env_file" ]]; then
-    smtp_user=$(grep -E "^SMTP_USER="           "$env_file" 2>/dev/null | cut -d= -f2- || true)
-    smtp_pass=$(grep -E "^SMTP_PASSWORD="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
     wx_appid=$(grep -E "^WX_APPID="             "$env_file" 2>/dev/null | cut -d= -f2- || true)
     wx_secret=$(grep -E "^WX_APP_SECRET="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
     enc_key=$(grep -E "^ENCRYPTION_SECRET_KEY=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    auth_token=$(grep -E "^AUTH_SERVICE_TOKEN=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
     cp "$env_file" "${env_file}.bak.$(date +%s)"
-    log_info "已备份原 .env，并保留 SMTP / 微信 / 加密密钥配置"
+    log_info "已备份原 .env，并保留 微信 / 加密密钥 / auth 配置"
   fi
 
   # AES-256-GCM 加密密钥：复用已有密钥，仅在缺失时新生成
   # （避免重复部署轮换密钥，导致历史加密数据无法解密）
-  local enc_key_fresh=false
   if [[ -z "$enc_key" ]]; then
     enc_key=$(openssl rand -base64 32)
-    enc_key_fresh=true
     log_info "未检测到已有加密密钥，已新生成 ENCRYPTION_SECRET_KEY"
+  fi
+
+  # 服务间通信令牌：复用已有令牌 → 回读 auth 服务 .env 的 SERVICE_TOKEN → 新生成
+  # （跨服务自动对齐：auth 侧部署脚本同样回读本服务 .env，任一先部署均收敛为同一令牌；
+  #   auth 仓库默认克隆于 /opt/auth，不同路径时用 AUTH_INSTALL_DIR 显式指定）
+  if [[ -z "$auth_token" ]]; then
+    local auth_backend_env="${AUTH_INSTALL_DIR:-/opt/auth}/backend/.env"
+    if [[ -f "$auth_backend_env" ]]; then
+      auth_token=$(grep -E "^SERVICE_TOKEN=" "$auth_backend_env" 2>/dev/null | cut -d= -f2- || true)
+      [[ -n "$auth_token" ]] && log_info "已从 auth 服务的 backend/.env 同步服务间通信令牌"
+    fi
+  fi
+  if [[ -z "$auth_token" ]]; then
+    auth_token=$(openssl rand -hex 32)
+    log_info "已生成新的 AUTH_SERVICE_TOKEN（auth 侧部署时将自动回读对齐）"
   fi
 
   # DATABASE_URL 使用后端专用用户连接 mariadb 容器（服务名 mariadb）
@@ -866,24 +944,28 @@ generate_backend_env() {
 # 数据库连接（使用后端专用用户，连接 mariadb 容器服务名）
 DATABASE_URL=${db_url}
 
-# 腾讯企业邮 SMTP 配置（发送注册验证码邮件，请按需填写）
-SMTP_HOST=smtp.exmail.qq.com
-SMTP_PORT=465
-SMTP_USER=${smtp_user}
-SMTP_PASSWORD=${smtp_pass}
-SMTP_SENDER_NAME=无足鸟
-
-# 微信小程序配置（微信一键登录，请按需填写）
+# 微信小程序配置（订阅消息下发；登录侧凭证由 auth 服务持有同一对）
 WX_APPID=${wx_appid}
 WX_APP_SECRET=${wx_secret}
 
 # 数据加密密钥（AES-256-GCM，base64 编码 32 字节，请妥善保管）
 ENCRYPTION_SECRET_KEY=${enc_key}
+
+# auth 统一认证服务配置（用户模块已独立部署）
+AUTH_BASE_URL=https://auth.wuzuniao.com
+AUTH_ISSUER=https://auth.wuzuniao.com
+AUTH_SERVICE_TOKEN=${auth_token}
+REVOCATION_SYNC_INTERVAL_SECONDS=300
+
+# CORS 跨域配置
+CORS_ALLOW_ORIGINS=https://yao.wuzuniao.com,http://localhost:5173
 EOF
 
   chmod 600 "$env_file"
   log_ok "后端 .env 已生成：$env_file"
   log_info "DATABASE_URL 用户：$DB_USER  →  连接 mariadb:3306/$DB_NAME_MAIN"
+  log_info "服务间令牌：$(echo "$auth_token" | cut -c1-8)…（auth 侧 .env 与其 oauth_clients 表须同值，"
+  log_info "            auth 侧部署脚本会自动回读本值；也可用 AUTH_SERVICE_TOKEN=<值> 显式指定）"
 }
 
 # ============== 16. 构建 H5 前端 ==============
@@ -986,8 +1068,7 @@ print_summary() {
 
   数据库信息：
     MariaDB 版本：    $MARIADB_VERSION
-    业务数据库：      $DB_NAME_MAIN
-    用户数据库：      $DB_NAME_USER
+    业务数据库：      $DB_NAME_MAIN（用户库 wuzuniao_yonghu 已归 auth 服务）
     后端连接用户：    $DB_USER
     后端用户密码：    $DB_PASSWORD
     root 密码：       $DB_ROOT_PASSWORD
@@ -1011,11 +1092,13 @@ print_summary() {
     查看运行状态：    docker compose ps
 
   注意事项：
-    1. 请在 $INSTALL_DIR/backend/.env 中填写 SMTP 和微信小程序配置
+    1. 请在 $INSTALL_DIR/backend/.env 中确认微信小程序配置（WX_APPID/WX_APP_SECRET）已填写
     2. root 密码保存在 $DEPLOY_DIR/.env，后端用户密码保存在 $INSTALL_DIR/backend/.env
     3. 更新代码：cd $INSTALL_DIR && git pull，然后 docker compose -f $DEPLOY_DIR/docker-compose.yml restart backend
     4. 如遇 SELinux 导致的挂载问题，可执行 setenforce 0 临时关闭后重试
     5. 更新 H5 前端代码后，重新执行 bash scripts/deploy.sh 即可重建前端并生效（脚本幂等）
+    6. auth 统一认证服务（同机部署）已由本 nginx 统一承载 auth.wuzuniao.com（检测到其证书时自动生成站点配置）；
+       服务间令牌 AUTH_SERVICE_TOKEN 已自动与 auth 侧对齐（任一先部署均收敛为同一令牌）
 
 EOF
 }

@@ -10,13 +10,6 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "无足鸟按时吃药打卡"
     API_V1_STR: str = "/api/v1"
 
-    # 腾讯企业邮 SMTP 配置（发送注册验证码邮件，账号密码从环境变量读取）
-    SMTP_HOST: str = "smtp.exmail.qq.com"
-    SMTP_PORT: int = 465
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_SENDER_NAME: str = "无足鸟"
-
     # 微信小程序配置（用于微信一键登录）
     WX_APPID: str = ""
     WX_APP_SECRET: str = ""
@@ -48,9 +41,18 @@ class Settings(BaseSettings):
     # 用于加密邮件客户端专用密码等敏感信息
     ENCRYPTION_SECRET_KEY: str = ""
 
-    # JWT 认证配置（用户登录态签名密钥与过期时间）
-    JWT_SECRET_KEY: str = ""
-    JWT_EXPIRE_DAYS: int = 7
+    # ==================== auth 统一认证服务配置 ====================
+    # auth 服务基础地址（用户模块独立部署后，本服务经域名调用其 /internal/* 接口）
+    # 开发环境：http://localhost:10000；生产环境：https://auth.wuzuniao.com
+    AUTH_BASE_URL: str = "https://auth.wuzuniao.com"
+    # 令牌签发方标识（须与 auth 服务 .env 的 ISSUER 完全一致，否则验签不通过）
+    AUTH_ISSUER: str = "https://auth.wuzuniao.com"
+    # 服务间通信令牌（/internal/* 双向校验；与 auth 服务及 oauth_clients 表
+    # yao 行的 callback_service_token 保持一致）
+    AUTH_SERVICE_TOKEN: str = ""
+    # 令牌撤销增量同步间隔（秒）：后台循环每该间隔拉取一次 auth 的撤销日志，
+    # 决定「改密码/退出/删号后旧令牌在本服务的最大残留窗口」
+    REVOCATION_SYNC_INTERVAL_SECONDS: int = 300
 
     # CORS 允许的源（逗号分隔，如 "https://yao.wuzuniao.com,http://localhost:8000"）
     # 微信小程序请求不携带 Origin 头，不受 CORS 限制；此项主要约束 Web 端访问

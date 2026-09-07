@@ -1,102 +1,37 @@
 """
-安全验证类 - 集中管理所有后端安全相关验证逻辑
+安全验证类 - 集中管理业务后端安全相关验证逻辑
 --------------------------------------------------------------------------
-所有输入数据的实体化（校验+净化）和输出数据的过滤均通过此类完成。
-其他类（Schema、Service、API）只做调用，不自行实现安全验证逻辑。
+拆分说明（用户模块独立为 auth 服务后）：
+- 密码/用户名/验证码/邮箱/头像校验与 JWT 签发已随用户模块迁移至 auth 服务；
+- 本类仅保留业务 Schema 仍需的通用校验（净化/正整数/SMTP），
+  并新增 verify_access_token：对 auth 签发的 RS256 access_token 做本地验签
+  （JWKS 公钥经 auth_client 缓存；issuer=AUTH_ISSUER；零逐请求网络调用）。
 """
 from __future__ import annotations
 
 import re
-import time
 from typing import Any
 
-import bcrypt
 import jwt
 
+from . import auth_client
 from .config import settings
 
 # === 正则常量 ===
-# 用户名：仅允许中文、英文及数字字符
-_USERNAME_RE = re.compile(r"^[\u4e00-\u9fa5a-zA-Z0-9]+$")
-# 验证码：6 位数字
-_CODE_RE = re.compile(r"^\d{6}$")
 # 控制字符（保留 \t 和 \n），用于输入净化
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
-# JWT 签名算法（HS256，与 JWT_SECRET_KEY 配合使用）
-_JWT_ALGORITHM = "HS256"
+# JWT 签名算法（auth 服务签发，本服务仅持公钥本地验签）
+_JWT_ALGORITHM = "RS256"
+
+# 令牌校验时间容差（秒）：容忍本服务与 auth 服务间的轻微时钟偏差
+_JWT_LEEWAY_SECONDS = 60
 
 
 class Security:
-    """安全验证类 - 所有后端安全验证逻辑的唯一入口"""
+    """安全验证类 - 业务后端安全相关验证逻辑的唯一入口"""
 
-    # ===== 密码安全 =====
-
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """生成密码的 bcrypt 哈希值"""
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
-
-    @staticmethod
-    def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """校验明文密码与哈希值是否匹配"""
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-        )
-
-    @staticmethod
-    def validate_password(password: str) -> str:
-        """
-        校验密码复杂度（8-20位，至少三种字符类型）
-        注意：密码不做 strip()，空格可能是密码的一部分
-        """
-        if not isinstance(password, str):
-            raise ValueError("密码必须为字符串")
-        # 去除控制字符（但不 strip，空格可能是密码的一部分）
-        password = _CONTROL_CHARS.sub("", password)
-        if len(password) < 8 or len(password) > 20:
-            raise ValueError("密码长度需为 8-20 位")
-        categories = 0
-        if re.search(r"[a-z]", password):
-            categories += 1
-        if re.search(r"[A-Z]", password):
-            categories += 1
-        if re.search(r"[0-9]", password):
-            categories += 1
-        if re.search(r"[^a-zA-Z0-9]", password):
-            categories += 1
-        if categories < 3:
-            raise ValueError("密码需包含大小写字母、数字、特殊符号中的至少三种")
-        return password
-
-    # ===== 用户名安全 =====
-
-    @staticmethod
-    def validate_username(username: str) -> str:
-        """校验用户名格式（2-15位，仅中文、英文、数字）"""
-        if not isinstance(username, str):
-            raise ValueError("用户名必须为字符串")
-        username = Security.sanitize_string(username, max_length=15, field_name="用户名")
-        if len(username) < 2:
-            raise ValueError("用户名长度需为 2-15 个字符")
-        if not _USERNAME_RE.match(username):
-            raise ValueError("用户名仅允许中文、英文及数字字符")
-        return username
-
-    # ===== 验证码安全 =====
-
-    @staticmethod
-    def validate_code(code: str) -> str:
-        """校验验证码格式（6位数字）"""
-        if not isinstance(code, str):
-            raise ValueError("验证码必须为字符串")
-        code = code.strip()
-        if not _CODE_RE.match(code):
-            raise ValueError("验证码为 6 位数字")
-        return code
-
-    # ===== 邮箱安全 =====
+    # ===== 邮箱安全（邮件通知渠道的发件邮箱校验；用户账号邮箱校验已迁 auth 服务） =====
 
     @staticmethod
     def validate_email(email: str) -> str:
@@ -154,67 +89,52 @@ class Security:
             raise ValueError(f"{field_name}必须为正整数")
         return value
 
-    @staticmethod
-    def validate_avatar_url(url: str) -> str:
-        """
-        校验头像 URL 协议白名单
-        - 允许 http://、https:// 开头的远程 URL
-        - 允许 / 开头的相对路径（如 /static/avatar.png）
-        - 允许短标识符（如 hei、lan 等本地资源名，前端自行映射）
-        - 禁止 javascript:、data:、vbscript:、file: 等危险协议（防 XSS）
-        """
-        url = Security.sanitize_string(url, max_length=500, field_name="头像地址")
-        if not url:
-            raise ValueError("头像地址不能为空")
-        lower = url.lower()
-        if lower.startswith(("javascript:", "data:", "vbscript:", "file:")):
-            raise ValueError("头像地址协议不合法")
-        return url
-
-    # ===== JWT 认证 =====
+    # ===== access_token 本地验签（RS256，auth 服务签发） =====
 
     @staticmethod
-    def generate_token(user_id: int, role: int = 0) -> str:
+    async def verify_access_token(token: str) -> dict[str, Any]:
         """
-        生成 JWT 访问令牌
-        :param user_id: 用户ID（写入 sub 声明）
-        :param role: 用户角色（写入 role 声明，0-普通用户，7-管理员）
-        :return: 签名后的 JWT 字符串
-        :raises ValueError: JWT_SECRET_KEY 未配置或 user_id 非正整数
-        """
-        if not isinstance(user_id, int) or user_id <= 0:
-            raise ValueError("用户ID必须为正整数")
-        secret = settings.JWT_SECRET_KEY
-        if not secret:
-            raise ValueError("JWT_SECRET_KEY 未配置，请在 .env 中设置")
-        now = int(time.time())
-        payload = {
-            "sub": str(user_id),  # subject：用户ID（字符串形式，JWT 标准）
-            "role": role,         # 角色：0-普通用户，7-管理员
-            "iat": now,           # issued at：签发时间
-            "exp": now + settings.JWT_EXPIRE_DAYS * 86400,  # expiration：过期时间
-        }
-        return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)
-
-    @staticmethod
-    def verify_token(token: str) -> dict[str, Any]:
-        """
-        校验 JWT 访问令牌
-        :param token: JWT 字符串
-        :return: 解码后的 payload（含 sub/iat/exp）
-        :raises ValueError: token 无效、已过期或签名错误
+        校验 auth 服务签发的 access_token（纯本地验签，不逐请求调用 auth）
+        - 公钥来源：auth_client 的 JWKS 缓存（内存 + 磁盘），未知 kid 自动重拉
+        - 校验项：RS256 签名 / iss（=AUTH_ISSUER）/ exp（leeway 60s）/ sub 存在
+        :param token: JWT 字符串（前端经 Authorization: Bearer 携带）
+        :return: 解码后的 payload（含 iss/sub/role/azp/jti/iat/exp）
+        :raises ValueError: token 无效、已过期、签名错误或签发方不匹配
         """
         if not isinstance(token, str) or not token.strip():
             raise ValueError("令牌不能为空")
-        secret = settings.JWT_SECRET_KEY
-        if not secret:
-            raise ValueError("JWT_SECRET_KEY 未配置，请在 .env 中设置")
+        # 1. 解析 header 获取 kid（此步不验签）
         try:
-            payload = jwt.decode(token, secret, algorithms=[_JWT_ALGORITHM])
-        except jwt.ExpiredSignatureError:
-            raise ValueError("登录已过期，请重新登录")
+            header = jwt.get_unverified_header(token)
         except jwt.InvalidTokenError:
             raise ValueError("登录凭证无效")
+        kid = header.get("kid")
+
+        # 2. 按 kid 取公钥（未知 kid 重拉一次 JWKS，支持 auth 密钥轮换）
+        key = auth_client.get_public_key(kid)
+        if key is None:
+            await auth_client.fetch_jwks()
+            key = auth_client.get_public_key(kid)
+        if key is None:
+            raise ValueError("登录凭证无效")
+
+        # 3. 验签 + issuer + 过期校验
+        try:
+            payload = jwt.decode(
+                token,
+                key,
+                algorithms=[_JWT_ALGORITHM],
+                issuer=settings.AUTH_ISSUER,
+                leeway=_JWT_LEEWAY_SECONDS,
+            )
+        except jwt.ExpiredSignatureError:
+            raise ValueError("登录已过期，请重新登录")
+        except jwt.InvalidIssuerError:
+            raise ValueError("登录凭证签发方不正确")
+        except jwt.InvalidTokenError:
+            raise ValueError("登录凭证无效")
+
+        # 4. sub 声明校验
         if "sub" not in payload:
             raise ValueError("登录凭证格式不正确")
         return payload

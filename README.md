@@ -30,8 +30,9 @@
 | 前端 | Pinia / SCSS | 状态管理 / BEM 样式 |
 | 后端 | FastAPI（异步） | RESTful API |
 | 后端 | SQLAlchemy / Pydantic | ORM（asyncmy 驱动）/ 数据校验 |
-| 后端 | PyJWT / bcrypt / cryptography | 认证 / 密码哈希 / AES-256-GCM 加密 |
-| 数据库 | MariaDB 10.11 (LTS) | 业务库与用户库分离 |
+| 后端 | PyJWT / cryptography | RS256 令牌本地验签（JWKS 公钥）/ AES-256-GCM 加密 |
+| 认证服务 | auth（独立部署，auth.wuzuniao.com） | 注册/登录/令牌签发（OIDC 标准化），本服务持公钥本地验签 |
+| 数据库 | MariaDB 10.11 (LTS) | 业务库（用户库 wuzuniao_yonghu 归 auth 服务专属） |
 | 部署 | Docker + Docker Compose | MariaDB + FastAPI + Nginx |
 
 ---
@@ -99,8 +100,8 @@ pip install -r backend/requirements-test.txt   # 测试依赖（可选）
 cp backend/.env.template backend/.env    # Linux/macOS；Windows 用 copy
 # 初始化数据库（需先启动 MariaDB）：执行 backend/sql/ 下的建表脚本
 mysql -u root -p < backend/sql/create_yao_db.sql      # 业务库 wuzuniao_yao
-mysql -u root -p < backend/sql/create_user_db.sql     # 用户库 wuzuniao_yonghu
 # 如需增量字段/表，按文件名顺序追加执行 add_*.sql
+# 用户库 wuzuniao_yonghu 已归 auth 服务：先部署 auth（见其仓库 README），本地联调启动其服务（端口 10000）
 
 cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -135,8 +136,7 @@ npm run build:h5         # H5 生产构建（生产部署由 scripts/deploy.sh �
 | 变量 | 说明 |
 |------|------|
 | `DATABASE_URL` | MariaDB 连接串，如 `mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao?charset=utf8mb4` |
-| `SMTP_*` | 发件 SMTP 主机/端口/账号/密码/发件名（腾讯企业邮，用于注册验证码邮件） |
-| `WX_APPID` / `WX_APP_SECRET` | 微信小程序凭证（微信一键登录） |
+| `WX_APPID` / `WX_APP_SECRET` | 微信小程序凭证（订阅消息下发；登录侧由 auth 服务持有同一对） |
 | `WX_SUBSCRIBE_TEMPLATE_ID` | 微信订阅消息模板 ID（打卡提醒下发） |
 | `WX_SUBSCRIBE_PAGE` | 点击订阅消息后跳转的小程序页面路径 |
 | `WX_SUBSCRIBE_ORG_NAME` | 订阅消息「机构名称」字段（thing12）展示值 |
@@ -146,7 +146,10 @@ npm run build:h5         # H5 生产构建（生产部署由 scripts/deploy.sh �
 | `UMENG_PRODUCTION_MODE` | 推送环境开关：true=生产 / false=测试（仅 iOS 生效） |
 | `UMENG_PUSH_PAGE` | 点击 App 推送通知后跳转的页面路径 |
 | `ENCRYPTION_SECRET_KEY` | AES-256-GCM 加密密钥（base64 编码 32 字节，用于加密邮件客户端密码等敏感信息） |
-| `JWT_SECRET_KEY` / `JWT_EXPIRE_DAYS` | JWT 签名密钥 / 过期天数（默认 7，见 项目规范.md §4） |
+| `AUTH_BASE_URL` | auth 统一认证服务地址（开发 `http://localhost:10000` / 生产 `https://auth.wuzuniao.com`） |
+| `AUTH_ISSUER` | 令牌签发方标识（须与 auth 服务 .env 的 ISSUER 完全一致，否则验签不通过） |
+| `AUTH_SERVICE_TOKEN` | 服务间通信令牌（`/internal/*` 双向校验，与 auth 服务侧保持一致） |
+| `REVOCATION_SYNC_INTERVAL_SECONDS` | 令牌撤销增量同步间隔（秒，默认 300；决定改密/退出后旧令牌最大残留窗口） |
 | `CORS_ALLOW_ORIGINS` | 允许跨域访问的源（逗号分隔，主要约束 Web 端，小程序不受限） |
 
 ### 前端（`frontend/config/env.js`）
@@ -155,14 +158,16 @@ npm run build:h5         # H5 生产构建（生产部署由 scripts/deploy.sh �
 
 | 常量 | 说明 |
 |------|------|
-| `API_BASE_URL` | 后端地址，开发 `http://localhost:8000`、生产 `https://yao.wuzuniao.com` |
+| `API_BASE_URL` | 后端地址，开发 `http://localhost:8000`、生产 `https://yao.wuzuniao.com`（App 端恒生产域名） |
+| `AUTH_BASE_URL` | auth 统一认证服务地址，开发 `http://localhost:10000`、生产 `https://auth.wuzuniao.com`（App 端恒生产域名） |
+| `AUTH_CLIENT_ID` | OIDC 接入方 client_id（'yao'，公开信息） |
 | `WX_SUBSCRIBE_TEMPLATE_ID` | 微信订阅消息模板 ID |
 
 该文件**提交 Git，严禁写入密码/密钥**（域名与订阅模板 ID 属公开信息）。新增前端配置项一律加到此文件。
 
 ### 数据库
 
-使用两个独立数据库：`wuzuniao_yao`（业务库：计划/打卡/通知/公告）与 `wuzuniao_yonghu`（用户库：账号/小程序绑定）。初始化 SQL 位于 `backend/sql/`（`create_yao_db.sql`、`create_user_db.sql`）。
+数据库彻底拆分：`wuzuniao_yao`（业务库：计划/打卡/通知/公告，本服务专属）；用户库 `wuzuniao_yonghu` 已归 auth 统一认证服务（账号/小程序绑定/OIDC 令牌），本服务不直连，需要用户信息时经 auth 的 `/internal/*` 接口查询。初始化 SQL 位于 `backend/sql/create_yao_db.sql`。
 
 ---
 
@@ -174,7 +179,7 @@ npm run build:h5         # H5 生产构建（生产部署由 scripts/deploy.sh �
 { "code": 0, "msg": "success", "data": { } }
 ```
 
-主要模块：用户（`/users`）、计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）。完整接口与请求/响应示例见 Swagger UI：`http://localhost:8000/docs`。
+主要模块：计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）；另含服务间内部接口 `/internal/*`（X-Service-Token 守卫，auth 服务回调账号删除清理/账号合并）。认证类接口（注册/登录/资料）已迁 auth 服务（见其仓库 README）。完整接口与请求/响应示例见 Swagger UI：`http://localhost:8000/docs`。
 
 ---
 
@@ -196,11 +201,15 @@ pytest --cov=app --cov-report=term-missing   # 覆盖率
 
 生产环境为 Rocky Linux + Docker 容器化，由 `scripts/deploy.sh` 一键完成（MariaDB + FastAPI + H5 前端 + Nginx，具体镜像版本由该脚本控制）：
 
-- `yao-mariadb`：数据库（仅本机可访问）
+- `yao-mariadb`：数据库（仅本机可访问；用户库归 auth 服务，其部署脚本 external 接入本网络共享 MariaDB）
 - `yao-backend`：FastAPI 后端
-- `yao-nginx`：HTTPS 反向代理 + H5 静态托管（`/` 提供 H5 首页，`/api/v1`、`/health` 转发后端）
+- `yao-nginx`：HTTPS 反向代理 + H5 静态托管（`/` 提供 H5 首页，`/api/v1`、`/internal`、`/health` 转发后端）
 
 脚本自动用 Node 容器执行 `npm run build:h5` 构建前端并挂载到 nginx；后端 `/api/v1` 路径保持不变。脚本不依赖硬编码路径，可移植到任意克隆位置。
+
+> **auth 统一认证服务同机部署**：yao-nginx 检测到 auth 证书（`deploy/certs/auth.wuzuniao.com.pem`，由 auth 的部署脚本写入）时自动生成 `auth.wuzuniao.com` 站点配置并统一承载其 TLS（nginx 为目录级挂载，auth-backend 未运行时不影响启动）；服务间令牌 `AUTH_SERVICE_TOKEN` 与 auth 侧自动对齐（任一先部署均收敛为同一令牌）。
+
+> **上线顺序（认证服务拆分后）**：先部署 auth（其 scripts/deploy.sh，含用户库建库与 yao client 回调配置）→ 再部署/更新 yao（`.env` 的 AUTH_* 四项须与 auth 对齐）→ 最后发前端。切换后旧登录态全部失效，用户需重新登录一次。
 
 ```bash
 # 克隆仓库后，在项目根目录执行（脚本位于 scripts/ 下）

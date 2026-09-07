@@ -1013,8 +1013,15 @@ function handleLogout() {
   uni.showModal({
     title: t('common.tip'),
     content: t('profile.logoutConfirm'),
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
+        // 先通知 auth 撤销全部令牌（refresh_token 立即失效、access_token 经撤销同步失效）；
+        // 失败不阻断本地退出（本地双 token 与用户信息照常清理）
+        try {
+          await logout()
+        } catch (e) {
+          console.warn('服务端退出登录失败（已忽略，本地态照常清理）', e)
+        }
         userStore.clearUser()
         uni.showToast({ title: t('profile.loggedOut'), icon: 'none' })
         setTimeout(() => {

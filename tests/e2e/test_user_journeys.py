@@ -1,15 +1,14 @@
 """
-端到端测试：完整用户流程
+端到端测试：完整业务流程
 --------------------------------------------------------------------------
-模拟真实用户从注册到使用各功能的完整操作路径，
+模拟真实用户使用计划/打卡/通知渠道功能的完整操作路径，
 验证多个 API 接口协同工作时的数据一致性和业务正确性。
+（认证类旅程——注册/登录/密码/邮箱/账号生命周期——已迁 auth 服务仓库；
+ 本文件全部旅程使用测试私钥直签的 access_token）
 """
 import pytest
 
-from app.services.user_service import _verification_codes
 from app.utils.timezone import today_shanghai
-
-API_PREFIX = "/api/v1/users"
 
 
 # =============================================================================
@@ -17,146 +16,15 @@ API_PREFIX = "/api/v1/users"
 # =============================================================================
 
 
-def _get_code(email: str, purpose: str) -> str:
-    """从内存中获取验证码"""
-    key = f"{email}:{purpose}"
-    record = _verification_codes.get(key)
-    assert record is not None, f"验证码不存在：{key}"
-    return record[0]
-
-
 async def _get_channel_id(auth_client) -> int:
-    """获取当前用户第一个通知渠道 ID（站内信）"""
+    """获取当前用户第一个通知渠道 ID（站内信，list_by_user 懒创建）"""
     resp = await auth_client.get("/api/v1/notification-channels/list")
     assert resp.status_code == 200
     return resp.json()["data"][0]["id"]
 
 
 # =============================================================================
-# 测试 1：完整注册到登录流程
-# =============================================================================
-
-
-class TestE2ERegistrationLogin:
-    """完整注册到登录流程：发送验证码 → 注册 → 用户名登录 → 邮箱登录 → 查询用户信息"""
-
-    @pytest.mark.e2e
-    async def test_registration_login_full_flow(self, client):
-        email = "newuser@example.com"
-
-        # 1. 发送注册验证码
-        resp = await client.post(f"{API_PREFIX}/send-code", json={"email": email})
-        assert resp.status_code == 200
-        assert resp.json()["code"] == 0
-
-        # 2. 从内存中获取验证码（绕过邮件发送）
-        code = _get_code(email, "register")
-
-        # 3. 注册
-        resp = await client.post(
-            f"{API_PREFIX}/register",
-            json={
-                "username": "新用户",
-                "password": "NewPass123!",
-                "email": email,
-                "code": code,
-            },
-        )
-        assert resp.status_code == 200
-        register_data = resp.json()["data"]
-        assert register_data["username"] == "新用户"
-        assert register_data["email"] == email
-
-        # 4. 验证注册响应包含 access_token
-        assert register_data["access_token"]
-
-        # 5. 使用用户名登录
-        resp = await client.post(
-            f"{API_PREFIX}/login",
-            json={"username": "新用户", "password": "NewPass123!"},
-        )
-        assert resp.status_code == 200
-
-        # 6. 验证登录响应包含 access_token
-        assert resp.json()["data"]["access_token"]
-
-        # 7. 使用邮箱登录
-        resp = await client.post(
-            f"{API_PREFIX}/login",
-            json={"username": email, "password": "NewPass123!"},
-        )
-        assert resp.status_code == 200
-
-        # 8. 验证邮箱登录响应
-        assert resp.json()["data"]["access_token"]
-
-        # 9. 携带注册返回的 token 查询用户信息
-        token = register_data["access_token"]
-        client.headers["Authorization"] = f"Bearer {token}"
-        resp = await client.get(f"{API_PREFIX}/info")
-        assert resp.status_code == 200
-
-        # 10. 验证用户信息与注册数据一致
-        user_info = resp.json()["data"]
-        assert user_info["username"] == "新用户"
-        assert user_info["email"] == email
-
-
-# =============================================================================
-# 测试 2：完整密码重置流程
-# =============================================================================
-
-
-class TestE2EPasswordReset:
-    """完整密码重置流程：发送重置验证码 → 重置密码 → 新密码登录 → 旧密码登录失败"""
-
-    @pytest.mark.e2e
-    async def test_password_reset_full_flow(self, client, test_user):
-        email = "test@example.com"
-
-        # 1. 发送重置验证码（test_user 的邮箱已注册）
-        resp = await client.post(
-            f"{API_PREFIX}/send-reset-code", json={"email": email}
-        )
-        assert resp.status_code == 200
-        assert resp.json()["code"] == 0
-
-        # 2. 从内存中获取验证码
-        code = _get_code(email, "reset")
-
-        # 3. 重置密码
-        resp = await client.post(
-            f"{API_PREFIX}/reset-password",
-            json={
-                "email": email,
-                "code": code,
-                "new_password": "ResetPass123!",
-            },
-        )
-        assert resp.status_code == 200
-
-        # 4. 验证响应包含 access_token
-        assert resp.json()["data"]["access_token"]
-
-        # 5. 使用新密码登录应成功
-        resp = await client.post(
-            f"{API_PREFIX}/login",
-            json={"username": "测试用户", "password": "ResetPass123!"},
-        )
-        assert resp.status_code == 200
-        assert resp.json()["code"] == 0
-
-        # 6. 使用旧密码登录应失败
-        resp = await client.post(
-            f"{API_PREFIX}/login",
-            json={"username": "测试用户", "password": "Test1234!"},
-        )
-        assert resp.status_code == 400
-        assert "密码错误" in resp.json()["detail"]
-
-
-# =============================================================================
-# 测试 3：完整计划管理流程
+# 测试 1：完整计划管理流程
 # =============================================================================
 
 
@@ -230,7 +98,7 @@ class TestE2EPlanManagement:
 
 
 # =============================================================================
-# 测试 4：完整打卡流程
+# 测试 2：完整打卡流程
 # =============================================================================
 
 
@@ -311,7 +179,7 @@ class TestE2ECheckin:
 
 
 # =============================================================================
-# 测试 5：完整通知渠道管理流程
+# 测试 3：完整通知渠道管理流程
 # =============================================================================
 
 
@@ -320,7 +188,7 @@ class TestE2ENotificationChannel:
 
     @pytest.mark.e2e
     async def test_notification_channel_full_flow(self, auth_client):
-        # 1. 查询渠道列表（应有 1 个：站内信）
+        # 1. 查询渠道列表（应有 1 个：站内信，由 list_by_user 懒创建）
         resp = await auth_client.get("/api/v1/notification-channels/list")
         assert resp.status_code == 200
         assert len(resp.json()["data"]) == 1
@@ -381,156 +249,3 @@ class TestE2ENotificationChannel:
         channels = resp.json()["data"]
         assert len(channels) == 1
         assert channels[0]["channel_type"] == "站内信"
-
-
-# =============================================================================
-# 测试 6：完整账号生命周期流程
-# =============================================================================
-
-
-class TestE2EAccountLifecycle:
-    """完整账号生命周期流程：预约删除 → 取消 → 更新签名/头像/用户名 → 验证"""
-
-    @pytest.mark.e2e
-    async def test_account_lifecycle_full_flow(self, auth_client):
-        # 1. 查询用户信息（初始 status=1）
-        resp = await auth_client.get(f"{API_PREFIX}/info")
-        assert resp.status_code == 200
-        assert resp.json()["data"]["status"] == 1
-
-        # 2. 预约删除账号
-        resp = await auth_client.post(f"{API_PREFIX}/schedule-deletion", json={})
-        assert resp.status_code == 200
-        assert resp.json()["data"]["status"] == 0
-
-        # 3. 查询用户信息（status 已变为 0）
-        resp = await auth_client.get(f"{API_PREFIX}/info")
-        assert resp.status_code == 200
-        assert resp.json()["data"]["status"] == 0
-
-        # 4. 取消删除
-        resp = await auth_client.post(f"{API_PREFIX}/cancel-deletion", json={})
-        assert resp.status_code == 200
-        assert resp.json()["data"]["status"] == 1
-
-        # 5. 查询用户信息（status 恢复为 1）
-        resp = await auth_client.get(f"{API_PREFIX}/info")
-        assert resp.status_code == 200
-        assert resp.json()["data"]["status"] == 1
-
-        # 6. 更新签名
-        resp = await auth_client.put(
-            f"{API_PREFIX}/update-signature",
-            json={"signature": "生命周期新签名"},
-        )
-        assert resp.status_code == 200
-
-        # 7. 更新头像
-        resp = await auth_client.put(
-            f"{API_PREFIX}/update-avatar",
-            json={"avatar_url": "new-avatar"},
-        )
-        assert resp.status_code == 200
-
-        # 8. 更新用户名
-        resp = await auth_client.put(
-            f"{API_PREFIX}/update-username",
-            json={"new_username": "生命周期用户"},
-        )
-        assert resp.status_code == 200
-
-        # 9. 查询用户信息（验证所有更新已生效）
-        resp = await auth_client.get(f"{API_PREFIX}/info")
-        assert resp.status_code == 200
-        user_info = resp.json()["data"]
-        assert user_info["signature"] == "生命周期新签名"
-        assert user_info["avatar_url"] == "new-avatar"
-        assert user_info["username"] == "生命周期用户"
-
-
-# =============================================================================
-# 测试 7：完整邮箱修改流程
-# =============================================================================
-
-
-class TestE2EEmailChange:
-    """完整邮箱修改流程：发送旧邮箱验证码 → 发送新邮箱验证码 → 修改邮箱 → 验证"""
-
-    @pytest.mark.e2e
-    async def test_email_change_full_flow(self, auth_client, test_user):
-        old_email = test_user.email
-        new_email = "newemail@example.com"
-
-        # 1. 发送旧邮箱验证码
-        resp = await auth_client.post(
-            f"{API_PREFIX}/send-change-email-old-code", json={}
-        )
-        assert resp.status_code == 200
-
-        # 2. 从内存中获取旧邮箱验证码
-        old_code = _get_code(old_email, "change_old")
-
-        # 3. 发送新邮箱验证码
-        resp = await auth_client.post(
-            f"{API_PREFIX}/send-change-email-new-code",
-            json={"new_email": new_email, "allow_existing": False},
-        )
-        assert resp.status_code == 200
-
-        # 4. 从内存中获取新邮箱验证码
-        new_code = _get_code(new_email, "change_new")
-
-        # 5. 修改邮箱
-        resp = await auth_client.put(
-            f"{API_PREFIX}/change-email",
-            json={
-                "old_code": old_code,
-                "new_email": new_email,
-                "new_code": new_code,
-            },
-        )
-        assert resp.status_code == 200
-        assert resp.json()["data"]["email"] == new_email
-
-        # 6. 查询用户信息（验证邮箱已变更为新邮箱）
-        resp = await auth_client.get(f"{API_PREFIX}/info")
-        assert resp.status_code == 200
-        assert resp.json()["data"]["email"] == new_email
-
-
-# =============================================================================
-# 测试 8：完整密码修改流程
-# =============================================================================
-
-
-class TestE2EPasswordChange:
-    """完整密码修改流程：修改密码 → 旧密码登录失败 → 新密码登录成功"""
-
-    @pytest.mark.e2e
-    async def test_password_change_full_flow(self, auth_client, client, test_user):
-        # 1. 修改密码
-        resp = await auth_client.put(
-            f"{API_PREFIX}/change-password",
-            json={
-                "old_password": "Test1234!",
-                "new_password": "ChangedPass123!",
-            },
-        )
-        assert resp.status_code == 200
-        assert resp.json()["code"] == 0
-
-        # 2. 使用旧密码登录应失败
-        resp = await client.post(
-            f"{API_PREFIX}/login",
-            json={"username": "测试用户", "password": "Test1234!"},
-        )
-        assert resp.status_code == 400
-        assert "密码错误" in resp.json()["detail"]
-
-        # 3. 使用新密码登录应成功
-        resp = await client.post(
-            f"{API_PREFIX}/login",
-            json={"username": "测试用户", "password": "ChangedPass123!"},
-        )
-        assert resp.status_code == 200
-        assert resp.json()["data"]["access_token"]

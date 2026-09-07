@@ -1,27 +1,20 @@
 """
 服务层测试补充：覆盖 service 层异常分支与边界条件
 --------------------------------------------------------------------------
-覆盖目标：
-- user_service.py: verify_code 无记录/过期、ensure_znx_channel 已存在（复用 NotificationChannelService）、各方法用户不存在、bind_email 账号合并、change_email 邮箱已注册
+覆盖目标（用户模块用例已迁 auth 服务仓库）：
 - plan_service.py: create/update_plan 无渠道/无效渠道/HH:MM:SS 格式、auto_close_expired_plans
 - checkin_service.py: create_checkin commit 失败、get_latest_checkin、list_by_month 12月分支
 - notification_log_service.py: _auto_mark_read 计划已删除/idx None、commit 失败分支
-- email_service.py: send_verification_code 非 SMTP 认证异常
 - notification_channel_service.py: delete_channel 无权操作
 """
-import time
 from datetime import date, datetime, time as dt_time, timedelta
 from unittest.mock import patch, AsyncMock
 
 import pytest
 
-from app.core.security import Security
 from app.models.checkin_record import CheckinRecord
 from app.models.notification_channel import NotificationChannel
 from app.models.notification_log import NotificationLog
-from app.models.user import User as UserModel
-from app.models.user_miniapp_account import UserMiniappAccount
-from app.services.user_service import User, _verification_codes
 from app.services.plan_service import PlanService
 from app.services.checkin_service import CheckinService
 from app.services.notification_log_service import NotificationLogService
@@ -29,180 +22,6 @@ from app.services.notification_channel_service import NotificationChannelService
 from app.schemas.notification_channel import CHANNEL_TYPE_ZNX, CHANNEL_TYPE_EMAIL
 from app.schemas.plan import NotificationTimeItem
 from sqlalchemy import select
-
-
-# ===== user_service.py 覆盖 =====
-
-
-class TestUserServiceCoverage:
-    """User 服务异常分支覆盖"""
-
-    @pytest.mark.asyncio
-    async def test_verify_code_no_record(self, db_session):
-        """verify_code_for_purpose: 无验证码记录应返回 False"""
-        user = User(db_session)
-        assert user.verify_code_for_purpose("nobody@example.com", "123456", "register") is False
-
-    @pytest.mark.asyncio
-    async def test_verify_code_expired(self, db_session):
-        """verify_code_for_purpose: 过期验证码应返回 False 并清理记录"""
-        key = "expired@example.com:register"
-        _verification_codes[key] = ("123456", time.time() - 1, 0)
-        user = User(db_session)
-        assert user.verify_code_for_purpose("expired@example.com", "123456", "register") is False
-        assert key not in _verification_codes
-        _verification_codes.clear()
-
-    @pytest.mark.asyncio
-    async def test_ensure_znx_channel_existing(self, db_session, test_user):
-        """ensure_znx_channel: 已存在站内信渠道应直接返回现有记录（复用 NotificationChannelService）"""
-        service = NotificationChannelService(db_session)
-        channel = await service.ensure_znx_channel(test_user.id)
-        assert channel is not None
-        assert channel.channel_type == CHANNEL_TYPE_ZNX
-
-    @pytest.mark.asyncio
-    async def test_update_signature_user_not_found(self, db_session):
-        """update_signature: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.update_signature(999999, "签名")
-
-    @pytest.mark.asyncio
-    async def test_send_change_email_old_code_user_not_found(self, db_session):
-        """send_change_email_old_code: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.send_change_email_old_code(999999)
-
-    @pytest.mark.asyncio
-    async def test_change_email_user_not_found(self, db_session):
-        """change_email: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.change_email(999999, "123456", "new@example.com", "654321")
-
-    @pytest.mark.asyncio
-    async def test_change_email_already_registered(self, db_session, test_user):
-        """change_email: 新邮箱已被注册应抛出 ValueError（竞态检查）"""
-        other = UserModel(
-            username="其他用户", email="new@example.com",
-            password_hash=Security.hash_password("Test1234!"),
-            avatar_url="hei", signature="签名", status=1,
-        )
-        db_session.add(other)
-        await db_session.commit()
-        _verification_codes["test@example.com:change_old"] = ("111111", time.time() + 300, 0)
-        _verification_codes["new@example.com:change_new"] = ("222222", time.time() + 300, 0)
-        user = User(db_session)
-        with pytest.raises(ValueError, match="该邮箱已被注册"):
-            await user.change_email(test_user.id, "111111", "new@example.com", "222222")
-        _verification_codes.clear()
-
-    @pytest.mark.asyncio
-    async def test_update_avatar_user_not_found(self, db_session):
-        """update_avatar: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.update_avatar(999999, "new")
-
-    @pytest.mark.asyncio
-    async def test_schedule_deletion_user_not_found(self, db_session):
-        """schedule_deletion: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.schedule_deletion(999999)
-
-    @pytest.mark.asyncio
-    async def test_cancel_deletion_user_not_found(self, db_session):
-        """cancel_deletion: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.cancel_deletion(999999)
-
-    @pytest.mark.asyncio
-    async def test_update_username_user_not_found(self, db_session):
-        """update_username: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.update_username(999999, "新用户名")
-
-    @pytest.mark.asyncio
-    async def test_bind_email_user_not_found(self, db_session):
-        """bind_email: 用户不存在应抛出 ValueError"""
-        user = User(db_session)
-        with pytest.raises(ValueError, match="用户不存在"):
-            await user.bind_email(999999, "new@example.com", "123456")
-
-    @pytest.mark.asyncio
-    async def test_bind_email_account_merge(self, db_session):
-        """bind_email: 邮箱已存在时应触发账号合并（字段填充+小程序转移+从账号删除）"""
-        # 主账号：有邮箱，无用户名/密码/签名/头像
-        main_user = UserModel(
-            username=None, email="main@example.com",
-            password_hash=None, avatar_url=None, signature=None, status=1,
-        )
-        db_session.add(main_user)
-        await db_session.flush()
-        # 从账号：无邮箱，有用户名/密码/签名/头像/小程序绑定/最后登录时间
-        sub_user = UserModel(
-            username="从账号", email=None,
-            password_hash=Security.hash_password("Test1234!"),
-            avatar_url="lan", signature="从账号签名", status=1,
-            last_login_at=datetime(2026, 7, 1, 12, 0, 0),
-        )
-        db_session.add(sub_user)
-        await db_session.flush()
-        miniapp = UserMiniappAccount(
-            user_id=sub_user.id, app_id="test_app",
-            openid="test_openid", session_key="test_session",
-        )
-        db_session.add(miniapp)
-        _verification_codes["main@example.com:change_new"] = ("654321", time.time() + 300, 0)
-        user = User(db_session)
-        result = await user.bind_email(sub_user.id, "main@example.com", "654321")
-        # 验证合并结果：主账号字段被从账号填充
-        assert result.id == main_user.id
-        assert result.username == "从账号"
-        assert result.password_hash is not None
-        assert result.signature == "从账号签名"
-        assert result.avatar_url == "lan"
-        assert result.last_login_at == datetime(2026, 7, 1, 12, 0, 0)
-        # 验证小程序绑定已转移到主账号
-        miniapp_result = await db_session.execute(
-            select(UserMiniappAccount).where(UserMiniappAccount.user_id == main_user.id)
-        )
-        assert len(miniapp_result.scalars().all()) == 1
-        # 验证从账号已删除
-        sub_result = await db_session.execute(
-            select(UserModel).where(UserModel.id == sub_user.id)
-        )
-        assert sub_result.scalar_one_or_none() is None
-        _verification_codes.clear()
-
-    @pytest.mark.asyncio
-    async def test_wechat_login_user_data_anomaly(self, db_session):
-        """wechat_login: 小程序账号已绑定但关联用户不存在时应抛出 ValueError"""
-        from unittest.mock import AsyncMock
-        from app.services.user_service import User
-        from app.core.config import settings
-
-        # 创建小程序账号但不创建关联用户（模拟用户数据异常）
-        # app_id 必须与 settings.WX_APPID 一致，否则 wechat_login 查询不到
-        miniapp = UserMiniappAccount(
-            user_id=999999, app_id=settings.WX_APPID,
-            openid="test_openid", session_key="test_session",
-        )
-        db_session.add(miniapp)
-        await db_session.commit()
-        user = User(db_session)
-        # mock _code2session 返回匹配的 openid
-        with patch.object(
-            user, "_code2session",
-            new=AsyncMock(return_value={"openid": "test_openid", "session_key": "new_session"}),
-        ):
-            with pytest.raises(ValueError, match="用户数据异常"):
-                await user.wechat_login("test_code")
 
 
 # ===== plan_service.py 覆盖 =====
@@ -469,21 +288,6 @@ class TestNotificationLogServiceCoverage:
                 await service.mark_all_as_read(test_user.id)
 
 
-# ===== email_service.py 覆盖 =====
-
-
-class TestEmailServiceCoverage:
-    """Email 服务异常分支覆盖"""
-
-    def test_send_verification_code_other_exception(self):
-        """send_verification_code: 非 SMTPAuthenticationError 异常应抛出 RuntimeError"""
-        from app.services.email_service import Email
-        with patch("smtplib.SMTP_SSL", side_effect=Exception("连接失败")):
-            email = Email()
-            with pytest.raises(RuntimeError, match="邮件发送失败"):
-                email.send_verification_code("to@example.com", "123456")
-
-
 # ===== notification_channel_service.py 覆盖 =====
 
 
@@ -493,16 +297,10 @@ class TestNotificationChannelServiceCoverage:
     @pytest.mark.asyncio
     async def test_delete_channel_no_permission(self, db_session, test_user):
         """delete_channel: 删除他人渠道应抛出 ValueError"""
-        # 创建另一个用户及其邮件渠道
-        other_user = UserModel(
-            username="其他", email="other@example.com",
-            password_hash=Security.hash_password("Test1234!"),
-            avatar_url="hei", signature="签名", status=1,
-        )
-        db_session.add(other_user)
-        await db_session.flush()
+        # 创建另一个用户（虚拟 ID）及其邮件渠道
+        other_user_id = 20003
         other_channel = NotificationChannel(
-            user_id=other_user.id, channel_type=CHANNEL_TYPE_EMAIL,
+            user_id=other_user_id, channel_type=CHANNEL_TYPE_EMAIL,
             channel_value='{"smtp_host":"smtp.test.com","smtp_port":465,"email":"other@test.com","password":""}',
             enabled=True,
         )

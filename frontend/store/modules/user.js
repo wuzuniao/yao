@@ -7,8 +7,10 @@ import { t } from '../../locale'
 /**
  * 用户状态管理 Store
  * --------------------------------------------------------------------------
- * - 管理用户登录态（JWT access_token）和个人信息
- * - token 独立存储于 localStorage（key: accessToken），所有受保护接口由 request.js 自动附加 Authorization 头
+ * - 管理用户登录态（access_token + refresh_token，由 auth 统一认证服务签发）和个人信息
+ * - token 独立存储于 localStorage（key: accessToken / refreshToken），
+ *   所有受保护接口由 request.js 自动附加 Authorization 头；
+ *   refresh_token 用于 401 静默刷新与到期前续期（30 天轮换制，每次刷新换新）
  * - 用户信息包含：id、username、signature、avatar_url、email、has_password、status、is_wechat_bound
  * - status：1-正常，0-待删除（后台任务24小时后清理）
  * - 未登录时 userInfo 为 null，登录成功后写入用户信息
@@ -21,11 +23,14 @@ export const useUserStore = defineStore('user', () => {
   // JWT 访问令牌（未登录为空字符串）
   const accessToken = ref('')
 
+  // 刷新令牌（未登录为空字符串；auth 服务签发，30 天轮换制）
+  const refreshToken = ref('')
+
   // 未读站内信数量（全局共享，供 NoticeButton 图标切换：tongzhi_1/tongzhi_0）
   const unreadCount = ref(0)
   let unreadFetchTime = 0
 
-  // 从本地存储加载用户信息与 token（页面刷新后恢复状态）
+  // 从本地存储加载用户信息与双 token（页面刷新后恢复状态）
   function loadUserFromStorage() {
     try {
       const stored = uni.getStorageSync('userInfo')
@@ -36,12 +41,16 @@ export const useUserStore = defineStore('user', () => {
       if (token) {
         accessToken.value = token
       }
+      const rToken = uni.getStorageSync('refreshToken')
+      if (rToken) {
+        refreshToken.value = rToken
+      }
     } catch (e) {
       console.warn('读取本地用户信息失败', e)
     }
   }
 
-  // 设置用户信息（登录/注册/重置密码成功后调用，data 含 access_token 字段）
+  // 设置用户信息（登录/注册/重置密码成功后调用，data 含 access_token/refresh_token 字段）
   function setUser(data) {
     userInfo.value = {
       id: data.id,
@@ -54,13 +63,21 @@ export const useUserStore = defineStore('user', () => {
       role: data.role ?? 0,
       is_wechat_bound: !!data.is_wechat_bound
     }
-    // 登录类接口响应中携带 access_token，保存以供后续请求附加 Authorization 头
+    // 登录类接口响应中携带令牌三件套，保存以供后续请求附加 Authorization 头与静默续期
     if (data.access_token) {
       accessToken.value = data.access_token
       try {
         uni.setStorageSync('accessToken', data.access_token)
       } catch (e) {
         console.warn('保存 token 到本地失败', e)
+      }
+    }
+    if (data.refresh_token) {
+      refreshToken.value = data.refresh_token
+      try {
+        uni.setStorageSync('refreshToken', data.refresh_token)
+      } catch (e) {
+        console.warn('保存刷新令牌到本地失败', e)
       }
     }
     try {
@@ -70,14 +87,16 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // 清除用户信息与 token（退出登录/账号删除/401 失效时调用）
+  // 清除用户信息与双 token（退出登录/账号删除/401 失效时调用）
   function clearUser() {
     userInfo.value = null
     accessToken.value = ''
+    refreshToken.value = ''
     unreadCount.value = 0
     try {
       uni.removeStorageSync('userInfo')
       uni.removeStorageSync('accessToken')
+      uni.removeStorageSync('refreshToken')
     } catch (e) {
       console.warn('清除本地用户信息失败', e)
     }
@@ -174,6 +193,7 @@ export const useUserStore = defineStore('user', () => {
   return {
     userInfo,
     accessToken,
+    refreshToken,
     unreadCount,
     setUser,
     clearUser,

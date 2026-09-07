@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
 """
-rotate_encryption_key.py - 加密密钥轮换脚本（邮件密码 + 微信 session_key）
+rotate_encryption_key.py - 加密密钥轮换脚本（邮件密码）
 --------------------------------------------------------------------------
 功能：
   1. 从 backend/.env 读取当前 ENCRYPTION_SECRET_KEY（旧密钥）和 DATABASE_URL
   2. 生成新的 AES-256-GCM 密钥（base64 编码的 32 字节随机数）
-  3. 用旧密钥解密数据库中所有邮件渠道的 password 和微信账号的 session_key
+  3. 用旧密钥解密数据库中所有邮件渠道的 password
   4. 用新密钥重新加密
   5. 在数据库事务中更新所有记录（全部成功提交，否则全部回滚）
   6. 事务提交成功后，原子替换 .env 中的 ENCRYPTION_SECRET_KEY
-  7. 用新密钥解密验证更新后的密码与 session_key
+  7. 用新密钥解密验证更新后的密码
   8. 自动重启后端服务以加载新密钥
      - Docker 环境：提示从宿主机执行 docker restart
      - 开发环境：终止占用 8000 端口的旧进程并后台启动新 uvicorn 进程
 
 涉及的加密字段：
   - notification_channels.channel_value 中的 password（邮件渠道专用密码，JSON 字段，wuzuniao_yao 库）
-  - user_miniapp_accounts.session_key（微信小程序会话密钥，直接字符串字段，wuzuniao_yonghu 库）
-  两类字段在同一事务中轮换，保证原子性；跨库操作通过 SQL 中显式指定数据库名前缀实现。
-
-session_key 明文/密文自适应处理：
-  - 尝试用旧密钥解密：成功则视为密文，解密后用新密钥重新加密
-  - 解密失败则视为明文（安全审计前的历史数据），直接用新密钥加密
-  - 无论原值是明文还是密文，轮换后统一为加密存储
+  （微信 session_key 的轮换已随用户模块迁至 auth 服务：用户库 wuzuniao_yonghu
+   归 auth 专属，本服务不再跨库访问；auth 侧轮换须重加密其
+   user_miniapp_accounts.session_key 列，由 auth 仓库自行管理）
 
 用法：
   python3 backend/sql/rotate_encryption_key.py
@@ -31,7 +27,7 @@ session_key 明文/密文自适应处理：
   - 已安装项目 Python 依赖（asyncmy, cryptography, pydantic-settings）
   - backend/.env 中已配置 DATABASE_URL 和 ENCRYPTION_SECRET_KEY
   - 运行前请备份数据库和 .env 文件
-  - 建议在低峰期执行（轮换期间邮件通知与微信功能短暂不可用）
+  - 建议在低峰期执行（轮换期间邮件通知短暂不可用）
 """
 from __future__ import annotations
 
@@ -255,7 +251,7 @@ async def main() -> int:
     new_key = base64.b64encode(os.urandom(32)).decode("ascii")
 
     print("==========================================")
-    print("  加密密钥轮换（邮件密码 + 微信 session_key）")
+    print("  加密密钥轮换（邮件密码）")
     print("==========================================")
     print(f"旧密钥前缀: {old_key[:8]}...")
     print(f"新密钥前缀: {new_key[:8]}...")
@@ -327,55 +323,9 @@ async def main() -> int:
             print(f"  渠道 {channel_id}：已重新加密")
 
         # ============================================================
-        # 第二部分：微信 session_key 轮换
+        # 第二部分：事务更新
         # ============================================================
-        print("")
-        print("--- 微信 session_key 轮换 ---")
-        # user_miniapp_accounts 表位于 wuzuniao_yonghu 用户库（跨库查询）
-        await cur.execute(
-            "SELECT id, session_key FROM wuzuniao_yonghu.user_miniapp_accounts "
-            "WHERE session_key IS NOT NULL AND session_key != ''"
-        )
-        session_rows = await cur.fetchall()
-        print(f"找到 {len(session_rows)} 个微信账号记录")
-
-        session_updates: list[tuple[str, int]] = []
-        session_from_plaintext: list[int] = []  # 原为明文的记录
-        session_from_ciphertext: list[int] = []  # 原为密文的记录
-        for row in session_rows:
-            account_id: int = row[0]
-            old_value: str = row[1]
-
-            # 判断是密文还是明文：尝试用旧密钥解密
-            # - 解密成功 → 密文，用新密钥重新加密
-            # - 解密失败 → 明文（安全审计前的历史数据），直接用新密钥加密
-            try:
-                plaintext = decrypt_with_key(old_key, old_value)
-                session_from_ciphertext.append(account_id)
-            except Exception:
-                # 解密失败，视为明文，直接作为待加密的明文
-                plaintext = old_value
-                session_from_plaintext.append(account_id)
-
-            # 用新密钥加密（无论原值是明文还是密文）
-            new_encrypted = encrypt_with_key(new_key, plaintext)
-            session_updates.append((new_encrypted, account_id))
-
-        for aid in session_from_ciphertext:
-            print(f"  账号 {aid}：密文 → 解密后重新加密")
-        for aid in session_from_plaintext:
-            print(f"  账号 {aid}：明文 → 直接加密")
-
-        if session_from_plaintext:
-            print(
-                f"  其中 {len(session_from_plaintext)} 个账号为明文历史数据，"
-                f"已转为加密存储"
-            )
-
-        # ============================================================
-        # 第三部分：事务更新（邮件密码 + session_key 同一事务提交）
-        # ============================================================
-        total_updates = len(email_updates) + len(session_updates)
+        total_updates = len(email_updates)
         if total_updates == 0:
             print("")
             print("无需要更新的记录，跳过数据库更新")
@@ -388,10 +338,7 @@ async def main() -> int:
             return 0
 
         print("")
-        print(
-            f"开始事务更新 {total_updates} 条记录"
-            f"（邮件渠道 {len(email_updates)} + 微信账号 {len(session_updates)}）..."
-        )
+        print(f"开始事务更新 {total_updates} 条记录（邮件渠道 {len(email_updates)}）...")
 
         # 更新邮件渠道密码
         for new_value, channel_id in email_updates:
@@ -400,15 +347,6 @@ async def main() -> int:
                 "SET channel_value = %s, updated_at = NOW() "
                 "WHERE id = %s",
                 (new_value, channel_id),
-            )
-
-        # 更新微信账号 session_key（跨库更新 wuzuniao_yonghu.user_miniapp_accounts）
-        for new_session_key, account_id in session_updates:
-            await cur.execute(
-                "UPDATE wuzuniao_yonghu.user_miniapp_accounts "
-                "SET session_key = %s "
-                "WHERE id = %s",
-                (new_session_key, account_id),
             )
 
         # 提交事务
@@ -450,21 +388,6 @@ async def main() -> int:
             except Exception as e:
                 print(
                     f"错误：邮件渠道 {channel_id} 新密钥解密验证失败: {e}",
-                    file=sys.stderr,
-                )
-                return 1
-
-        # 验证微信 session_key
-        for new_session_key, account_id in session_updates:
-            try:
-                decrypted = decrypt_with_key(new_key, new_session_key)
-                print(
-                    f"  微信账号 {account_id}：新密钥解密验证通过"
-                    f"（明文长度 {len(decrypted)}）"
-                )
-            except Exception as e:
-                print(
-                    f"错误：微信账号 {account_id} 新密钥解密验证失败: {e}",
                     file=sys.stderr,
                 )
                 return 1

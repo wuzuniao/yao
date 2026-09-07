@@ -2,9 +2,12 @@
  * Token 静默续期 composable（多端共用，无平台条件编译）
  * --------------------------------------------------------------------------
  * - 解码本地 JWT 的 exp（仅读声明，不校验签名）
- * - 当剩余有效期不足 1 天时，调用 /refresh-token 换新 token 覆盖本地
+ * - 当剩余有效期不足 1 天时，调用 auth 服务 /oauth/token（refresh_token grant，
+ *   轮换制）换新令牌对，双 token（access_token/refresh_token）一并覆盖本地
  * - 失败仅 warn，不跳登录（真正 401 由 request.js 统一处理）
  * - App.vue onShow 调用，实现「默认进首页、仅刷新有效期」的诉求
+ * - 2026-09-07 修复：原阈值条件写反（剩余<1 天时 return 跳过刷新），
+ *   现改为剩余不足 1 天才触发刷新、未临近过期则跳过
  */
 import { useUserStore } from '../store/modules/user'
 import { refreshToken as refreshTokenApi } from '../api/modules/user'
@@ -52,11 +55,13 @@ export function useTokenRefresh() {
     if (!token || _refreshing) return
     const exp = getTokenExp(token)
     const now = Math.floor(Date.now() / 1000)
-    // 未临近过期则跳过
-    if (exp - now < REFRESH_THRESHOLD_SECONDS) return
+    // 未临近过期（剩余 ≥ 1 天）则跳过；临近过期（剩余 < 1 天）才触发刷新
+    if (exp - now >= REFRESH_THRESHOLD_SECONDS) return
+    // 无刷新令牌无法续期（旧版本登录态或已被清理），交由 401 统一处理
+    if (!userStore.refreshToken) return
     _refreshing = true
     try {
-      // 已登录续期时一并把 device_id 传给后端，用于顺延生物识别凭证有效期
+      // 已登录续期时一并把 device_id 传给 auth，用于顺延生物识别凭证有效期
       // device_id 由 App 端首次登录生成并持久化于本地（生物识别模块管理），多端共用安全读取
       let deviceId = ''
       try {
@@ -64,14 +69,19 @@ export function useTokenRefresh() {
       } catch (e) {
         deviceId = ''
       }
+      // /oauth/token 响应为令牌三件套原始结构（非 {code,msg,data} 业务格式）
       const res = await refreshTokenApi({ device_id: deviceId })
-      if (res && res.code === 0 && res.data && res.data.access_token) {
-        // 仅更新 token，保留 userInfo 不变
-        userStore.accessToken = res.data.access_token
+      if (res && res.access_token) {
+        // 轮换制：双 token 一并更新，userInfo 保留不变
+        userStore.accessToken = res.access_token
         try {
-          uni.setStorageSync('accessToken', res.data.access_token)
+          uni.setStorageSync('accessToken', res.access_token)
+          if (res.refresh_token) {
+            userStore.refreshToken = res.refresh_token
+            uni.setStorageSync('refreshToken', res.refresh_token)
+          }
         } catch (e) {
-          console.warn('保存刷新后的 token 失败', e)
+          console.warn('保存刷新后的令牌失败', e)
         }
       }
     } catch (e) {
