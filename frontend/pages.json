@@ -116,8 +116,11 @@
             "navigationStyle": "custom",
             "navigationBarTitleText": "账号删除与数据说明 - 免登录删除入口"
           }
-        },
-        {
+        }
+        // #ifndef MP-WEIXIN
+        // 会员支付页：仅 App（谷歌商店/鸿蒙商店渠道包）与 H5 需要，小程序端不注册也不编译进包
+        // （设置页会员卡片在小程序端已隐藏，无跳转入口）
+        ,{
           "path": "member-pay",
           "style": {
             "navigationStyle": "custom",
@@ -125,6 +128,7 @@
             "navigationBarTitleText": "会员支付 - Pro 会员订阅"
           }
         }
+        // #endif
       ]
     }
   ],

@@ -17,6 +17,8 @@ import uni from '@dcloudio/vite-plugin-uni'
 //    无引用，排除以避免撑大主包。
 // 两者均单份存放在 frontend/static/（App/H5 端构建随 static 目录正常拷贝），
 // 仅小程序构建产物中被清理。
+// 3. virtual-payment.html（虚拟支付方式声明页）：应用商店合规用的纯静态说明页，
+//    仅 H5 站点需要（随 publicDir 拷贝），小程序端不需要也不应占用主包。
 function removeUnusedAssetsForMpWeixin() {
   return {
     name: 'remove-unused-assets-mp-weixin',
@@ -24,7 +26,12 @@ function removeUnusedAssetsForMpWeixin() {
     closeBundle() {
       const outDir = process.env.UNI_OUTPUT_DIR
       if (!outDir) return
-      for (const rel of ['static/app-icons', 'static/share-cover.png']) {
+      for (const rel of [
+        'static/app-icons',
+        'static/share-cover.png',
+        'virtual-payment.html',
+        'static/virtual-payment.html',
+      ]) {
         const target = fileURLToPath(pathToFileURL(outDir + '/' + rel))
         if (existsSync(target)) {
           rmSync(target, { recursive: true, force: true })
