@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # 脚本名称：backup_db.sh
-# 功能：备份 MariaDB 容器（yao-mariadb）内的业务数据库
+# 功能：备份 MariaDB 共享容器（mariadb）内的业务数据库
 #       - wuzuniao_yao（按时吃药打卡业务库）
 #
 #       用户库 wuzuniao_yonghu 的备份职责已移交 auth 服务
@@ -11,7 +11,7 @@
 #   1. 数据库单独一个 .sql 文件
 #   2. 包含完整的 CREATE DATABASE / CREATE TABLE 结构
 #   3. 数据以单行 INSERT 方式插入（--skip-extended-insert）
-#   4. 文件按 日期_库名.sql 命名，保存到 deploy/backup_sql 目录
+#   4. 文件按 日期_库名.sql 命名，保存到 /opt/deploy/data/backup_sql 目录
 #   5. 数据库仅保留最近 12 份备份，超出自动清理
 #
 # 定时任务：每周一 00:00 执行（cron: 0 0 * * 1）
@@ -21,12 +21,12 @@ set -euo pipefail
 # ===== 路径推导（使用 BASH_SOURCE 保持可移植性）=====
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="$(dirname "$SCRIPT_DIR")"
-DEPLOY_DIR="$INSTALL_DIR/deploy"
-BACKUP_DIR="$DEPLOY_DIR/backup_sql"
+DEPLOY_DIR="/opt/deploy"
+BACKUP_DIR="$DEPLOY_DIR/data/backup_sql"
 ENV_FILE="$DEPLOY_DIR/.env"
 
 # ===== 配置 =====
-CONTAINER_NAME="yao-mariadb"
+CONTAINER_NAME="mariadb"
 DATABASES=("wuzuniao_yao")
 DATE="$(date +%Y-%m-%d)"
 MAX_BACKUPS=12          # 每个数据库保留的最近备份数

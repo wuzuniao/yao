@@ -2,14 +2,20 @@
 # ============================================================
 # Yao 后端一键部署脚本
 # 适用环境：Rocky Linux 9.4 x86_64
-# 功能：以容器形式部署 MariaDB + Python(FastAPI) + H5 前端 + Nginx(HTTPS)
+# 功能：以容器形式部署本项目 backend（FastAPI），复用共享基础设施
+#       （/opt/deploy 下的 MariaDB 与 Nginx 容器，多项目复用、去项目前缀）；
+#       H5 前端静态资源由共享 Nginx 托管；TLS 使用泛域名证书（acme.sh 自动续期）
 # 项目仓库：https://github.com/wuzuniao/yao.git
 #
 # 使用方式：
 #   1. 克隆仓库到服务器（本脚本位于仓库 scripts/ 目录下）
-#   2. 将证书文件 yao.wuzuniao.com_nginx.zip 上传到服务器
+#   2. 确认共享基础设施就绪（/opt/deploy：mariadb 容器、泛域名证书
+#      /opt/deploy/certs/wuzuniao.com.{pem,key}，由 acme.sh 统一管理）
 #   3. 在项目根目录以 root 执行：bash scripts/deploy.sh
-#   4. 也可指定证书路径：CERT_ZIP_PATH=/path/to/yao.wuzuniao.com_nginx.zip bash scripts/deploy.sh
+#   4. 可选环境变量：
+#      INFRA_DIR=/opt/deploy                 # 共享基础设施目录
+#      FORCE_FRONTEND_BUILD=1                # 强制重建 H5 前端（默认产物存在即跳过）
+#      RESET_DB=1                            # 清空 MariaDB 数据目录重新初始化（危险！）
 # ============================================================
 set -e
 
@@ -41,7 +47,10 @@ DOCKER_REGISTRY="${DOCKER_REGISTRY:-}"
 # 临时文件，故用 _DEPLOY_ORIG_DIR 还原原始脚本目录后再推导。
 SCRIPT_DIR="${_DEPLOY_ORIG_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 INSTALL_DIR="${INSTALL_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"  # 项目克隆目录（会挂载到后端容器）
-DEPLOY_DIR="${INSTALL_DIR}/deploy"  # 部署配置目录
+# 共享基础设施目录：MariaDB 与 Nginx 容器、各项目 backend 部署配置、站点配置、
+# 证书、数据与备份均在此（多项目复用）；git 仓库目录仅保存项目源码
+INFRA_DIR="${INFRA_DIR:-/opt/deploy}"
+DEPLOY_DIR="${DEPLOY_DIR:-$INFRA_DIR/yao}"  # 本项目部署目录（仅 backend 容器的 compose，位于共享基础设施下）
 REPO_URL="https://github.com/wuzuniao/yao.git"
 BRANCH="master"
 
@@ -57,7 +66,6 @@ GITHUB_MIRRORS=(
 LOCAL_PROJECT_DIR="${LOCAL_PROJECT_DIR:-}"
 
 DOMAIN="yao.wuzuniao.com"
-CERT_ZIP_NAME="yao.wuzuniao.com_nginx.zip"
 
 DB_NAME_MAIN="wuzuniao_yao"       # 业务数据库
 DB_NAME_USER="wuzuniao_yonghu"    # 用户数据库
@@ -65,7 +73,7 @@ DB_USER="yao_backend"             # 后端数据库连接用户
 DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-}"  # 运行时自动生成
 DB_PASSWORD="${DB_PASSWORD:-}"            # 运行时自动生成
 # 若 MariaDB 数据目录存在旧数据导致 root 密码不匹配，设为 1 可清空数据目录重新初始化
-# 警告：RESET_DB=1 会删除 deploy/data/mariadb（即 $DEPLOY_DIR/data/mariadb）下的全部数据！
+# 警告：RESET_DB=1 会删除共享 MariaDB 数据目录（$INFRA_DIR/data/mariadb）下的全部数据！
 RESET_DB="${RESET_DB:-0}"
 
 # ============== 颜色与日志 ==============
@@ -76,9 +84,12 @@ log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step()  { echo -e "\n${BLUE}========== $* ==========${NC}"; }
 
-# docker compose 辅助函数（在 DEPLOY_DIR 下执行，确保读取 .env）
+# docker compose 辅助函数（在对应目录下执行，确保读取各自的 compose 与 .env）
 dc() {
   (cd "$DEPLOY_DIR" && docker compose "$@")
+}
+dc_infra() {
+  (cd "$INFRA_DIR" && docker compose "$@")
 }
 
 # ============== 1. 前置检查 ==============
@@ -346,7 +357,7 @@ clone_repo() {
 load_or_generate_passwords() {
   log_step "准备数据库密码"
 
-  local compose_env="$DEPLOY_DIR/.env"
+  local compose_env="$INFRA_DIR/.env"
   local backend_env="$INSTALL_DIR/backend/.env"
 
   # root 密码：优先从 compose .env 读取
@@ -373,70 +384,25 @@ load_or_generate_passwords() {
   fi
 }
 
-# ============== 6. 配置 HTTPS 证书 ==============
+# ============== 6. 检查 HTTPS 证书（泛域名证书由 acme.sh 统一管理） ==============
 setup_certs() {
-  log_step "配置 HTTPS 证书"
+  log_step "检查 HTTPS 证书"
 
-  local cert_dir="$DEPLOY_DIR/certs"
-  mkdir -p "$cert_dir"
-
-  # 查找证书 zip
-  local zip_path="${CERT_ZIP_PATH:-}"
-  if [[ -z "$zip_path" ]]; then
-    for dir in "$(pwd)" "$DEPLOY_DIR" "$INSTALL_DIR" /root /tmp /opt; do
-      if [[ -f "$dir/$CERT_ZIP_NAME" ]]; then
-        zip_path="$dir/$CERT_ZIP_NAME"
-        break
-      fi
-    done
+  # 证书统一由 acme.sh 在共享基础设施目录签发与续期（wuzuniao.com + *.wuzuniao.com），
+  # 本脚本不再自行生成/导入证书，仅校验其存在
+  local cert_dir="$INFRA_DIR/certs"
+  if [[ -f "$cert_dir/wuzuniao.com.pem" && -f "$cert_dir/wuzuniao.com.key" ]]; then
+    log_ok "泛域名证书已就绪：$cert_dir/wuzuniao.com.{pem,key}"
+    return 0
   fi
 
-  if [[ -z "$zip_path" || ! -f "$zip_path" ]]; then
-    log_warn "未找到证书文件 $CERT_ZIP_NAME"
-    log_warn "请将该文件放到以下任一位置后重新运行：$DEPLOY_DIR / /root / /tmp / /opt"
-    log_warn "或通过环境变量指定：CERT_ZIP_PATH=/path/to/$CERT_ZIP_NAME bash scripts/deploy.sh"
-    log_warn "本次部署将生成临时自签名证书以供测试使用"
-
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-      -keyout "$cert_dir/$DOMAIN.key" \
-      -out "$cert_dir/$DOMAIN.pem" \
-      -subj "/CN=$DOMAIN" 2>/dev/null
-    chmod 600 "$cert_dir/$DOMAIN.key"
-    chmod 644 "$cert_dir/$DOMAIN.pem"
-    log_ok "已生成临时自签名证书"
-    return
-  fi
-
-  log_info "找到证书文件：$zip_path"
-
-  local tmp_dir
-  tmp_dir=$(mktemp -d)
-  unzip -o "$zip_path" -d "$tmp_dir" >/dev/null
-
-  # 查找私钥（.key）
-  local key_file
-  key_file=$(find "$tmp_dir" -type f -name "*.key" | head -1)
-  if [[ -z "$key_file" ]]; then
-    log_error "证书包中未找到 .key 私钥文件"
-    rm -rf "$tmp_dir"
-    exit 1
-  fi
-
-  # 查找证书（.pem 或 .crt，排除 .key）
-  local cert_file
-  cert_file=$(find "$tmp_dir" -type f \( -name "*.pem" -o -name "*.crt" \) ! -name "*.key" | head -1)
-  if [[ -z "$cert_file" ]]; then
-    log_error "证书包中未找到 .pem/.crt 证书文件"
-    rm -rf "$tmp_dir"
-    exit 1
-  fi
-
-  cp "$key_file" "$cert_dir/$DOMAIN.key"
-  cp "$cert_file" "$cert_dir/$DOMAIN.pem"
-  chmod 600 "$cert_dir/$DOMAIN.key"
-  chmod 644 "$cert_dir/$DOMAIN.pem"
-  rm -rf "$tmp_dir"
-  log_ok "证书配置完成：$cert_dir/$DOMAIN.{pem,key}"
+  log_error "未找到泛域名证书 $cert_dir/wuzuniao.com.{pem,key}"
+  log_warn "证书由 acme.sh 统一管理（DNS 验证续期），请先在服务器上完成签发并安装到 $cert_dir，例如："
+  echo "  /root/.acme.sh/acme.sh --install-cert -d wuzuniao.com --ecc \\"
+  echo "    --fullchain-file $cert_dir/wuzuniao.com.pem \\"
+  echo "    --key-file $cert_dir/wuzuniao.com.key \\"
+  echo "    --reloadcmd 'docker exec nginx nginx -s reload'"
+  exit 1
 }
 
 # ============== 7. 生成后端 Dockerfile ==============
@@ -449,6 +415,9 @@ FROM __REGISTRY__python:__PY_VER__-slim
 ENV TZ=Asia/Shanghai
 ENV PYTHONUNBUFFERED=1
 
+# apt 换清华源（deb.debian.org 国内直连速率低），pip 同理用清华源
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources
+
 # asyncmy 编译需要 gcc 与 MySQL 客户端开发库；curl 用于健康检查
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
@@ -460,6 +429,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app/backend
 
 # 构建时安装 Python 依赖（运行时代码通过卷挂载提供）
+# pip 国内镜像：服务器直连 PyPI 速率低（<100KB/s），使用清华源加速；如需官方源改为 https://pypi.org/simple
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
@@ -475,15 +446,24 @@ EOF
   log_ok "Dockerfile 已生成：$DEPLOY_DIR/Dockerfile.backend"
 }
 
-# ============== 8. 生成 Nginx 配置（HTTPS + H5 静态 + 后端反代） ==============
+# ============== 8. 生成 Nginx 站点配置（写入共享基础设施目录） ==============
 generate_nginx_conf() {
-  log_step "生成 Nginx 配置"
+  log_step "生成 Nginx 站点配置（yao.conf）"
 
-  mkdir -p "$DEPLOY_DIR/nginx"
+  # 站点配置统一放共享 nginx 的 conf.d 目录（/opt/deploy/nginx），放入即被加载
+  mkdir -p "$INFRA_DIR/nginx"
   # 写入临时文件再替换占位符，最后用 cp 覆盖目标文件（保留 inode）
   # —— 避免 sed -i 更换 inode，导致运行中 nginx 容器的 bind mount 仍读到旧内容
-  local _nginx_tmp="$DEPLOY_DIR/nginx/.default.conf.tmp.$$"
+  local _nginx_tmp="$INFRA_DIR/nginx/.yao.conf.tmp.$$"
   cat > "$_nginx_tmp" <<'EOF'
+# yao.wuzuniao.com —— 按时吃药打卡业务（H5 前端静态 + 后端 API 反代）
+# 说明：
+#   - 由共享 nginx（/opt/deploy）统一承载 TLS 与反向代理
+#   - 使用变量 + resolver 动态解析上游：yao-backend 未运行时 nginx 仍可正常启动（请求时 502）
+#   - 证书为 wuzuniao.com 泛域名证书（acme.sh 自动续期，覆盖 *.wuzuniao.com）
+#   - 本文件由 yao 服务的 scripts/deploy.sh 生成维护（幂等）
+#   - resolver 已统一在 00-resolver.conf 声明，站点配置内不可重复
+
 # HTTP -> HTTPS 重定向
 server {
     listen 80;
@@ -497,8 +477,8 @@ server {
     http2 on;
     server_name __DOMAIN__;
 
-    ssl_certificate     /etc/nginx/certs/__DOMAIN__.pem;
-    ssl_certificate_key /etc/nginx/certs/__DOMAIN__.key;
+    ssl_certificate     /etc/nginx/certs/wuzuniao.com.pem;
+    ssl_certificate_key /etc/nginx/certs/wuzuniao.com.key;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
@@ -507,15 +487,17 @@ server {
 
     client_max_body_size 20m;
 
-    # H5 前端静态资源根目录（由 docker-compose 挂载 dist/build/h5）
-    root /usr/share/nginx/html;
+    # H5 前端静态资源根目录（共享 nginx compose 挂载至 /var/www/yao）
+    root /var/www/yao;
     index index.html;
 
     # 后端 API（路径保持不变：/api/v1/...）
     # 注意：X-Real-IP 与 X-Forwarded-For 是后端限流器（rate_limit.py）识别真实客户端 IP 的关键，
     #       缺失会导致限流被 X-Forwarded-For 伪造绕过。切勿删除以下两个 proxy_set_header。
+    set $yao_upstream http://yao-backend:8000;
+
     location /api/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $yao_upstream;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -525,7 +507,7 @@ server {
 
     # 服务间内部接口（auth 统一认证服务回调：账号删除清理/账号合并；X-Service-Token 守卫）
     location /internal/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $yao_upstream;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -535,7 +517,7 @@ server {
 
     # 后端健康检查（路径保持不变：/health）
     location = /health {
-        proxy_pass http://backend:8000;
+        proxy_pass $yao_upstream;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -560,58 +542,38 @@ server {
 EOF
 
   sed -i "s/__DOMAIN__/$DOMAIN/g" "$_nginx_tmp"
-  cp "$_nginx_tmp" "$DEPLOY_DIR/nginx/default.conf"
+  cp "$_nginx_tmp" "$INFRA_DIR/nginx/yao.conf"
   rm -f "$_nginx_tmp"
-  log_ok "Nginx 配置已生成：$DEPLOY_DIR/nginx/default.conf"
+  # 清理旧版单文件站点配置（历史遗留，避免与新 yao.conf 重复定义 server）
+  rm -f "$INFRA_DIR/nginx/default.conf"
+  log_ok "Nginx 站点配置已生成：$INFRA_DIR/nginx/yao.conf"
 }
 
-# ============== 9. 生成 docker-compose.yml ==============
+# ============== 9. 生成 docker-compose.yml（仅 backend，接入共享网络） ==============
 generate_compose_file() {
-  log_step "生成 docker-compose.yml"
+  log_step "生成 docker-compose.yml（backend）"
 
-  cat > "$DEPLOY_DIR/docker-compose.yml" <<'EOF'
+  # MariaDB 与 Nginx 由共享基础设施 compose（$INFRA_DIR）提供，
+  # 本项目 compose 仅构建/运行自己的 backend 容器，经 app-net 网络互通
+  cat > "$DEPLOY_DIR/docker-compose.yml" <<EOF
+name: yao
+
 services:
-  mariadb:
-    image: __REGISTRY__mariadb:__MARIADB_VER__
-    container_name: yao-mariadb
-    restart: unless-stopped
-    environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      TZ: Asia/Shanghai
-    volumes:
-      - __DEPLOY_DIR__/data/mariadb:/var/lib/mysql:z
-    ports:
-      - "127.0.0.1:3306:3306"
-    networks:
-      - yao-net
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
-
   backend:
     build:
-      context: __INSTALL_DIR__
-      dockerfile: deploy/Dockerfile.backend
+      context: $INSTALL_DIR
+      dockerfile: $DEPLOY_DIR/Dockerfile.backend
     container_name: yao-backend
     restart: unless-stopped
     volumes:
       # 以挂载本地目录方式将项目挂载到容器中运行
-      - __INSTALL_DIR__:/app:z
+      - $INSTALL_DIR:/app:z
     working_dir: /app/backend
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-    depends_on:
-      mariadb:
-        condition: service_healthy
+    # MariaDB 由共享基础设施提供，跨 compose 无法用 depends_on，
+    # 后端应用启动时自带数据库连接重试
     networks:
-      - yao-net
+      - app-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -624,67 +586,45 @@ services:
         max-size: "50m"
         max-file: "3"
 
-  nginx:
-    image: __REGISTRY____NGINX_IMAGE__
-    container_name: yao-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      # 目录级挂载（非单文件）：auth.conf 等附加站点配置（auth 统一认证服务部署时写入）可被自动加载
-      - __DEPLOY_DIR__/nginx:/etc/nginx/conf.d:ro,z
-      - __DEPLOY_DIR__/certs:/etc/nginx/certs:ro,z
-      - __INSTALL_DIR__/frontend/dist/build/h5:/usr/share/nginx/html:ro,z
-    depends_on:
-      - backend
-    networks:
-      - yao-net
-    logging:
-      driver: json-file
-      options:
-        max-size: "50m"
-        max-file: "3"
-
+# 接入共享基础设施网络（mariadb / nginx 由 $INFRA_DIR 提供）
 networks:
-  yao-net:
-    driver: bridge
+  app-net:
+    external: true
+    name: app-net
 EOF
 
-  sed -i \
-    -e "s|__REGISTRY__|$DOCKER_REGISTRY|g" \
-    -e "s|__MARIADB_VER__|$MARIADB_VERSION|g" \
-    -e "s|__NGINX_IMAGE__|$NGINX_IMAGE|g" \
-    -e "s|__INSTALL_DIR__|$INSTALL_DIR|g" \
-    -e "s|__DEPLOY_DIR__|$DEPLOY_DIR|g" \
-    "$DEPLOY_DIR/docker-compose.yml"
   log_ok "docker-compose.yml 已生成：$DEPLOY_DIR/docker-compose.yml"
 }
 
 # ============== 9.1 生成 auth 统一认证服务的 nginx 站点配置（同机部署时） ==============
-# 说明：auth 服务与 yao 同机部署时，其 TLS（auth.wuzuniao.com）由 yao-nginx 统一承载；
-#       证书由 auth 的 deploy.sh 写入本部署目录 certs/ 下，本函数据此生成/清理 auth.conf
-#       （auth 侧 deploy.sh 亦会写入同内容文件，两侧幂等一致）
+# 说明：auth 服务与 yao 同机部署时，其 TLS（auth.wuzuniao.com）由共享 nginx 统一承载；
+#       证书为 wuzuniao.com 泛域名证书（acme.sh 统一管理），本函数依据 auth 是否已部署
+#       生成/清理 auth.conf（auth 侧 deploy.sh 亦会写入同内容文件，两侧幂等一致）
 generate_auth_nginx_conf() {
-  local auth_conf="$DEPLOY_DIR/nginx/auth.conf"
+  local auth_conf="$INFRA_DIR/nginx/auth.conf"
+  local auth_deployed=false
+  if [[ -f "${AUTH_INSTALL_DIR:-/opt/auth}/backend/.env" ]] || docker ps --format '{{.Names}}' | grep -q "^auth-backend$"; then
+    auth_deployed=true
+  fi
 
-  if [[ ! -f "$DEPLOY_DIR/certs/auth.wuzuniao.com.pem" ]]; then
-    # 证书不存在（auth 未部署）：清理旧站点配置避免 nginx 加载失败
+  if [[ "$auth_deployed" != true ]]; then
+    # auth 未部署：清理旧站点配置避免 nginx 加载到无效上游
     if [[ -f "$auth_conf" ]]; then
       rm -f "$auth_conf"
-      log_info "未检测到 auth 证书，已移除 auth.wuzuniao.com 站点配置（auth 部署后将自动恢复）"
+      log_info "未检测到 auth 服务部署，已移除 auth.wuzuniao.com 站点配置（auth 部署后将自动恢复）"
     fi
     return 0
   fi
 
   cat > "$auth_conf" <<'EOF'
-# auth.wuzuniao.com —— 统一认证服务（由 yao-nginx 统一承载 TLS 与反向代理）
+# auth.wuzuniao.com —— 统一认证服务（由共享 nginx 统一承载 TLS 与反向代理）
 # 说明：
-#   - auth-backend 容器经 yao-net 网络加入（auth 服务与 yao 同机部署）
+#   - auth-backend 容器经 app-net 网络加入（auth 服务与 yao 同机部署）
 #   - 使用变量 + resolver 动态解析上游：auth-backend 未运行时 nginx 仍可正常启动（请求时 502）
 #   - auth 服务全部路由（/api/、/oauth/、/.well-known/、/internal/、/health）均挂应用根路径，整体反代即可
+#   - 证书为 wuzuniao.com 泛域名证书（acme.sh 自动续期，覆盖 *.wuzuniao.com）
 #   - 本文件由 auth 服务的 scripts/deploy.sh 与 yao 服务的 scripts/deploy.sh 共同维护（内容一致，幂等）
-resolver 127.0.0.11 valid=10s ipv6=off;
+#   - resolver 已统一在 00-resolver.conf 声明，站点配置内不可重复
 
 # HTTP -> HTTPS 重定向
 server {
@@ -699,8 +639,8 @@ server {
     http2 on;
     server_name auth.wuzuniao.com;
 
-    ssl_certificate     /etc/nginx/certs/auth.wuzuniao.com.pem;
-    ssl_certificate_key /etc/nginx/certs/auth.wuzuniao.com.key;
+    ssl_certificate     /etc/nginx/certs/wuzuniao.com.pem;
+    ssl_certificate_key /etc/nginx/certs/wuzuniao.com.key;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
@@ -725,20 +665,10 @@ EOF
   log_ok "auth.wuzuniao.com 站点配置已生成：$auth_conf"
 }
 
-# ============== 10. 生成 compose 环境变量文件 ==============
-generate_compose_env() {
-  cat > "$DEPLOY_DIR/.env" <<EOF
-# Docker Compose 环境变量（由部署脚本自动生成，请勿提交 Git）
-DB_ROOT_PASSWORD=$DB_ROOT_PASSWORD
-EOF
-  chmod 600 "$DEPLOY_DIR/.env"
-  log_ok "Compose .env 已生成"
-}
-
-# ============== 11. 启动 MariaDB ==============
+# ============== 10. 启动 MariaDB（共享基础设施） ==============
 start_mariadb() {
-  log_step "启动 MariaDB 容器"
-  dc up -d mariadb
+  log_step "启动 MariaDB 容器（共享基础设施）"
+  dc_infra up -d mariadb
   log_ok "MariaDB 容器已启动"
 }
 
@@ -752,7 +682,7 @@ wait_for_mariadb() {
 
   local max=60 i=0 health=""
   while [[ $i -lt $max ]]; do
-    health=$(docker inspect --format='{{.State.Health.Status}}' yao-mariadb 2>/dev/null || echo "")
+    health=$(docker inspect --format='{{.State.Health.Status}}' mariadb 2>/dev/null || echo "")
     [[ "$health" == "healthy" ]] && break
     i=$((i + 1))
     sleep 2
@@ -760,7 +690,7 @@ wait_for_mariadb() {
 
   if [[ "$health" != "healthy" ]]; then
     log_error "MariaDB 容器启动超时（120 秒未变为 healthy）"
-    log_warn "请查看容器日志：docker logs yao-mariadb"
+    log_warn "请查看容器日志：docker logs mariadb"
     exit 1
   fi
   log_ok "MariaDB 容器已健康"
@@ -771,7 +701,7 @@ wait_for_mariadb() {
 # 校验 root 凭据；失败时根据 RESET_DB 决定重置数据目录还是退出
 verify_mariadb_credentials() {
   log_info "校验 MariaDB root 凭据 ..."
-  if docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb \
+  if docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb \
       mysql -uroot -e "SELECT 1" &>/dev/null; then
     log_ok "MariaDB root 凭据校验通过"
     return 0
@@ -779,7 +709,7 @@ verify_mariadb_credentials() {
 
   log_warn "root 凭据校验失败（密码与现有数据目录不匹配）"
 
-  local data_dir="$DEPLOY_DIR/data/mariadb"
+  local data_dir="$INFRA_DIR/data/mariadb"
   local has_stale_data=false
   if [[ -d "$data_dir" ]] && [[ -n "$(ls -A "$data_dir" 2>/dev/null)" ]]; then
     has_stale_data=true
@@ -789,28 +719,28 @@ verify_mariadb_credentials() {
     if [[ "$has_stale_data" == true ]]; then
       log_warn "RESET_DB=1：正在清空 MariaDB 数据目录并重新初始化 ..."
       log_warn "  清空目录：$data_dir （其中数据将丢失）"
-      docker rm -f yao-mariadb &>/dev/null || true
+      docker rm -f mariadb &>/dev/null || true
       rm -rf "${data_dir:?}/"* 2>/dev/null || true
       rm -rf "${data_dir:?}/".[!.]* 2>/dev/null || true
-      dc up -d mariadb
+      dc_infra up -d mariadb
       # 等待重新初始化完成
       local j=0 h=""
       while [[ $j -lt 60 ]]; do
-        h=$(docker inspect --format='{{.State.Health.Status}}' yao-mariadb 2>/dev/null || echo "")
+        h=$(docker inspect --format='{{.State.Health.Status}}' mariadb 2>/dev/null || echo "")
         [[ "$h" == "healthy" ]] && break
         j=$((j + 1))
         sleep 2
       done
       if [[ "$h" != "healthy" ]]; then
-        log_error "重新初始化后 MariaDB 仍未就绪，请查看 docker logs yao-mariadb"
+        log_error "重新初始化后 MariaDB 仍未就绪，请查看 docker logs mariadb"
         exit 1
       fi
-      if docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb \
+      if docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb \
           mysql -uroot -e "SELECT 1" &>/dev/null; then
         log_ok "重新初始化后 root 凭据校验通过"
         return 0
       fi
-      log_error "重新初始化后凭据仍失败，请检查 docker logs yao-mariadb"
+      log_error "重新初始化后凭据仍失败，请检查 docker logs mariadb"
       exit 1
     else
       # 数据目录为空但凭据失败：可能是初始化未完成，再多等一会
@@ -818,14 +748,14 @@ verify_mariadb_credentials() {
       local k=0
       while [[ $k -lt 15 ]]; do
         sleep 2
-        if docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb \
+        if docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb \
             mysql -uroot -e "SELECT 1" &>/dev/null; then
           log_ok "MariaDB root 凭据校验通过"
           return 0
         fi
         k=$((k + 1))
       done
-      log_error "MariaDB root 凭据持续校验失败，请查看 docker logs yao-mariadb"
+      log_error "MariaDB root 凭据持续校验失败，请查看 docker logs mariadb"
       exit 1
     fi
   fi
@@ -841,7 +771,7 @@ verify_mariadb_credentials() {
   echo "    RESET_DB=1 bash scripts/deploy.sh"
   echo ""
   echo "  方式二（手动清理后重跑）："
-  echo "    docker compose -f $DEPLOY_DIR/docker-compose.yml down"
+  echo "    docker compose -f $INFRA_DIR/docker-compose.yml down"
   echo "    rm -rf $data_dir/*"
   echo "    bash scripts/deploy.sh"
   echo ""
@@ -859,7 +789,7 @@ init_databases() {
 
   # 幂等检查：若业务库已有表则跳过
   local table_count
-  table_count=$(docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb \
+  table_count=$(docker exec -e MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb \
     mysql -uroot -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME_MAIN'" 2>/dev/null || echo 0)
 
   if [[ "$table_count" -gt 0 ]]; then
@@ -870,7 +800,7 @@ init_databases() {
   # 导入业务库
   if [[ -f "$sql_dir/create_yao_db.sql" ]]; then
     log_info "导入 $DB_NAME_MAIN 数据库结构与表 ..."
-    docker exec -i -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb \
+    docker exec -i -e MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb \
       mysql -uroot < "$sql_dir/create_yao_db.sql"
     log_ok "$DB_NAME_MAIN 导入完成"
   else
@@ -883,7 +813,7 @@ init_databases() {
 create_db_user() {
   log_step "创建后端数据库连接用户"
 
-  docker exec -i -e MYSQL_PWD="$DB_ROOT_PASSWORD" yao-mariadb mysql -uroot <<EOF
+  docker exec -i -e MYSQL_PWD="$DB_ROOT_PASSWORD" mariadb mysql -uroot <<EOF
 CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
 ALTER USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON $DB_NAME_MAIN.* TO '$DB_USER'@'%';
@@ -902,14 +832,39 @@ generate_backend_env() {
 
   # 保留已有的 微信 / 加密密钥 / auth 配置（若 .env 已存在）
   local wx_appid="" wx_secret="" enc_key="" auth_token=""
+  local project_name="" api_v1=""
   if [[ -f "$env_file" ]]; then
+    project_name=$(grep -E "^PROJECT_NAME=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    api_v1=$(grep -E "^API_V1_STR="         "$env_file" 2>/dev/null | cut -d= -f2- || true)
     wx_appid=$(grep -E "^WX_APPID="             "$env_file" 2>/dev/null | cut -d= -f2- || true)
     wx_secret=$(grep -E "^WX_APP_SECRET="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
     enc_key=$(grep -E "^ENCRYPTION_SECRET_KEY=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
     auth_token=$(grep -E "^AUTH_SERVICE_TOKEN=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    # 微信订阅消息（打卡提醒下发）
+    wx_sub_tpl=$(grep -E "^WX_SUBSCRIBE_TEMPLATE_ID=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    wx_sub_page=$(grep -E "^WX_SUBSCRIBE_PAGE="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    wx_sub_org=$(grep -E "^WX_SUBSCRIBE_ORG_NAME="    "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    # 友盟+ U-Push（App 离线推送，业务模块专属）
+    um_android_key=$(grep -E "^UMENG_ANDROID_APP_KEY="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_android_sec=$(grep -E "^UMENG_ANDROID_MASTER_SECRET=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_ios_key=$(grep -E "^UMENG_IOS_APP_KEY="               "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_ios_sec=$(grep -E "^UMENG_IOS_MASTER_SECRET="         "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_harmony_key=$(grep -E "^UMENG_HARMONY_APP_KEY="       "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_harmony_sec=$(grep -E "^UMENG_HARMONY_MASTER_SECRET=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_prod=$(grep -E "^UMENG_PRODUCTION_MODE="              "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    um_page=$(grep -E "^UMENG_PUSH_PAGE="                    "$env_file" 2>/dev/null | cut -d= -f2- || true)
     cp "$env_file" "${env_file}.bak.$(date +%s)"
-    log_info "已备份原 .env，并保留 微信 / 加密密钥 / auth 配置"
+    log_info "已备份原 .env，并保留 微信 / 订阅消息 / U-Push 推送 / 加密密钥 / auth 配置"
   fi
+
+  # 微信订阅消息 / 友盟推送：保留已有值，缺失时填代码默认值（密钥类留空待用户在控制台获取后补填）
+  : "${wx_sub_page:=/pages/index/index}"
+  : "${wx_sub_org:=无足鸟}"
+  : "${um_prod:=true}"
+  : "${um_page:=/pages/index/index}"
+  # 项目基本信息：与 .env.template 字段对齐，缺失时填代码默认值
+  : "${project_name:=无足鸟按时吃药打卡}"
+  : "${api_v1:=/api/v1}"
 
   # AES-256-GCM 加密密钥：复用已有密钥，仅在缺失时新生成
   # （避免重复部署轮换密钥，导致历史加密数据无法解密）
@@ -941,12 +896,35 @@ generate_backend_env() {
 # 后端环境变量（由部署脚本自动生成）
 # 生成时间：$(date '+%Y-%m-%d %H:%M:%S')
 # ============================================================
+# 项目名称（FastAPI 文档标题等展示用途）
+PROJECT_NAME=${project_name}
+# API 路由前缀（一般无需修改）
+API_V1_STR=${api_v1}
+
 # 数据库连接（使用后端专用用户，连接 mariadb 容器服务名）
 DATABASE_URL=${db_url}
 
 # 微信小程序配置（订阅消息下发；登录侧凭证由 auth 服务持有同一对）
 WX_APPID=${wx_appid}
 WX_APP_SECRET=${wx_secret}
+
+# 微信订阅消息配置（打卡提醒一次性订阅下发；模板 ID 在微信公众平台「订阅消息」中查看，非机密）
+WX_SUBSCRIBE_TEMPLATE_ID=${wx_sub_tpl}
+WX_SUBSCRIBE_PAGE=${wx_sub_page}
+WX_SUBSCRIBE_ORG_NAME=${wx_sub_org}
+
+# 友盟+ U-Push 配置（App 端离线推送，Android / iOS / Harmony 各一套）
+# 在友盟+ 控制台 → U-Push → 应用管理中获取 AppKey 与 App Master Secret 后填入
+UMENG_ANDROID_APP_KEY=${um_android_key}
+UMENG_ANDROID_MASTER_SECRET=${um_android_sec}
+UMENG_IOS_APP_KEY=${um_ios_key}
+UMENG_IOS_MASTER_SECRET=${um_ios_sec}
+UMENG_HARMONY_APP_KEY=${um_harmony_key}
+UMENG_HARMONY_MASTER_SECRET=${um_harmony_sec}
+# 推送环境开关：true=生产（iOS 走 APNs 生产证书）；Android / Harmony 忽略
+UMENG_PRODUCTION_MODE=${um_prod}
+# 点击 App 推送通知后跳转的页面路径
+UMENG_PUSH_PAGE=${um_page}
 
 # 数据加密密钥（AES-256-GCM，base64 编码 32 字节，请妥善保管）
 ENCRYPTION_SECRET_KEY=${enc_key}
@@ -968,7 +946,7 @@ EOF
   log_info "            auth 侧部署脚本会自动回读本值；也可用 AUTH_SERVICE_TOKEN=<值> 显式指定）"
 }
 
-# ============== 16. 构建 H5 前端 ==============
+# ============== 16. 构建 H5 前端（已存在则跳过，节省资源） ==============
 build_frontend() {
   log_step "构建 H5 前端"
 
@@ -977,6 +955,12 @@ build_frontend() {
 
   if [[ ! -f "$frontend_dir/package.json" ]]; then
     log_warn "未找到 $frontend_dir/package.json，跳过 H5 前端构建"
+    return 0
+  fi
+
+  # 构建产物已存在则跳过（npm 构建消耗 CPU/内存较大；需强制重建时设 FORCE_FRONTEND_BUILD=1）
+  if [[ "$FORCE_FRONTEND_BUILD" != "1" && -f "$h5_dist/index.html" ]]; then
+    log_ok "检测到已有构建产物 $h5_dist，跳过前端构建（FORCE_FRONTEND_BUILD=1 可强制重建）"
     return 0
   fi
 
@@ -989,8 +973,10 @@ build_frontend() {
   log_info "使用 $node_image 构建 H5（npm $npm_ci_args && npm run build:h5）..."
 
   # 在 Node 容器内构建，产物通过卷挂载写回宿主机 frontend/dist/build/h5
+  # NODE_OPTIONS 限制堆内存：低内存服务器（如 2G）防止 vite/rollup 占用过多触发 OOM
   docker run --rm \
     -v "$frontend_dir:/app:z" \
+    -e NODE_OPTIONS="--max-old-space-size=768" \
     -w /app \
     "$node_image" \
     sh -c "npm $npm_ci_args && npm run build:h5"
@@ -1004,11 +990,23 @@ build_frontend() {
   log_ok "H5 前端构建完成：$h5_dist"
 }
 
-# ============== 17. 构建并启动后端与 Nginx ==============
+# ============== 17. 构建并启动后端，并确保共享 Nginx 加载本站点 ==============
 start_backend_nginx() {
-  log_step "构建并启动后端与 Nginx 容器"
-  dc up -d --build backend nginx
-  log_ok "后端与 Nginx 容器已启动"
+  log_step "构建并启动后端容器"
+  dc up -d --build backend
+  log_ok "后端容器已启动"
+
+  # 共享 nginx（/opt/deploy）启动或热重载，使 yao.conf 站点生效
+  if docker ps --format '{{.Names}}' | grep -q "^nginx$"; then
+    if docker exec nginx nginx -t >/dev/null 2>&1; then
+      docker exec nginx nginx -s reload && log_ok "共享 nginx 已热重载，$DOMAIN 站点配置生效"
+    else
+      log_warn "nginx 配置校验未通过，请检查 $INFRA_DIR/nginx/yao.conf"
+    fi
+  else
+    dc_infra up -d nginx
+    log_ok "共享 nginx 容器已启动（加载 $INFRA_DIR/nginx/ 全部站点配置）"
+  fi
 }
 
 # ============== 18. 验证部署 ==============
@@ -1031,23 +1029,23 @@ verify_deployment() {
   fi
 
   # Nginx 配置检查
-  if docker exec yao-nginx nginx -t &>/dev/null; then
+  if docker exec nginx nginx -t &>/dev/null; then
     log_ok "Nginx 配置语法正确"
   else
-    log_warn "Nginx 配置检查失败，请查看日志：docker logs yao-nginx"
+    log_warn "Nginx 配置检查失败，请查看日志：docker logs nginx"
   fi
 
   # H5 前端可访问性检查
   log_info "验证 H5 前端 ..."
-  if docker exec yao-nginx test -f /usr/share/nginx/html/index.html 2>/dev/null; then
-    log_ok "H5 静态资源已挂载（/usr/share/nginx/html/index.html 存在）"
+  if docker exec nginx test -f /var/www/yao/index.html 2>/dev/null; then
+    log_ok "H5 静态资源已挂载（/var/www/yao/index.html 存在）"
   else
     log_warn "未在 nginx 容器中找到 H5 首页，请检查前端构建与卷挂载"
   fi
   if curl -sk -o /dev/null -w '%{http_code}' -H "Host: $DOMAIN" "https://127.0.0.1/" 2>/dev/null | grep -q 200; then
     log_ok "H5 首页可访问（HTTPS 200）"
   else
-    log_warn "H5 首页访问异常，请查看 docker logs yao-nginx"
+    log_warn "H5 首页访问异常，请查看 docker logs nginx"
   fi
 
   echo ""
@@ -1064,20 +1062,21 @@ print_summary() {
   cat <<EOF
 
   项目目录：       $INSTALL_DIR
-  部署配置目录：   $DEPLOY_DIR
+  本项目部署目录： $DEPLOY_DIR（仅 backend 容器）
+  共享基础设施：   $INFRA_DIR（mariadb / nginx 容器、站点配置、证书、数据、备份）
 
   数据库信息：
     MariaDB 版本：    $MARIADB_VERSION
     业务数据库：      $DB_NAME_MAIN（用户库 wuzuniao_yonghu 已归 auth 服务）
-    后端连接用户：    $DB_USER
+    后端连接用户：    $DB_USER（独立项目用户，仅授权本库）
     后端用户密码：    $DB_PASSWORD
     root 密码：       $DB_ROOT_PASSWORD
 
   容器服务：
-    MariaDB  →  yao-mariadb  (内部 3306，仅本机可访问)
-    Backend  →  yao-backend  (内部 8000)
-    H5 前端  →  Nginx 静态托管（构建产物 frontend/dist/build/h5）
-    Nginx    →  yao-nginx    (对外 80/443，反代 /api/、/health 至后端)
+    MariaDB  →  mariadb  (共享，内部 3306，仅本机可访问)
+    Backend  →  yao-backend  (本项目专属，内部 8000，经 app-net 网络互通)
+    H5 前端  →  共享 Nginx 静态托管（构建产物 frontend/dist/build/h5 → /var/www/yao）
+    Nginx    →  nginx  (共享，对外 80/443，反代 /api/、/health 至后端)
 
   访问地址：
     H5 前端：        https://$DOMAIN/
@@ -1085,20 +1084,21 @@ print_summary() {
     API 入口：        https://$DOMAIN/api/v1
 
   常用命令（在 $DEPLOY_DIR 下执行）：
-    查看全部日志：    docker compose logs -f
     查看后端日志：    docker logs -f yao-backend
-    重启全部服务：    docker compose restart
-    停止全部服务：    docker compose down
+    重启后端：        docker compose restart
+    停止后端：        docker compose down
     查看运行状态：    docker compose ps
+    共享基础设施：    cd $INFRA_DIR && docker compose ps
 
   注意事项：
     1. 请在 $INSTALL_DIR/backend/.env 中确认微信小程序配置（WX_APPID/WX_APP_SECRET）已填写
-    2. root 密码保存在 $DEPLOY_DIR/.env，后端用户密码保存在 $INSTALL_DIR/backend/.env
-    3. 更新代码：cd $INSTALL_DIR && git pull，然后 docker compose -f $DEPLOY_DIR/docker-compose.yml restart backend
+    2. root 密码保存在 $INFRA_DIR/.env，后端用户密码保存在 $INSTALL_DIR/backend/.env
+    3. 更新代码：cd $INSTALL_DIR && git pull，然后 cd $DEPLOY_DIR && docker compose restart backend
     4. 如遇 SELinux 导致的挂载问题，可执行 setenforce 0 临时关闭后重试
-    5. 更新 H5 前端代码后，重新执行 bash scripts/deploy.sh 即可重建前端并生效（脚本幂等）
-    6. auth 统一认证服务（同机部署）已由本 nginx 统一承载 auth.wuzuniao.com（检测到其证书时自动生成站点配置）；
+    5. 更新 H5 前端代码后，FORCE_FRONTEND_BUILD=1 bash scripts/deploy.sh 强制重建（默认跳过已有构建产物）
+    6. auth 统一认证服务（同机部署）已由共享 nginx 统一承载 auth.wuzuniao.com（检测到其部署时自动生成站点配置）；
        服务间令牌 AUTH_SERVICE_TOKEN 已自动与 auth 侧对齐（任一先部署均收敛为同一令牌）
+    7. 泛域名证书由 acme.sh 自动续期并热重载共享 nginx，全站子域名均自动覆盖
 
 EOF
 }
@@ -1115,15 +1115,14 @@ main() {
   setup_firewall
   clone_repo
 
-  # 创建部署目录结构
-  mkdir -p "$DEPLOY_DIR"/{nginx,certs,data/mariadb}
+  # 创建部署目录结构（本项目部署目录 + 共享基础设施目录）
+  mkdir -p "$DEPLOY_DIR" "$INFRA_DIR"/{nginx,certs,data/mariadb}
 
   load_or_generate_passwords
   setup_certs
   generate_dockerfile
   generate_nginx_conf
   generate_compose_file
-  generate_compose_env
 
   # 预拉取镜像（在启动容器前确保镜像可用）
   pull_images

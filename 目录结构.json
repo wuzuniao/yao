@@ -234,9 +234,11 @@
     },
     "scripts": {
       "描述": "本地开发与运维辅助脚本",
+      "deploy.sh": "yao 一键部署脚本（重构后仅负责本项目 backend）：生成 Dockerfile/compose（backend 容器经 external 接入共享网络 app-net）、写入共享 nginx 站点配置 /opt/deploy/nginx/yao.conf、初始化业务库与专用用户 yao_backend（仅授权 wuzuniao_yao）、生成 backend/.env（字段与 .env.template 一一对应，重复部署保留已填密钥：微信/订阅消息/U-Push/加密密钥/AUTH_*）、构建 H5（产物已存在则跳过，FORCE_FRONTEND_BUILD=1 强制重建）。部署配置集中在 /opt/deploy（INFRA_DIR），git 仓库仅存源码；Dockerfile 模板内置 apt/pip 清华镜像源（低内存服务器直连官方源速率过低致构建卡死）",
+      "build_h5.sh": "H5 前端增量构建与生效脚本（2026-09-12 新增）：停止 yao-backend 释放内存（SKIP_BACKEND_STOP=1 可跳过；共享 nginx 不停，dist 目录级挂载构建完成即时生效）→ 资源限额构建（--memory=1g --memory-swap=2g --cpus=1.5 + NODE_OPTIONS 堆上限 768MB，npm 走 npmmirror 镜像）→ 拉起后端 → 验证（后端健康/H5 200/容器网络连通）",
       "test_db_connection.py": "数据库连接测试脚本（MariaDB 连通性 + 自动建 wuzuniao_yao 库，本地排错用）",
       "_i18n_check.cjs": "i18n 裸中文检查工具：扫描 frontend 下 .vue 模板未走 $t 的裸中文；2026-08-31 起跟踪跨行 HTML 注释状态（<!-- 与 --> 折行书写，原仅过滤含 <!-- 的行导致多行注释续行误报 10 处假阳性），须在项目根目录运行（脚本以相对路径 walk('frontend')，npm run i18n:check 调用）",
-      "backup_db.sh": "MariaDB 定时备份脚本：通过 docker exec 调用容器内 mariadb-dump 备份 wuzuniao_yao 业务库，单独一个 .sql 文件（含完整 CREATE DATABASE/TABLE 结构、数据单行 INSERT），按 日期_库名.sql 命名保存到 deploy/backup_sql/；数据库仅保留最近 12 份备份自动清理旧文件；root 密码从 deploy/.env 读取，路径使用 BASH_SOURCE 推导保持可移植性；已配置 cron 每周一 00:00 执行。用户库 wuzuniao_yonghu 的备份职责已移交 auth 服务（其 scripts/backup_db.sh 每周一 00:30 执行错开）"
+      "backup_db.sh": "MariaDB 定时备份脚本：通过 docker exec 调用共享基础设施的 mariadb 容器（/opt/deploy）内 mariadb-dump 备份 wuzuniao_yao 业务库，单独一个 .sql 文件（含完整 CREATE DATABASE/TABLE 结构、数据单行 INSERT），按 日期_库名.sql 命名保存到统一备份目录 /opt/deploy/data/backup_sql/（与 auth 项目备份同目录）；仅保留最近 12 份备份自动清理旧文件；root 密码从 /opt/deploy/.env 读取；已配置 cron 每周一 00:00 执行。用户库 wuzuniao_yonghu 的备份由 auth 服务脚本负责（/opt/auth/scripts/backup_db.sh 每周一 00:30 执行错开）"
     },
     "tests": {
       "描述": "测试套件目录（pytest + pytest-asyncio + pytest-cov），包含单元测试、集成测试和端到端测试（认证类用例已迁 auth 服务仓库；本套件全部使用测试 RSA 私钥直签令牌，不依赖 auth 服务运行）",
@@ -301,7 +303,7 @@
       "tasks.json": "一键运行后端任务（2026-08-30 新增）：「启动后端 (run.py)」以 backend/venv 的 Python 在 backend 目录下运行 run.py，默认 build 任务（Ctrl+Shift+B 触发）；规避 CodeBuddy IDE 未装 Python 扩展时「运行」按钮报 command 'python.execInTerminal-icon' not found 的问题"
     },
     ".gitignore": "Git忽略文件配置（Python虚拟环境/敏感配置.env/JWKS公钥磁盘缓存backend/.jwks_cache.json/测试覆盖率/缓存/IDE/临时文件）",
-    "README.md": "项目说明文档（功能特性/技术栈/项目结构/快速开始/环境配置/API文档/测试/部署指南）",
+    "README.md": "项目说明文档（功能特性/技术栈/项目结构/配置/API/测试/部署/增量更新/FAQ；克隆用 SSH，部署与增量更新均以 scripts/ 脚本为准，含 H5 增量构建 build_h5.sh 用法）",
     "AGENTS.md": "AI 编程执行行为约束文件（核心原则/新会话初始化/文档同步/质量门禁/禁止事项/参考文档），仅保留 AI 必须执行的规范；固定项目技术规范已拆分至 项目规范.md，每次对话须先读取两者",
     "项目规范.md": "项目固定技术规范文件（项目概述/技术栈版本/编码规范/API 设计规范/环境配置/提交与版本控制），由 AGENTS.md 拆分而来，AI 每次对话须先读取",
     "design_wise.md": "设计语言规范（色彩/排版/组件风格，基于Wise设计语言）",
