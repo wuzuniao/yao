@@ -71,16 +71,20 @@ export function syncAuthCookie({ access_token, refresh_token, expires_in, userIn
 }
 
 /**
- * 页面加载时从父域 Cookie 恢复登录态到本地存储（另一子域登录后本域首次访问时调用）
- * - 仅当本地 storage 无 accessToken 而 Cookie 有令牌时写入，避免覆盖本域已登录态
- * @returns {boolean} 是否发生了恢复
+ * 页面加载时从父域 Cookie 同步登录态到本地存储（另一子域登录/换号/令牌轮换后本域访问时调用）
+ * - 本地与 Cookie 令牌一致时无需同步；不一致时以 Cookie 为准覆盖本地——Cookie 由
+ *   各端最近一次登录或静默刷新写入，代表最新登录态；本地旧令牌可能已被登出撤销
+ *   （auth 登出会撤销该账号全部 refresh_token），继续使用将触发 401→刷新失败→
+ *   清态跳登录的连锁，且清态时误清 Cookie 会破坏另一子域刚写入的新登录态
+ * - Cookie 缺失时不清本地（本地令牌仍可能经静默续期有效，失效由 401 兜底）
+ * @returns {boolean} 是否发生了同步
  */
 export function restoreAuthFromCookie() {
   if (!isH5()) return false
   try {
-    if (uni.getStorageSync('accessToken')) return false
     const saved = readAuthCookie()
     if (!saved || !saved.at) return false
+    if (uni.getStorageSync('accessToken') === saved.at) return false
     uni.setStorageSync('accessToken', saved.at)
     if (saved.rt) uni.setStorageSync('refreshToken', saved.rt)
     if (saved.ui && saved.ui.id) uni.setStorageSync('userInfo', saved.ui)
