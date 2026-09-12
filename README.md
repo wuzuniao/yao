@@ -31,8 +31,8 @@
 | 后端 | FastAPI（异步） | RESTful API |
 | 后端 | SQLAlchemy / Pydantic | ORM（asyncmy 驱动）/ 数据校验 |
 | 后端 | PyJWT / cryptography | RS256 令牌本地验签（JWKS 公钥）/ AES-256-GCM 加密 |
-| 认证服务 | auth（独立部署，auth.wuzuniao.com） | 注册/登录/令牌签发（OIDC 标准化），本服务持公钥本地验签 |
-| 数据库 | MariaDB 10.11 (LTS) | 业务库（用户库 wuzuniao_yonghu 归 auth 服务专属） |
+| 认证服务 | auth（独立项目，auth.wuzuniao.com） | 用户账户体系：注册/登录/令牌签发（OIDC 标准），本服务持 JWKS 公钥本地验签 |
+| 数据库 | MariaDB 10.11 (LTS) | 业务库 `wuzuniao_yao`（用户数据由 auth 认证服务持有） |
 | 部署 | Docker + Docker Compose | 共享基础设施（MariaDB/Nginx 容器多项目复用）+ 项目专属 FastAPI 容器 |
 
 ---
@@ -71,7 +71,7 @@ yao/
 
 **前端**：配置集中在 `frontend/config/env.js` 常量模块（HBuilderX 不加载 `.env`，以常量模块保证多端构建一致）：`API_BASE_URL`、`AUTH_BASE_URL`、`AUTH_CLIENT_ID`、`WX_SUBSCRIBE_TEMPLATE_ID`。该文件提交 Git，严禁写入密码/密钥。
 
-**数据库**：彻底拆分——`wuzuniao_yao`（业务库：计划/打卡/通知/公告，本服务专属）；用户库 `wuzuniao_yonghu` 归 auth 统一认证服务，本服务不直连，需要用户信息时经 auth 的 `/internal/*` 接口查询。初始化 SQL 位于 `backend/sql/create_yao_db.sql`。
+**数据库**：本服务仅连接业务库 `wuzuniao_yao`（计划/打卡/通知/公告）；用户账户与认证数据由 auth 认证服务持有，本服务需要用户信息时经 auth 的 `/internal/*` 服务接口查询。初始化 SQL 位于 `backend/sql/create_yao_db.sql`。
 
 ---
 
@@ -83,7 +83,7 @@ yao/
 { "code": 0, "msg": "success", "data": { } }
 ```
 
-主要模块：计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）；另含服务间内部接口 `/internal/*`（X-Service-Token 守卫，auth 回调账号删除清理/账号合并）。认证类接口（注册/登录/资料）已迁 auth 服务。完整接口见 Swagger UI：`http://localhost:8000/docs`。
+主要模块：计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）；另含服务间内部接口 `/internal/*`（X-Service-Token 守卫，供 auth 认证服务回调账号删除清理/账号合并）。用户认证接口（注册/登录/资料）由 auth 认证服务提供（`https://auth.wuzuniao.com`）。完整接口见 Swagger UI：`http://localhost:8000/docs`。
 
 ---
 
@@ -115,7 +115,9 @@ git clone git@github.com:wuzuniao/yao.git && cd yao
 bash scripts/deploy.sh
 ```
 
-> **上线顺序**：先部署 auth（含用户库建表与 yao client 回调注册）→ 再部署 yao → 最后发前端。服务间令牌 `AUTH_SERVICE_TOKEN` 任一先部署均自动对齐。
+> **部署顺序**：先部署 auth 认证服务（独立项目，见其仓库 README），再部署本项目；本项目 `.env` 的 `AUTH_*` 三项须与 auth 侧配置一致。
+
+> **📌 附注 —— 关于独立部署**：如无需独立认证服务、希望用户与业务合一（传统单体模式），建议使用 **V1.0.10 版本**——该版本用户业务合在一起，是**最后一个可独立部署的项目版本**；此后版本的用户模块由独立的 auth 认证服务承载，部署时需同时部署 auth。
 
 常用运维：
 

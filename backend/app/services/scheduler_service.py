@@ -469,7 +469,7 @@ class NotificationDispatcher:
         try:
             await asyncio.to_thread(
                 Email().send_notification,
-                user.email,
+                user_email,
                 subject,
                 fields,
                 cfg.get("smtp_host", ""),

@@ -68,7 +68,6 @@ LOCAL_PROJECT_DIR="${LOCAL_PROJECT_DIR:-}"
 DOMAIN="yao.wuzuniao.com"
 
 DB_NAME_MAIN="wuzuniao_yao"       # 业务数据库
-DB_NAME_USER="wuzuniao_yonghu"    # 用户数据库
 DB_USER="yao_backend"             # 后端数据库连接用户
 DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-}"  # 运行时自动生成
 DB_PASSWORD="${DB_PASSWORD:-}"            # 运行时自动生成

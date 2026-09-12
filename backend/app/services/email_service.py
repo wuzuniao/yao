@@ -4,6 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
+from ..core.config import settings
 from ..utils.logger import logger
 
 
@@ -158,7 +159,8 @@ class Email:
 
         msg = MIMEText(body, "html", "utf-8")
         msg["Subject"] = subject
-        msg["From"] = formataddr((self.sender_name, from_email))
+        # 发件人显示名：项目名称（原 SMTP_SENDER_NAME 配置已随验证码邮件迁 auth 服务）
+        msg["From"] = formataddr((settings.PROJECT_NAME, from_email))
         msg["To"] = to_email
 
         try:
