@@ -71,19 +71,32 @@ export function syncAuthCookie({ access_token, refresh_token, expires_in, userIn
 }
 
 /**
- * 页面加载时从父域 Cookie 同步登录态到本地存储（另一子域登录/换号/令牌轮换后本域访问时调用）
- * - 本地与 Cookie 令牌一致时无需同步；不一致时以 Cookie 为准覆盖本地——Cookie 由
- *   各端最近一次登录或静默刷新写入，代表最新登录态；本地旧令牌可能已被登出撤销
- *   （auth 登出会撤销该账号全部 refresh_token），继续使用将触发 401→刷新失败→
- *   清态跳登录的连锁，且清态时误清 Cookie 会破坏另一子域刚写入的新登录态
- * - Cookie 缺失时不清本地（本地令牌仍可能经静默续期有效，失效由 401 兜底）
+ * 页面加载时从父域 Cookie 同步登录态到本地存储（三站以父域 Cookie 为登录态权威源）
+ * 1. Cookie 缺失：另一子域已登出（清 Cookie 且服务端撤销该账号全部 refresh_token）、
+ *    Cookie 已过期（活跃用户每次静默刷新都会续写 Cookie，故过期时本地令牌必也失效）
+ *    或用户清理了浏览器数据——本地令牌必为废态，主动清除保持三站一致（对齐 www 端
+ *    「Cookie 缺失即退出」语义；SPA 标签页不刷新的场景仍由请求 401 链兜底收敛）。
+ * 2. Cookie 与本地不一致（另一子域登录/换号/令牌轮换后本域访问）：以 Cookie 为准覆盖
+ *    本地——Cookie 由各端最近一次登录或静默刷新写入，代表最新登录态；本地旧令牌可能
+ *    已被登出撤销，继续使用将触发 401→刷新失败→清态跳登录的连锁，且清态时误清 Cookie
+ *    会破坏另一子域刚写入的新登录态。
+ * 3. Cookie 与本地一致：无动作。
+ * 仅同步不校验——令牌若已失效由各页面请求的 401 处理（静默刷新或跳登录）。
  * @returns {boolean} 是否发生了同步
  */
 export function restoreAuthFromCookie() {
   if (!isH5()) return false
   try {
     const saved = readAuthCookie()
-    if (!saved || !saved.at) return false
+    if (!saved || !saved.at) {
+      // Cookie 缺失：清除本地登录态（清除列表与 clearUser 一致）
+      if (uni.getStorageSync('accessToken')) {
+        uni.removeStorageSync('accessToken')
+        uni.removeStorageSync('refreshToken')
+        uni.removeStorageSync('userInfo')
+      }
+      return false
+    }
     if (uni.getStorageSync('accessToken') === saved.at) return false
     uni.setStorageSync('accessToken', saved.at)
     if (saved.rt) uni.setStorageSync('refreshToken', saved.rt)
