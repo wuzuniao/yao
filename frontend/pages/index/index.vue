@@ -770,19 +770,48 @@ async function loadUserChannels() {
   }
 }
 
+// 公告 recent 接口本地缓存（5 分钟 TTL）：公告为全站公开低频数据（已读状态仅本地记录），
+// 首页每次 onShow 都会调用本函数，缓存后 5 分钟内切回首页不再请求服务器；
+// 新发布公告最长延迟 5 分钟展示（可接受）。请求失败时回退过期缓存，弱网下旧值优于空白
+const ANNOUNCEMENT_CACHE_KEY = 'recentAnnouncementsCache'
+const ANNOUNCEMENT_CACHE_TTL = 5 * 60 * 1000
+
+function _readAnnouncementCache() {
+  try {
+    return JSON.parse(uni.getStorageSync(ANNOUNCEMENT_CACHE_KEY) || 'null')
+  } catch (e) {
+    return null
+  }
+}
+
 // 加载最近 7 天公告（普通用户），用于首页临时卡片轮播；失败不阻塞首页
-// 后端接口已排除 id=1 的公共模板，此处再做一次防御性过滤
+// 后端接口已排除 id=1 的公共模板，此处再做一次防御性过滤（缓存存原始数组，读取时过滤）
 async function loadRecentAnnouncements() {
   if (!isLoggedIn.value) {
     recentAnnouncements.value = []
+    return
+  }
+  const cached = _readAnnouncementCache()
+  if (cached && Array.isArray(cached.data) && Date.now() - cached.ts < ANNOUNCEMENT_CACHE_TTL) {
+    recentAnnouncements.value = cached.data.filter(item => item.id !== 1)
     return
   }
   try {
     const res = await getRecentAnnouncements()
     if (res.code === 0 && res.data) {
       recentAnnouncements.value = res.data.filter(item => item.id !== 1)
+      try {
+        uni.setStorageSync(ANNOUNCEMENT_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: res.data }))
+      } catch (e) {
+        // 存储不可用（隐私模式等）不影响本次展示
+      }
     }
   } catch (e) {
+    // 请求失败：回退到过期缓存（若有）
+    if (cached && Array.isArray(cached.data)) {
+      recentAnnouncements.value = cached.data.filter(item => item.id !== 1)
+      return
+    }
     console.warn('加载公告失败', e)
   }
 }

@@ -460,7 +460,7 @@ generate_nginx_conf() {
 #   - 由共享 nginx（/opt/deploy）统一承载 TLS 与反向代理
 #   - 使用变量 + resolver 动态解析上游：yao-backend 未运行时 nginx 仍可正常启动（请求时 502）
 #   - 证书为 wuzuniao.com 泛域名证书（acme.sh 自动续期，覆盖 *.wuzuniao.com）
-#   - 本文件由 yao 服务的 scripts/deploy.sh 生成维护（幂等）
+#   - 本文件由 yao 服务的 scripts/deploy.sh 生成维护（幂等），手动修改请同步模板
 #   - resolver 已统一在 00-resolver.conf 声明，站点配置内不可重复
 
 # HTTP -> HTTPS 重定向
@@ -512,6 +512,28 @@ server {
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_redirect off;
+    }
+
+    # 带内容 hash 的构建产物（Vite 产物文件名即指纹）：可永久缓存，
+    # 内容更新时文件名变化，旧缓存自然失效
+    location ^~ /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # uni-app static 目录（主题图标等，文件名固定无 hash）：浏览器缓存 7 天，
+    # 重复访问不再请求服务器；同名图片更新最多延迟 7 天可见（图标低频变更可接受），
+    # 过期后经 ETag/Last-Modified 协商返回 304
+    location ^~ /static/ {
+        add_header Cache-Control "public, max-age=604800" always;
+        try_files $uri =404;
+    }
+
+    # SPA 入口禁止强缓存（协商缓存）：每次发版浏览器都会拿到引用新 hash 资源的
+    # 最新 index.html，根治「重新构建后页面未生效」——无 Cache-Control 时微信内置
+    # 浏览器等会按启发式策略强缓存入口页，导致继续引用已被清空的旧 bundle（白屏/旧代码）
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
     }
 
     # /pages/ 下为 uni-app H5 合法页面路由（history 模式），回退 index.html 交由前端路由处理

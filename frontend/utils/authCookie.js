@@ -88,7 +88,7 @@ export function restoreAuthFromCookie() {
   if (!isH5()) return false
   try {
     const saved = readAuthCookie()
-    if (!saved || !saved.at) {
+    if (!saved || !saved.access_token) {
       // Cookie 缺失：清除本地登录态（清除列表与 clearUser 一致）
       if (uni.getStorageSync('accessToken')) {
         uni.removeStorageSync('accessToken')
@@ -97,10 +97,10 @@ export function restoreAuthFromCookie() {
       }
       return false
     }
-    if (uni.getStorageSync('accessToken') === saved.at) return false
-    uni.setStorageSync('accessToken', saved.at)
-    if (saved.rt) uni.setStorageSync('refreshToken', saved.rt)
-    if (saved.ui && saved.ui.id) uni.setStorageSync('userInfo', saved.ui)
+    if (uni.getStorageSync('accessToken') === saved.access_token) return false
+    uni.setStorageSync('accessToken', saved.access_token)
+    if (saved.refresh_token) uni.setStorageSync('refreshToken', saved.refresh_token)
+    if (saved.userInfo && saved.userInfo.id) uni.setStorageSync('userInfo', saved.userInfo)
     return true
   } catch (e) {
     return false
