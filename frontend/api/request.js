@@ -17,6 +17,7 @@
  */
 import { API_BASE_URL, AUTH_BASE_URL, AUTH_CLIENT_ID } from '../config/env'
 import { t } from '../locale'
+import { syncAuthCookie, clearAuthCookie } from '../utils/authCookie'
 
 const BASE_URL = API_BASE_URL
 
@@ -42,7 +43,7 @@ function _getAccessToken() {
 }
 
 /**
- * 读取本地 refresh_token（auth 服务签发，30 天轮换制）
+ * 读取本地 refresh_token（auth 服务签发，14 天轮换制）
  */
 function _getRefreshToken() {
   try {
@@ -70,6 +71,8 @@ function _handleUnauthorized() {
   } catch (e) {
     console.warn('清除本地登录态失败', e)
   }
+  // 同步清除父域 SSO Cookie（H5），避免另一子域仍读到已失效令牌
+  clearAuthCookie()
   if (hadToken) {
     uni.showToast({ title: t('request.sessionExpired'), icon: 'none' })
   }
@@ -81,7 +84,7 @@ function _handleUnauthorized() {
 /**
  * 静默刷新令牌（直连 auth 服务 /oauth/token，refresh_token 轮换制）
  * - 成功后更新本地双 token（accessToken / refreshToken）并 resolve 新 access_token
- * - 并发调用共享同一 Promise（30 天轮换制下并发刷新会触发重放检测导致全端下线）
+ * - 并发调用共享同一 Promise（轮换制下并发刷新会触发重放检测导致全端下线）
  * - 内联实现 uni.request，避免与 api/modules/user.js 循环依赖
  */
 function _silentRefresh() {
@@ -117,6 +120,12 @@ function _silentRefresh() {
           } catch (e) {
             console.warn('保存刷新后的令牌失败', e)
           }
+          // 同步刷新后的令牌到父域 SSO Cookie（H5），保持另一子域登录态可用
+          syncAuthCookie({
+            access_token: res.data.access_token,
+            refresh_token: res.data.refresh_token,
+            expires_in: res.data.expires_in
+          })
           resolve(res.data.access_token)
         } else {
           reject(new Error('refresh token failed'))

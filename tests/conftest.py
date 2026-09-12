@@ -28,12 +28,13 @@ os.environ.setdefault(
     "mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao_test?charset=utf8mb4",
 )
 # auth 服务测试配置：
-# - AUTH_BASE_URL 指向不可达地址：测试不真实调用 auth（email/openid/撤销均 mock 或不触发）
+# - AUTH_BASE_URL 指向不可达地址：测试不真实调用 auth（email/openid/撤销/删除上报/合并确认均 mock 或不触发）
 # - AUTH_ISSUER 与 tests/rsa_keys.py 的 TEST_ISSUER 一致（RS256 验签 issuer 校验）
-# - AUTH_SERVICE_TOKEN 用于 /internal/* 守卫测试
+# - AUTH_SERVICE_TOKEN 用于服务间调用头；AUTH_CLIENT_ID 用于删除上报体
 os.environ.setdefault("AUTH_BASE_URL", "http://127.0.0.1:9")
 os.environ.setdefault("AUTH_ISSUER", "http://test-auth")
 os.environ.setdefault("AUTH_SERVICE_TOKEN", "test-service-token")
+os.environ.setdefault("AUTH_CLIENT_ID", "yao")
 # 测试用 AES-256 加密密钥（base64 编码的 32 字节）
 os.environ.setdefault(
     "ENCRYPTION_SECRET_KEY",

@@ -3,12 +3,14 @@
 --------------------------------------------------------------------------
 集中管理所有后台定时任务循环，main.py 启动时调用 start_all() 拉起全部任务。
 
-当前包含三类后台任务：
+当前包含五类后台任务：
 1. 计划自动关闭循环（每 30 分钟）：将 end_date<today 的按日期结束计划置为已结束
 2. 定时通知派发循环（每 60 秒）：根据打卡计划提醒时间发送站内信/邮件/微信/App推送通知
 3. 令牌撤销同步循环（每 REVOCATION_SYNC_INTERVAL_SECONDS 秒，默认 5 分钟）：
-   拉取 auth 服务的撤销增量，本地比对 iat 拒绝旧令牌（用户模块已独立为 auth 服务，
-   账号清理/生物识别凭证清理循环随之迁出，分别由 auth 服务的后台任务承担）
+   拉取 auth 服务的撤销增量，本地比对 iat 拒绝旧令牌
+4. 账号删除上报循环（每 60 秒）：拉取 auth 待清理用户列表（注销冷静期到期）→
+   幂等清理业务库数据 → 上报 auth（收齐第一方上报后 auth 标记用户已删除）
+5. 合并确认重试循环（每 60 秒）：confirm 上报失败的合并记录重试上报
 
 通知派发逻辑（批量预取 + 分钟水位回放架构）：
 - 分钟水位：进程内记录上一次已处理的分钟；稳态每轮只处理新增的 1 分钟，
@@ -76,6 +78,7 @@ from .checkin_service import CheckinService
 from .email_service import Email
 from .plan_service import PlanService
 from .notification_channel_service import NotificationChannelService
+from .account_service import purge_user_business_data, retry_pending_merges
 
 
 # 后台循环间隔（秒）
@@ -83,6 +86,8 @@ INTERVAL_PLAN_CLOSE: int = 1800  # 计划关闭：每 30 分钟
 INTERVAL_NOTIFICATION: int = 60   # 通知派发：每 60 秒
 # 令牌撤销同步间隔（秒）：从 settings 读取（.env 可调，默认 300 = 5 分钟）
 INTERVAL_REVOCATION_SYNC: int = settings.REVOCATION_SYNC_INTERVAL_SECONDS
+INTERVAL_PURGE_USERS: int = 60    # 账号删除上报：每 60 秒
+INTERVAL_MERGE_RETRY: int = 60    # 合并确认重试：每 60 秒
 
 # 通知派发回放窗口（分钟）：进程重启/宕机恢复后向前回放的分钟数（含当前分钟），
 # 窗口内的漏发通知自动补发（防重键挡住已发条目），超出窗口的不再补发
@@ -105,12 +110,14 @@ class SchedulerService:
             asyncio.create_task(self._loop_close_expired_plans()),
             asyncio.create_task(self._loop_dispatch_notifications()),
             asyncio.create_task(self._loop_sync_revocations()),
+            asyncio.create_task(self._loop_purge_users()),
+            asyncio.create_task(self._loop_retry_merges()),
         ]
         # 启动即拉取一次 JWKS 公钥（磁盘+内存缓存），供 access_token 本地验签
         await auth_client.fetch_jwks()
         logger.info(
             "定时任务调度服务已启动：计划关闭/通知派发/令牌撤销同步"
-            f"（撤销同步间隔 {INTERVAL_REVOCATION_SYNC} 秒）"
+            f"/账号删除上报/合并确认重试（撤销同步间隔 {INTERVAL_REVOCATION_SYNC} 秒）"
         )
 
     async def stop_all(self) -> None:
@@ -162,6 +169,40 @@ class SchedulerService:
             except Exception:
                 logger.exception("令牌撤销同步任务异常")
             await asyncio.sleep(INTERVAL_REVOCATION_SYNC)
+
+    async def _loop_purge_users(self) -> None:
+        """
+        循环：账号删除上报（业务项目主动执行，auth 不再回调）
+        - 拉取 auth 待清理用户列表（注销冷静期到期，24h 判定在 auth 侧）
+        - 逐个幂等清理业务库数据 → 上报 purge-report
+        - 上报前用户会重复出现在列表中，清理/上报均幂等；失败下轮重试
+        """
+        while True:
+            try:
+                pending = await auth_client.list_pending_purges()
+                for item in pending:
+                    user_id = item.get("user_id")
+                    if not user_id:
+                        continue
+                    async with AsyncSessionLocal() as session:
+                        await purge_user_business_data(session, user_id)
+                    await auth_client.report_purge(user_id)
+                    logger.info(f"用户 {user_id} 业务数据已清理并上报 auth")
+            except Exception:
+                logger.exception("账号删除上报任务异常")
+            await asyncio.sleep(INTERVAL_PURGE_USERS)
+
+    async def _loop_retry_merges(self) -> None:
+        """循环：重试上报待确认的合并记录（confirm 失败的补偿路径）"""
+        while True:
+            try:
+                async with AsyncSessionLocal() as session:
+                    confirmed = await retry_pending_merges(session)
+                    if confirmed > 0:
+                        logger.info(f"合并确认重试完成：本轮确认 {confirmed} 条记录")
+            except Exception:
+                logger.exception("合并确认重试任务异常")
+            await asyncio.sleep(INTERVAL_MERGE_RETRY)
 
 
 def _trigger_desc(plan_time: PlanNotificationTime, trigger_type: int) -> str:

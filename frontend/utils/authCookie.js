@@ -1,0 +1,120 @@
+/**
+ * 跨子域 SSO Cookie 工具（H5 专用）
+ * --------------------------------------------------------------------------
+ * 目标：同一浏览器内「一处登录，处处通行」——yao.wuzuniao.com 与
+ * auth.wuzuniao.com 两个子域的 localStorage 互相隔离（同源策略），
+ * 故将令牌双件套 + 用户信息同步写入父域 Cookie（Domain=.wuzuniao.com），
+ * 两端前端各自在「保存登录态时写入、页面加载时恢复、登出时清除」。
+ *
+ * Cookie 内容：单条 `wz_sso`，值为 encodeURIComponent(JSON)：
+ *   { at: access_token, rt: refresh_token, exp: access 过期毫秒时间戳, ui: 用户信息 }
+ * 属性：Domain=.wuzuniao.com（生产）；Path=/；SameSite=Lax；HTTPS 下加 Secure。
+ * 开发环境（localhost 等）省略 Domain——Cookie 不区分端口，localhost:8000/10000/5173 互通。
+ *
+ * 安全说明：该 Cookie 仅在前端 JS 层流转（后端不读取、不作为认证凭证），
+ * 令牌本就以 Authorization 头明示发送，风险面与 localStorage 存储等同；
+ * 不设 HttpOnly 是因为两端 JS 均需读取以附加 Bearer 头。
+ *
+ * 非 H5 端（App/小程序无 document.cookie）全部为 no-op，调用方无需判断平台。
+ */
+
+// Cookie 名（统一前缀，与两端 localStorage key 区分）
+const SSO_COOKIE_NAME = 'wz_sso'
+// Cookie 有效期（秒）：与 refresh_token TTL（14 天）对齐；access_token 时效由 exp 字段控制
+const SSO_COOKIE_MAX_AGE = 14 * 24 * 3600
+// access_token 缺省有效期（秒）：与 auth 服务 ACCESS_TOKEN_EXPIRE_DAYS 一致
+const DEFAULT_ACCESS_TTL_SECONDS = 3 * 24 * 3600
+
+/** 当前是否为 H5 端（条件编译期确定） */
+function isH5() {
+  // #ifdef H5
+  return true
+  // #endif
+  // #ifndef H5
+  return false
+  // #endif
+}
+
+/** 生产跨子域场景（wuzuniao.com 的子域）才设置 Domain 属性 */
+function cookieDomainAttr() {
+  return /\.wuzuniao\.com$/.test(location.hostname) ? '; Domain=.wuzuniao.com' : ''
+}
+
+function writeCookie(value) {
+  const secure = location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${SSO_COOKIE_NAME}=${value}; Max-Age=${SSO_COOKIE_MAX_AGE}; Path=/; SameSite=Lax${secure}${cookieDomainAttr()}`
+}
+
+/**
+ * 同步登录态到父域 Cookie（登录/注册/绑定成功、令牌静默刷新/续期后调用）
+ * @param {Object} params
+ * @param {string} params.access_token 访问令牌
+ * @param {string} [params.refresh_token] 刷新令牌（轮换制，刷新后为新值）
+ * @param {number} [params.expires_in] access_token 有效期（秒）
+ * @param {Object} [params.userInfo] 用户信息（展示用精简对象）
+ */
+export function syncAuthCookie({ access_token, refresh_token, expires_in, userInfo } = {}) {
+  if (!isH5() || !access_token) return
+  try {
+    // 已有 Cookie 时保留旧 refresh/userInfo（部分调用点仅更新 access_token）
+    const prev = readAuthCookie() || {}
+    const payload = {
+      at: access_token,
+      rt: refresh_token || prev.rt || '',
+      exp: Date.now() + (expires_in || DEFAULT_ACCESS_TTL_SECONDS) * 1000,
+      ui: userInfo || prev.ui || null
+    }
+    writeCookie(encodeURIComponent(JSON.stringify(payload)))
+  } catch (e) {
+    // Cookie 不可用（隐私模式等）不影响主流程
+  }
+}
+
+/**
+ * 页面加载时从父域 Cookie 恢复登录态到本地存储（另一子域登录后本域首次访问时调用）
+ * - 仅当本地 storage 无 accessToken 而 Cookie 有令牌时写入，避免覆盖本域已登录态
+ * @returns {boolean} 是否发生了恢复
+ */
+export function restoreAuthFromCookie() {
+  if (!isH5()) return false
+  try {
+    if (uni.getStorageSync('accessToken')) return false
+    const saved = readAuthCookie()
+    if (!saved || !saved.at) return false
+    uni.setStorageSync('accessToken', saved.at)
+    if (saved.rt) uni.setStorageSync('refreshToken', saved.rt)
+    if (saved.ui && saved.ui.id) uni.setStorageSync('userInfo', saved.ui)
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+/** 清除父域 Cookie（退出登录/登录态失效/账号删除时调用） */
+export function clearAuthCookie() {
+  if (!isH5()) return
+  try {
+    document.cookie = `${SSO_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Lax${cookieDomainAttr()}`
+  } catch (e) {
+    // 忽略清除失败
+  }
+}
+
+/** 读取 Cookie 中的登录态（无则返回 null） */
+export function readAuthCookie() {
+  if (!isH5()) return null
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${SSO_COOKIE_NAME}=([^;]*)`))
+    if (!match) return null
+    const payload = JSON.parse(decodeURIComponent(match[1]))
+    if (!payload || !payload.at) return null
+    return {
+      access_token: payload.at,
+      refresh_token: payload.rt || '',
+      expires_at: payload.exp || 0,
+      userInfo: payload.ui || null
+    }
+  } catch (e) {
+    return null
+  }
+}

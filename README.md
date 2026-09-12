@@ -83,7 +83,7 @@ yao/
 { "code": 0, "msg": "success", "data": { } }
 ```
 
-主要模块：计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）；另含服务间内部接口 `/internal/*`（X-Service-Token 守卫，供 auth 认证服务回调账号删除清理/账号合并）。用户认证接口（注册/登录/资料）由 auth 认证服务提供（`https://auth.wuzuniao.com`）。完整接口见 Swagger UI：`http://localhost:8000/docs`。
+主要模块：账号（`/account`，账号合并：bind-email 命中已有邮箱 need_merge 后迁移业务数据并上报 auth）、计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）。本服务主动调用 auth 的 `/internal/*`（拉取待清理用户/上报删除完成/合并任务确认，X-Service-Token 认证）；auth 不回调本服务。用户认证接口（注册/登录/资料）由 auth 认证服务提供（`https://auth.wuzuniao.com`）。完整接口见 Swagger UI：`http://localhost:8000/docs`。
 
 ---
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from .account import router as account_router
 from .notification_channels import router as notification_channels_router
 from .plans import router as plans_router
 from .checkins import router as checkins_router
@@ -7,6 +8,7 @@ from .notification_logs import router as notification_logs_router
 from .announcements import router as announcements_router
 
 router = APIRouter()
+router.include_router(account_router, prefix="/account", tags=["账号"])
 router.include_router(notification_channels_router, prefix="/notification-channels", tags=["通知渠道"])
 router.include_router(plans_router, prefix="/plans", tags=["计划"])
 router.include_router(checkins_router, prefix="/checkins", tags=["打卡记录"])

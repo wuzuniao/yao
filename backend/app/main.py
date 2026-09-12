@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .api import v1
-from .api.v1 import internal as internal_api
 from .services.scheduler_service import SchedulerService
 
 # 全局定时任务调度服务实例
@@ -14,7 +13,7 @@ _scheduler = SchedulerService()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # pragma: no cover
-    # 启动全部后台定时任务循环（账号清理/计划关闭/通知派发）
+    # 启动全部后台定时任务循环（账号删除上报/计划关闭/通知派发）
     await _scheduler.start_all()
     yield
     # 应用关闭时停止全部后台任务
@@ -32,8 +31,6 @@ app.add_middleware(
 )
 
 app.include_router(v1.router, prefix=settings.API_V1_STR)
-# 服务间内部接口（/internal/*，auth 统一认证服务回调：账号删除清理/账号合并）
-app.include_router(internal_api.router, prefix="/internal")
 
 
 @app.get("/")

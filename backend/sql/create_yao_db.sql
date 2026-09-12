@@ -142,3 +142,19 @@ CREATE TABLE `announcements` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='全站公告表（每条公告一行）';
+
+-- ------------------------------------------------------
+-- 表：merge_sync_tasks（账号合并同步任务表）
+-- 说明：auth 绑定邮箱冲突创建合并任务后，本服务迁移业务数据并落 pending 记录
+--       （与迁移同事务），confirm 上报 auth 成功置 done；失败由后台循环重试
+-- ------------------------------------------------------
+CREATE TABLE `merge_sync_tasks` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '记录ID',
+  `from_user_id` BIGINT NOT NULL COMMENT '从账号 users.id（发起绑定邮箱、被合并删除；唯一：同时至多一条待同步记录）',
+  `to_user_id` BIGINT NOT NULL COMMENT '主账号 users.id（合并后保留，来自 auth 合并任务下发）',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0-已迁移待确认，1-auth 已合并完成',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uk_from_user` (`from_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='账号合并同步任务（业务数据迁移完成状态记录）';

@@ -251,7 +251,7 @@ export function setPassword({ new_password }) {
 
 /**
  * 绑定邮箱（user_id 由 JWT 提供，用于无邮箱用户首次绑定邮箱；
- * 若邮箱已存在会触发账号合并，成功响应含新令牌三件套）
+ * 邮箱已存在时 auth 返回 need_merge，由前端确认后调 mergeAccount 完成合并）
  * @param {Object} param0 绑定邮箱数据
  * @param {string} param0.new_email 新邮箱地址
  * @param {string} param0.new_code 新邮箱验证码
@@ -262,6 +262,18 @@ export function bindEmail({ new_email, new_code }) {
     method: 'PUT',
     baseUrl: AUTH_BASE_URL,
     data: { new_email, new_code, client_id: AUTH_CLIENT_ID }
+  })
+}
+
+/**
+ * 账号合并（bind-email 命中已有邮箱返回 need_merge 后调用）
+ * 走 yao 业务后端（不传 baseUrl）：迁移业务数据并上报 auth 完成用户库合并；
+ * 完成后从账号令牌被撤销，前端需清除本地登录态并引导使用主账号重新登录
+ */
+export function mergeAccount() {
+  return request({
+    url: '/api/v1/account/merge',
+    method: 'POST'
   })
 }
 

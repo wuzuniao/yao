@@ -11,6 +11,7 @@
  */
 import { useUserStore } from '../store/modules/user'
 import { refreshToken as refreshTokenApi } from '../api/modules/user'
+import { syncAuthCookie } from '../utils/authCookie'
 
 const REFRESH_THRESHOLD_SECONDS = 1 * 24 * 3600 // 剩余不足 1 天续期
 
@@ -83,6 +84,13 @@ export function useTokenRefresh() {
         } catch (e) {
           console.warn('保存刷新后的令牌失败', e)
         }
+        // 同步续期后的令牌到父域 SSO Cookie（H5），保持另一子域登录态可用
+        syncAuthCookie({
+          access_token: res.access_token,
+          refresh_token: res.refresh_token,
+          expires_in: res.expires_in,
+          userInfo: userStore.userInfo
+        })
       }
     } catch (e) {
       // 续期失败不强制跳登录，等真正 401 时再处理

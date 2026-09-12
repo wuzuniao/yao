@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { getUserInfo } from '../../api/modules/user'
 import { getUnreadCount } from '../../api/modules/message'
 import { t } from '../../locale'
+import { syncAuthCookie, clearAuthCookie, restoreAuthFromCookie } from '../../utils/authCookie'
 
 /**
  * 用户状态管理 Store
@@ -10,7 +11,7 @@ import { t } from '../../locale'
  * - 管理用户登录态（access_token + refresh_token，由 auth 统一认证服务签发）和个人信息
  * - token 独立存储于 localStorage（key: accessToken / refreshToken），
  *   所有受保护接口由 request.js 自动附加 Authorization 头；
- *   refresh_token 用于 401 静默刷新与到期前续期（30 天轮换制，每次刷新换新）
+ *   refresh_token 用于 401 静默刷新与到期前续期（14 天轮换制，每次刷新换新）
  * - 用户信息包含：id、username、signature、avatar_url、email、has_password、status、is_wechat_bound
  * - status：1-正常，0-待删除（后台任务24小时后清理）
  * - 未登录时 userInfo 为 null，登录成功后写入用户信息
@@ -23,7 +24,7 @@ export const useUserStore = defineStore('user', () => {
   // JWT 访问令牌（未登录为空字符串）
   const accessToken = ref('')
 
-  // 刷新令牌（未登录为空字符串；auth 服务签发，30 天轮换制）
+  // 刷新令牌（未登录为空字符串；auth 服务签发，14 天轮换制）
   const refreshToken = ref('')
 
   // 未读站内信数量（全局共享，供 NoticeButton 图标切换：tongzhi_1/tongzhi_0）
@@ -31,8 +32,10 @@ export const useUserStore = defineStore('user', () => {
   let unreadFetchTime = 0
 
   // 从本地存储加载用户信息与双 token（页面刷新后恢复状态）
+  // H5 端恢复前先尝试从父域 SSO Cookie 取回令牌（另一子域 auth 登录后本域首次访问时通行）
   function loadUserFromStorage() {
     try {
+      restoreAuthFromCookie()
       const stored = uni.getStorageSync('userInfo')
       if (stored && stored.id) {
         userInfo.value = stored
@@ -85,6 +88,13 @@ export const useUserStore = defineStore('user', () => {
     } catch (e) {
       console.warn('保存用户信息到本地失败', e)
     }
+    // 同步登录态到父域 SSO Cookie（H5）：另一子域 auth 前端据此实现「一处登录，处处通行」
+    syncAuthCookie({
+      access_token: accessToken.value,
+      refresh_token: refreshToken.value,
+      expires_in: data.expires_in,
+      userInfo: userInfo.value
+    })
   }
 
   // 清除用户信息与双 token（退出登录/账号删除/401 失效时调用）
@@ -100,6 +110,8 @@ export const useUserStore = defineStore('user', () => {
     } catch (e) {
       console.warn('清除本地用户信息失败', e)
     }
+    // 同步清除父域 SSO Cookie，避免另一子域仍读取到已失效登录态
+    clearAuthCookie()
   }
 
   // 初始化时加载本地存储的用户信息与 token

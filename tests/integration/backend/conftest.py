@@ -1,13 +1,14 @@
 """
 集成测试共享 fixtures
 --------------------------------------------------------------------------
-- 使用测试业务数据库 wuzuniao_yao_test（由根 conftest.py 设置 DATABASE_URL 环境变量）
+- 使用测试业务数据库 wuzuniao_yao_test（可用 TEST_DATABASE_URL 环境变量覆盖连接地址）
 - 用户库已归 auth 服务：测试用户不再写用户表，直接分配虚拟 user_id 并以
   测试 RSA 私钥签发 access_token（密钥见 tests/rsa_keys.py，根 conftest 已注入 JWKS）
 - 复用 app 自身的 database.py 基础，使用 NullPool 避免跨事件循环连接失效
 - 每个测试后自动清理数据（TRUNCATE 所有表）
 - 提供已认证的测试客户端
 """
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -16,14 +17,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.database import Base, get_db
+from app.models.announcement import Announcement  # noqa: F401
 from app.models.checkin_record import CheckinRecord  # noqa: F401
+from app.models.merge_task import MergeSyncTask  # noqa: F401
 from app.models.notification_channel import NotificationChannel  # noqa: F401
 from app.models.notification_log import NotificationLog  # noqa: F401
 from app.models.plan import CheckinPlan, PlanNotificationChannel, PlanNotificationTime  # noqa: F401
 from tests import rsa_keys
 
-TEST_DATABASE_URL = (
-    "mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao_test?charset=utf8mb4"
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "mysql+asyncmy://root:root@127.0.0.1:3306/wuzuniao_yao_test?charset=utf8mb4",
 )
 
 # 测试专用引擎（NullPool 不缓存连接，避免跨事件循环的连接失效问题）
