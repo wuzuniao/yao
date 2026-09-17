@@ -8,6 +8,13 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     connect_args={"init_command": "SET time_zone='+08:00'"},
+    # 连接池稳定性配置：pre_ping 借出前探活防止拿到已被 MariaDB 关闭的失效连接
+    # （对应 MariaDB 日志中的 Aborted connection），recycle 主动回收长连接
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=5,
+    pool_timeout=30,
 )
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

@@ -486,6 +486,14 @@ server {
 
     client_max_body_size 20m;
 
+    # gzip 压缩：HTML 由 gzip 模块默认压缩；此处补充 js/css/json/svg 等文本类型，
+    # 传输体积降 60-70%，低带宽服务器上显著加快首屏；仅压缩 >1k 响应避免小响应浪费 CPU
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css text/javascript application/javascript application/json image/svg+xml application/xml text/plain;
+
     # H5 前端静态资源根目录（共享 nginx compose 挂载至 /var/www/yao）
     root /var/www/yao;
     index index.html;
@@ -518,6 +526,8 @@ server {
     # 内容更新时文件名变化，旧缓存自然失效
     location ^~ /assets/ {
         add_header Cache-Control "public, max-age=31536000, immutable" always;
+        # 单连接限速：防爬虫（bingbot 等）并发抓取挤占带宽与 nginx worker，拖慢真实用户请求
+        limit_rate 512k;
         try_files $uri =404;
     }
 
@@ -526,6 +536,8 @@ server {
     # 过期后经 ETag/Last-Modified 协商返回 304
     location ^~ /static/ {
         add_header Cache-Control "public, max-age=604800" always;
+        # 单连接限速：同 /assets/，降低爬虫与恶意流量对出口带宽的挤占
+        limit_rate 256k;
         try_files $uri =404;
     }
 
@@ -581,6 +593,11 @@ services:
       - $INSTALL_DIR:/app:z
     working_dir: /app/backend
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    # 低资源服务器（约 1.8GB 内存）资源限制：防止单容器无限制占用内存触发整机 OOM/swap，
+    # 拖累 mariadb/nginx/auth-backend 等共享基础设施。单 worker 事件循环已可处理高并发 IO。
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 1.0
     # MariaDB 由共享基础设施提供，跨 compose 无法用 depends_on，
     # 后端应用启动时自带数据库连接重试
     networks:
@@ -628,14 +645,19 @@ generate_auth_nginx_conf() {
   fi
 
   cat > "$auth_conf" <<'EOF'
-# auth.wuzuniao.com —— 统一认证服务（由共享 nginx 统一承载 TLS 与反向代理）
+# auth.wuzuniao.com —— 认证、授权、审计服务（由共享 nginx 统一承载 TLS 与反向代理）
 # 说明：
 #   - auth-backend 容器经 app-net 网络加入（auth 服务与 yao 同机部署）
 #   - 使用变量 + resolver 动态解析上游：auth-backend 未运行时 nginx 仍可正常启动（请求时 502）
 #   - auth 服务全部路由（/api/、/oauth/、/.well-known/、/internal/、/health）均挂应用根路径，整体反代即可
 #   - 证书为 wuzuniao.com 泛域名证书（acme.sh 自动续期，覆盖 *.wuzuniao.com）
-#   - 本文件由 auth 服务的 scripts/deploy.sh 与 yao 服务的 scripts/deploy.sh 共同维护（内容一致，幂等）
+#   - 本文件由 auth 服务的 scripts/deploy.sh 与 yao 服务的 scripts/deploy.sh 共同维护（内容一致，幂等），手动修改请同步两侧模板
 #   - resolver 已统一在 00-resolver.conf 声明，站点配置内不可重复
+#   - 缓存策略：HTML 协商缓存（no-cache，发版即生效）；js/css/图片/字体浏览器缓存 7 天
+#     （静态文件名固定无 hash，html 引用不带 ?v= 参数，零维护）。代价：修改 js/css 后
+#     已访问过的用户最长 7 天内仍运行旧文件（html 引用 URL 未变，强缓存期内不发请求）；
+#     紧急修复可在 html 引用中临时追加 ?v=xxx 参数立即换新，或让用户强制刷新（Ctrl+F5）。
+#     过期后经 FastAPI StaticFiles 的 ETag 协商返回 304，零内容传输。
 
 # HTTP -> HTTPS 重定向
 server {
@@ -644,7 +666,7 @@ server {
     return 301 https://$host$request_uri;
 }
 
-# HTTPS：统一认证服务反向代理
+# HTTPS：认证、授权、审计服务反向代理
 server {
     listen 443 ssl;
     http2 on;
@@ -660,8 +682,57 @@ server {
 
     client_max_body_size 5m;
 
+    # gzip 压缩：HTML 由 gzip 模块默认压缩；此处补充 js/css/json/svg 等文本类型，
+    # 传输体积降 60-70%，低带宽服务器上显著加快首屏；仅压缩 >1k 响应避免小响应浪费 CPU
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css text/javascript application/javascript application/json image/svg+xml application/xml text/plain;
+
     set $auth_upstream http://auth-backend:10000;
 
+    # 站点首页（/ 经 StaticFiles(html=True) 返回 index.html）：禁止强缓存（协商缓存）
+    location = / {
+        proxy_pass $auth_upstream;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # HTML 子页（/pages/**.html 与 /index.html）：禁止强缓存（协商缓存），发版即生效；
+    # 页面引用的 js/css 均带 ?v= 版本参数，html 更新即带动静态资源换新
+    location ~* \.html$ {
+        proxy_pass $auth_upstream;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # 带静态后缀的资源（js/css/图片/字体）：浏览器强缓存 7 天，重复访问不再请求服务器；
+    # 静态文件名固定无 html ?v= 参数（零维护），修改文件后最长 7 天生效（紧急可临时加 ?v=）；
+    # API 路径均无静态后缀，不受影响（仍走下方 location / 反代）
+    # 单连接限速 256k：静态文件经反代由 auth-backend(Python) 提供，限速降低爬虫/恶意
+    # 流量对出口带宽与后端事件循环的挤占（nginx 会先缓冲上游响应再向客户端慢速发送）
+    location ~* \.(js|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot)$ {
+        proxy_pass $auth_upstream;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        add_header Cache-Control "public, max-age=604800" always;
+        limit_rate 256k;
+    }
+
+    # 其余路径（/api/、/oauth/、/.well-known/、/internal/、/health、/readme 及未知路径）：
+    # 整体反代 auth-backend，API 响应不缓存
     location / {
         proxy_pass $auth_upstream;
         proxy_set_header Host              $host;
