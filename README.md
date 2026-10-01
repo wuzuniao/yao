@@ -168,7 +168,6 @@ GNU GPLv3，开源地址 https://github.com/wuzuniao/yao 。
 | [AGENTS.md](AGENTS.md) | AI 编程指南（约束与编码规范） |
 | [design_wise.md](design_wise.md) | 设计语言规范（色彩 / 排版 / 组件） |
 | [目录结构.json](目录结构.json) | 完整目录树（含每个文件说明） |
-| [更新记录.md](更新记录.md) | 变更日志 |
 
 ---
 
