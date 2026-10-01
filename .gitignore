@@ -75,8 +75,15 @@ frontend/harmony-configs/material/
 .DS_Store
 .idea/
 .vscode/
-.trae/
-.codebuddy/
+# AI 编程工具（本地数据不入库；仅自动生成提交内容的规范文件纳管）
+.trae/*
+!.trae/rules/
+.trae/rules/*
+!.trae/rules/git-commit-message.md
+.codebuddy/*
+!.codebuddy/rules/
+.codebuddy/rules/*
+!.codebuddy/rules/git-commit-message/
 *.swp
 *.swo
 *~
