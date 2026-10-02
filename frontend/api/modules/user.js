@@ -1,5 +1,5 @@
 import { request } from '../request'
-import { AUTH_BASE_URL, AUTH_CLIENT_ID } from '../../config/env'
+import { AUTH_BASE_URL, AUTH_CLIENT_ID, WX_APPID } from '../../config/env'
 
 /**
  * 用户模块接口（全部直连 auth 统一认证服务，不经 yao 后端转发）
@@ -169,14 +169,15 @@ export function updateAvatar({ avatar_url }) {
 }
 
 /**
- * 计划删除账号（user_id 由 JWT 提供，将 status 置为 0，后台任务在 24 小时后自动清理）
+ * 计划删除账号（user_id 由 JWT 提供，person+全部别名 status 置 0，24 小时冷静期；
+ * client_id 供 auth 侧删号审计记录触发来源）
  */
 export function scheduleDeletion() {
   return request({
     url: '/api/v1/users/schedule-deletion',
     method: 'POST',
     baseUrl: AUTH_BASE_URL,
-    data: {}
+    data: { client_id: AUTH_CLIENT_ID }
   })
 }
 
@@ -201,7 +202,7 @@ export function wechatLogin(code) {
     url: '/api/v1/users/wechat-login',
     method: 'POST',
     baseUrl: AUTH_BASE_URL,
-    data: { code, client_id: AUTH_CLIENT_ID },
+    data: { code, client_id: AUTH_CLIENT_ID, app_id: WX_APPID },
     timeout: 10000
   })
 }
@@ -216,7 +217,7 @@ export function bindWechat(code) {
     url: '/api/v1/users/bind-wechat',
     method: 'POST',
     baseUrl: AUTH_BASE_URL,
-    data: { code },
+    data: { code, app_id: WX_APPID },
     timeout: 10000
   })
 }
@@ -251,7 +252,7 @@ export function setPassword({ new_password }) {
 
 /**
  * 绑定邮箱（user_id 由 JWT 提供，用于无邮箱用户首次绑定邮箱；
- * 邮箱已存在时 auth 返回 need_merge，由前端确认后调 mergeAccount 完成合并）
+ * 邮箱已存在时 auth 内部自动合并，响应返回合并后资料与全新令牌组）
  * @param {Object} param0 绑定邮箱数据
  * @param {string} param0.new_email 新邮箱地址
  * @param {string} param0.new_code 新邮箱验证码
@@ -262,18 +263,6 @@ export function bindEmail({ new_email, new_code }) {
     method: 'PUT',
     baseUrl: AUTH_BASE_URL,
     data: { new_email, new_code, client_id: AUTH_CLIENT_ID }
-  })
-}
-
-/**
- * 账号合并（bind-email 命中已有邮箱返回 need_merge 后调用）
- * 走 yao 业务后端（不传 baseUrl）：迁移业务数据并上报 auth 完成用户库合并；
- * 完成后从账号令牌被撤销，前端需清除本地登录态并引导使用主账号重新登录
- */
-export function mergeAccount() {
-  return request({
-    url: '/api/v1/account/merge',
-    method: 'POST'
   })
 }
 

@@ -51,8 +51,9 @@ class Settings(BaseSettings):
     # 与 auth 服务 .env 的 SERVICE_TOKEN 一致）
     AUTH_SERVICE_TOKEN: str = ""
     # 本项目在 auth oauth_clients 表登记的第一方 client_id
-    # （删除上报 purge-report 时携带，auth 按第一方 client 集合判定收齐）
+    # （前端登录类请求显式携带，auth 按此签发本项目认识的 identity id 令牌）
     AUTH_CLIENT_ID: str = "yao"
+    # 说明：旧版「删号上报 purge-report 携带」用途已随账号别名与合并改造（2026-10-01）废除
     # 令牌撤销增量同步间隔（秒）：后台循环每该间隔拉取一次 auth 的撤销日志，
     # 决定「改密码/退出/删号后旧令牌在本服务的最大残留窗口」
     REVOCATION_SYNC_INTERVAL_SECONDS: int = 300

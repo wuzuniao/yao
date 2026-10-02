@@ -1,29 +1,35 @@
-/**
- * 跨子域 SSO Cookie 工具（H5 专用）
+﻿/**
+ * 跨子域 SSO Cookie 工具（H5 专用；账号别名与合并改造：Cookie 固定持有平台令牌）
  * --------------------------------------------------------------------------
- * 目标：同一浏览器内「一处登录，处处通行」——yao.wuzuniao.com 与
- * auth.wuzuniao.com 两个子域的 localStorage 互相隔离（同源策略），
- * 故将令牌双件套 + 用户信息同步写入父域 Cookie（Domain=.wuzuniao.com），
- * 两端前端各自在「保存登录态时写入、页面加载时恢复、登出时清除」。
+ * 同一浏览器内「一处登录，处处通行」——各子域 localStorage 互相隔离（同源策略），
+ * 经父域 Cookie（Domain=.wuzuniao.com）互通登录态。
  *
- * Cookie 内容：单条 `wz_sso`，值为 encodeURIComponent(JSON)：
- *   { at: access_token, rt: refresh_token, exp: access 过期毫秒时间戳, ui: 用户信息 }
+ * 令牌体系（N13=A1 / N23 / N34 / P39）：
+ * - Cookie（wz_sso）固定持有「平台令牌」（client_id=auth，sub=主账号 id），
+ *   仅用于跨站登录态恢复与交换，不直接用于业务数据接口
+ * - 各项目本地持「项目令牌」（sub=该项目认识的 identity id），业务接口用
+ * - 登录/刷新拿到项目令牌后：经 POST /oauth/token-exchange 换平台令牌写入 Cookie
+ * - 恢复：本地已有有效项目令牌则不交换（N34，各项目本地身份独立维持）；
+ *   仅本地无令牌时读 Cookie 平台令牌 → 交换 → 项目令牌写本地
+ *   （平台 access 过期时用 Cookie 内平台 refresh_token 走 /oauth/token client=auth
+ *   独立刷新链续期后再交换，P39）
+ *
+ * Cookie 内容：单条 wz_sso，值为 encodeURIComponent(JSON)：
+ *   { at: 平台 access_token, rt: 平台 refresh_token, exp: access 过期毫秒时间戳, ui: 用户信息 }
  * 属性：Domain=.wuzuniao.com（生产）；Path=/；SameSite=Lax；HTTPS 下加 Secure。
- * 开发环境（localhost 等）省略 Domain——Cookie 不区分端口，localhost:8000/10000/5173 互通。
- *
- * 安全说明：该 Cookie 仅在前端 JS 层流转（后端不读取、不作为认证凭证），
- * 令牌本就以 Authorization 头明示发送，风险面与 localStorage 存储等同；
- * 不设 HttpOnly 是因为两端 JS 均需读取以附加 Bearer 头。
  *
  * 非 H5 端（App/小程序无 document.cookie）全部为 no-op，调用方无需判断平台。
  */
+import { AUTH_BASE_URL, AUTH_CLIENT_ID } from '../config/env'
 
-// Cookie 名（统一前缀，与两端 localStorage key 区分）
+// Cookie 名（统一前缀，与各端 localStorage key 区分）
 const SSO_COOKIE_NAME = 'wz_sso'
 // Cookie 有效期（秒）：与 refresh_token TTL（14 天）对齐；access_token 时效由 exp 字段控制
 const SSO_COOKIE_MAX_AGE = 14 * 24 * 3600
 // access_token 缺省有效期（秒）：与 auth 服务 ACCESS_TOKEN_EXPIRE_DAYS 一致
 const DEFAULT_ACCESS_TTL_SECONDS = 3 * 24 * 3600
+// auth 平台 client_id（Cookie 内平台令牌的签发目标，N12/P24）
+const PLATFORM_CLIENT_ID = 'auth'
 
 /** 当前是否为 H5 端（条件编译期确定） */
 function isH5() {
@@ -46,64 +52,152 @@ function writeCookie(value) {
 }
 
 /**
- * 同步登录态到父域 Cookie（登录/注册/绑定成功、令牌静默刷新/续期后调用）
- * @param {Object} params
- * @param {string} params.access_token 访问令牌
- * @param {string} [params.refresh_token] 刷新令牌（轮换制，刷新后为新值）
- * @param {number} [params.expires_in] access_token 有效期（秒）
- * @param {Object} [params.userInfo] 用户信息（展示用精简对象）
+ * 统一交换端点（POST /oauth/token-exchange，N25=a/N46 裸格式响应）
+ * @param {string} bearerToken 源 client 有效令牌
+ * @param {string} targetClientId 目标 client_id
+ * @returns {Promise<{access_token:string, refresh_token:string, expires_in:number}|null>} 失败返回 null
  */
-export function syncAuthCookie({ access_token, refresh_token, expires_in, userInfo } = {}) {
-  if (!isH5() || !access_token) return
+async function exchangeToken(bearerToken, targetClientId) {
   try {
-    // 已有 Cookie 时保留旧 refresh/userInfo（部分调用点仅更新 access_token）
-    const prev = readAuthCookie() || {}
-    const payload = {
-      at: access_token,
-      rt: refresh_token || prev.rt || '',
-      exp: Date.now() + (expires_in || DEFAULT_ACCESS_TTL_SECONDS) * 1000,
-      ui: userInfo || prev.ui || null
-    }
-    writeCookie(encodeURIComponent(JSON.stringify(payload)))
+    const res = await uni.request({
+      url: `${AUTH_BASE_URL}/oauth/token-exchange`,
+      method: 'POST',
+      header: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearerToken}` },
+      data: { target_client_id: targetClientId },
+      timeout: 10000
+    })
+    const body = res.data
+    if (res.statusCode !== 200 || !body || !body.access_token) return null
+    return body
   } catch (e) {
-    // Cookie 不可用（隐私模式等）不影响主流程
+    return null
   }
 }
 
 /**
- * 页面加载时从父域 Cookie 同步登录态到本地存储（三站以父域 Cookie 为登录态权威源）
- * 1. Cookie 缺失：另一子域已登出（清 Cookie 且服务端撤销该账号全部 refresh_token）、
- *    Cookie 已过期（活跃用户每次静默刷新都会续写 Cookie，故过期时本地令牌必也失效）
- *    或用户清理了浏览器数据——本地令牌必为废态，主动清除保持三站一致（对齐 www 端
- *    「Cookie 缺失即退出」语义；SPA 标签页不刷新的场景仍由请求 401 链兜底收敛）。
- * 2. Cookie 与本地不一致（另一子域登录/换号/令牌轮换后本域访问）：以 Cookie 为准覆盖
- *    本地——Cookie 由各端最近一次登录或静默刷新写入，代表最新登录态；本地旧令牌可能
- *    已被登出撤销，继续使用将触发 401→刷新失败→清态跳登录的连锁，且清态时误清 Cookie
- *    会破坏另一子域刚写入的新登录态。
- * 3. Cookie 与本地一致：无动作。
- * 仅同步不校验——令牌若已失效由各页面请求的 401 处理（静默刷新或跳登录）。
- * @returns {boolean} 是否发生了同步
+ * 平台 refresh_token 刷新（P39 独立刷新链：POST /oauth/token client=auth）
+ * @returns {Promise<{access_token:string, refresh_token:string, expires_in:number}|null>}
  */
-export function restoreAuthFromCookie() {
+async function refreshPlatformToken(platformRefreshToken) {
+  try {
+    const res = await uni.request({
+      url: `${AUTH_BASE_URL}/oauth/token`,
+      method: 'POST',
+      header: { 'Content-Type': 'application/json' },
+      data: { grant_type: 'refresh_token', refresh_token: platformRefreshToken, client_id: PLATFORM_CLIENT_ID },
+      timeout: 10000
+    })
+    const body = res.data
+    if (res.statusCode !== 200 || !body || !body.access_token) return null
+    return body
+  } catch (e) {
+    return null
+  }
+}
+
+/**
+ * 同步登录态到父域 Cookie（登录/注册/绑定成功、令牌静默刷新/续期后调用）
+ * - 传入的为项目令牌：先交换平台令牌再写 Cookie（fire-and-forget，不阻塞调用方）
+ * - 交换失败不写 Cookie（本地登录态不受影响；下次触发再试）
+ * @param {Object} params
+ * @param {string} params.access_token 项目 access_token
+ * @param {string} [params.refresh_token] 项目 refresh_token
+ * @param {number} [params.expires_in] 项目 access_token 有效期（秒）
+ * @param {Object} [params.userInfo] 用户信息（展示用精简对象）
+ */
+export function syncAuthCookie({ access_token, refresh_token, expires_in, userInfo } = {}) {
+  if (!isH5() || !access_token) return
+  ;(async () => {
+    const platform = await exchangeToken(access_token, PLATFORM_CLIENT_ID)
+    if (!platform) return
+    try {
+      const payload = {
+        at: platform.access_token,
+        rt: platform.refresh_token || '',
+        exp: Date.now() + (platform.expires_in || DEFAULT_ACCESS_TTL_SECONDS) * 1000,
+        ui: userInfo || null
+      }
+      writeCookie(encodeURIComponent(JSON.stringify(payload)))
+    } catch (e) {
+      // Cookie 不可用（隐私模式等）不影响主流程
+    }
+  })()
+}
+
+/**
+ * 页面加载时从父域 Cookie 恢复登录态（H5 端；恢复语义见 N34/P39）
+ * 1. Cookie 缺失：另一子域已登出或用户清理了浏览器数据——本地令牌若仍为项目身份可继续用
+ *    （N34 本地身份独立维持），但跨站登录态已断，无需动作；本地亦无令牌则无事可做
+ * 2. 本地已有项目 access_token：本地有效不交换（N34），直接返回
+ * 3. 本地无令牌 + Cookie 有平台令牌：交换 → 项目令牌 + 资料（/users/info）写本地，
+ *    并经 onRestored 回调同步 store 响应式状态
+ * 4. 平台 access 无效：用 Cookie 内平台 refresh_token 刷新后重试交换（P39）；
+ *    平台刷新也失败（Cookie 登录态已失效）→ 清 Cookie 保持一致
+ * @param {Function} [onRestored] 恢复成功回调（参数为 { access_token, refresh_token, userInfo }）
+ * @returns {boolean} 是否立即完成了本地无令牌判定（异步恢复不改变返回值语义）
+ */
+export function restoreAuthFromCookie(onRestored) {
   if (!isH5()) return false
   try {
     const saved = readAuthCookie()
-    if (!saved || !saved.access_token) {
-      // Cookie 缺失：清除本地登录态（清除列表与 clearUser 一致）
-      if (uni.getStorageSync('accessToken')) {
-        uni.removeStorageSync('accessToken')
-        uni.removeStorageSync('refreshToken')
-        uni.removeStorageSync('userInfo')
+    // 本地已有项目令牌：N34 本地有效不交换
+    if (uni.getStorageSync('accessToken')) return false
+    if (!saved || !saved.access_token) return false
+    // 异步恢复：交换 → 资料 → 写本地 → 回调
+    ;(async () => {
+      let platformSet = { access_token: saved.access_token, refresh_token: saved.refresh_token }
+      let project = await exchangeToken(platformSet.access_token, AUTH_CLIENT_ID)
+      if (!project && saved.refresh_token) {
+        // 平台 access 失效：平台 rt 独立刷新链（P39）
+        const refreshed = await refreshPlatformToken(saved.refresh_token)
+        if (refreshed) {
+          platformSet = refreshed
+          project = await exchangeToken(refreshed.access_token, AUTH_CLIENT_ID)
+        }
       }
-      return false
-    }
-    if (uni.getStorageSync('accessToken') === saved.access_token) return false
-    uni.setStorageSync('accessToken', saved.access_token)
-    if (saved.refresh_token) uni.setStorageSync('refreshToken', saved.refresh_token)
-    if (saved.userInfo && saved.userInfo.id) uni.setStorageSync('userInfo', saved.userInfo)
-    return true
+      if (!project) {
+        // 平台登录态已失效：清 Cookie（与各站「Cookie 缺失即退出」语义一致）
+        clearAuthCookie()
+        return
+      }
+      const userInfo = await fetchProjectUserInfo(project.access_token)
+      try {
+        uni.setStorageSync('accessToken', project.access_token)
+        if (project.refresh_token) uni.setStorageSync('refreshToken', project.refresh_token)
+        if (userInfo) uni.setStorageSync('userInfo', userInfo)
+      } catch (e) {
+        // 本地存储不可用：放弃本次恢复
+        return
+      }
+      if (onRestored) onRestored({
+        access_token: project.access_token,
+        refresh_token: project.refresh_token,
+        userInfo
+      })
+    })()
+    return false
   } catch (e) {
     return false
+  }
+}
+
+/**
+ * 拉取项目身份资料（GET /api/v1/users/info，Bearer=项目令牌）
+ * @returns {Promise<Object|null>} 失败返回 null（资料缺失时仅恢复令牌）
+ */
+async function fetchProjectUserInfo(accessToken) {
+  try {
+    const res = await uni.request({
+      url: `${AUTH_BASE_URL}/api/v1/users/info`,
+      method: 'GET',
+      header: { Authorization: `Bearer ${accessToken}` },
+      timeout: 10000
+    })
+    const body = res.data
+    if (res.statusCode !== 200 || !body || body.code !== 0) return null
+    return body.data || null
+  } catch (e) {
+    return null
   }
 }
 
@@ -117,7 +211,7 @@ export function clearAuthCookie() {
   }
 }
 
-/** 读取 Cookie 中的登录态（无则返回 null） */
+/** 读取 Cookie 中的平台登录态（无则返回 null） */
 export function readAuthCookie() {
   if (!isH5()) return null
   try {

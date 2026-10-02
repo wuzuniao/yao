@@ -48,6 +48,11 @@ export const AUTH_BASE_URL = IS_APP
 // 登录/刷新令牌请求携带；公开信息，可安全提交 Git）
 export const AUTH_CLIENT_ID = 'yao'
 
+// 微信小程序 appid（与 manifest.json mp-weixin.appid 一致；公开信息，可安全提交 Git）
+// 微信一键登录 wx.login() 的 code 与本 appid 绑定，请求认证服务时须显式携带，
+// 认证服务按 app_id 解析对应应用密钥换取 openid（与 bai/jin 项目同构）
+export const WX_APPID = 'wx3101dc47c535111e'
+
 // 微信订阅消息模板 ID（一次性订阅，打卡提醒模板）
 // 全端始终导出：模板 ID 属公开信息，无敏感风险；import 处（useWechatSubscribe.js）
 // 在任意平台都需能静态解析到该名字，避免非微信端打包时「未导出」构建失败。

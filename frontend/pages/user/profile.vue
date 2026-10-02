@@ -405,7 +405,6 @@ import {
   updateUsername,
   setPassword,
   bindEmail,
-  mergeAccount,
   getUserInfo,
 } from '../../api/modules/user'
 import heiAvatar from '../../assets/images/touxiang/hei.png'
@@ -898,32 +897,12 @@ async function handleChangeEmail() {
       uni.showToast({ title: t('profile.emailUpdated'), icon: 'success' })
     } else {
       // 绑定邮箱：无邮箱用户首次绑定，仅需新邮箱验证码
-      // 邮箱已存在时 auth 返回 need_merge（不签发令牌），前端确认后调 yao 合并接口
+      // 邮箱已存在时 auth 内部自动合并（N15），响应直接返回合并后资料与全新令牌组
       const result = await bindEmail({
           new_email: emailForm.newEmail,
         new_code: emailForm.newCode
       })
-      if (result.data && result.data.need_merge) {
-        // 邮箱已注册：确认合并 → yao 迁移业务数据并上报 auth 合并用户库 → 重新登录
-        const confirmed = await new Promise((resolve) => {
-          uni.showModal({
-            title: t('common.tip'),
-            content: t('profile.mergeConfirmContent'),
-            success: (res) => resolve(!!res.confirm)
-          })
-        })
-        if (!confirmed) return
-        const mergeRes = await mergeAccount()
-        // 从账号已被 auth 删除并撤销令牌：清除本地登录态，引导使用主账号重新登录
-        userStore.clearUser()
-        const merged = mergeRes.data && mergeRes.data.status === 'completed'
-        uni.showToast({ title: t(merged ? 'profile.mergeCompleted' : 'profile.mergeProcessing'), icon: 'none' })
-        setTimeout(() => {
-          uni.reLaunch({ url: '/pages/user/login' })
-        }, 1500)
-        return
-      }
-      // 直接绑定成功：用后端返回的完整用户信息更新本地状态
+      // 绑定成功：用后端返回的完整用户信息更新本地状态
       userStore.setUser(result.data)
       // 刷新未读站内信等用户相关缓存
       userStore.loadUnreadCount(true)

@@ -8,15 +8,17 @@ auth 服务客户端（yao → auth 服务间通信封装）
 职责清单：
 1. JWKS 公钥管理：启动/未知 kid 时拉取 /.well-known/jwks.json，
    磁盘（backend/.jwks_cache.json）+ 内存双缓存；auth 不可达时用上次缓存继续验签
-2. 用户邮箱查询：GET /internal/users/{id}（调度器发邮件通知用，TTL 缓存 5 分钟）
-3. 微信 openid 查询：GET /internal/users/{id}/openid（调度器发订阅消息用，TTL 缓存 5 分钟）
+2. 用户邮箱查询：GET /internal/users/{id}（调度器发邮件通知用，TTL 缓存 5 分钟；
+   入参 user_id 为本项目认识的 identity id，auth 侧统一别名解析）
+3. 微信 openid 查询：GET /internal/users/{id}/openid（调度器发订阅消息用，TTL 缓存 5 分钟；
+   auth 侧按 person 全部身份 id 集合搜索绑定行）
 4. 令牌撤销增量同步：GET /internal/revocations?since=<水位>（后台每 5 分钟拉取；
    进程重启/首次运行回填 3 天 = access_token TTL 上限），
    每请求经 is_revoked(user_id, iat) 本地比对，零网络调用
-5. 账号删除上报：GET /internal/purge/pending 拉取待清理用户 → 本地清理业务数据 →
-   POST /internal/users/{id}/purge-report 上报（auth 收齐第一方上报后标记用户已删除）
-6. 账号合并协同：GET /internal/merge-tasks/{from} 查询合并任务（获取真实主账号 ID）→
-   本地迁移业务数据 → POST /internal/merges/confirm 确认（auth 执行用户库合并）
+
+说明（账号别名与合并改造，2026-10-01）：账号合并与删号标记完全收敛在 auth 内部，
+旧版 purge 上报/合并协同职责已移除；业务库残留数据永久接受，撤销增量按本项目
+认识的 identity id 比对。
 
 性能原则（迁移方案 D7）：access_token 有效期内纯本地 RS256 验签，
 不逐请求调用 auth；撤销窗口 ≈ 同步间隔（默认 5 分钟，.env 可调）。
@@ -287,61 +289,6 @@ def is_revoked(user_id: int, iat: int) -> bool:
     """
     revoked_before = _revocations.get(user_id)
     return revoked_before is not None and iat < revoked_before
-
-
-# ==================== 账号删除上报 ====================
-
-
-async def list_pending_purges() -> list[dict]:
-    """
-    拉取注销冷静期到期的待清理用户列表（GET /internal/purge/pending）
-    - 24 小时到期判定由 auth 负责，本服务拿到列表直接清理即可
-    :return: [{"user_id": int, "scheduled_at": str}, ...]；拉取失败抛异常由调用方处理
-    """
-    data = await _get_json("/internal/purge/pending")
-    return (data.get("data") or {}).get("items", [])
-
-
-async def report_purge(user_id: int) -> None:
-    """
-    上报业务数据清理完成（POST /internal/users/{user_id}/purge-report）
-    - auth 复核状态并按第一方 client 集合判定收齐后标记用户已删除
-    :raises httpx.HTTPStatusError: 非 2xx（如 client_id 未登记）
-    """
-    await _post_json(
-        f"/internal/users/{user_id}/purge-report",
-        json_body={"client_id": settings.AUTH_CLIENT_ID},
-    )
-
-
-# ==================== 账号合并协同 ====================
-
-
-async def get_merge_task(from_user_id: int) -> dict | None:
-    """
-    查询待合并任务（GET /internal/merge-tasks/{from}）
-    :return: {"from_user_id": int, "to_user_id": int}；无待合并任务（404）返回 None
-    :raises httpx.HTTPStatusError: 404 以外的非 2xx（网络/服务异常）
-    """
-    try:
-        data = await _get_json(f"/internal/merge-tasks/{from_user_id}")
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            return None
-        raise
-    return data.get("data")
-
-
-async def confirm_merge(from_user_id: int, to_user_id: int) -> None:
-    """
-    确认合并（POST /internal/merges/confirm）：本服务业务数据迁移完成后调用，
-    auth 执行用户库合并（删从账号/字段合并/撤销日志）
-    :raises httpx.HTTPStatusError: 非 2xx（任务不匹配/主账号状态不允许等）
-    """
-    await _post_json(
-        "/internal/merges/confirm",
-        json_body={"from_user_id": from_user_id, "to_user_id": to_user_id},
-    )
 
 
 def reset_for_tests() -> None:

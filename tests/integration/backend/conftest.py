@@ -19,7 +19,6 @@ from sqlalchemy.pool import NullPool
 from app.core.database import Base, get_db
 from app.models.announcement import Announcement  # noqa: F401
 from app.models.checkin_record import CheckinRecord  # noqa: F401
-from app.models.merge_task import MergeSyncTask  # noqa: F401
 from app.models.notification_channel import NotificationChannel  # noqa: F401
 from app.models.notification_log import NotificationLog  # noqa: F401
 from app.models.plan import CheckinPlan, PlanNotificationChannel, PlanNotificationTime  # noqa: F401

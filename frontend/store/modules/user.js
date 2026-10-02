@@ -32,10 +32,17 @@ export const useUserStore = defineStore('user', () => {
   let unreadFetchTime = 0
 
   // 从本地存储加载用户信息与双 token（页面刷新后恢复状态）
-  // H5 端恢复前先尝试从父域 SSO Cookie 取回令牌（另一子域 auth 登录后本域首次访问时通行）
+  // H5 端：本地已有项目令牌则维持（N34 本地有效不交换）；本地无令牌时经父域 SSO
+  // Cookie 的平台令牌异步交换恢复（完成后经回调写入 store，另一子域登录后本域首访通行）
   function loadUserFromStorage() {
     try {
-      restoreAuthFromCookie()
+      restoreAuthFromCookie((restored) => {
+        if (restored && restored.userInfo) {
+          userInfo.value = restored.userInfo
+          accessToken.value = restored.access_token
+          refreshToken.value = restored.refresh_token || ''
+        }
+      })
       const stored = uni.getStorageSync('userInfo')
       if (stored && stored.id) {
         userInfo.value = stored
