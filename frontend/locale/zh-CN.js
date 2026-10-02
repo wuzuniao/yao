@@ -312,12 +312,17 @@ export default {
     memberOriginalPrice: '原价 ¥36',
     memberPriceUnit: '/ 每月',
     memberBuyNow: '立即抢购',
-    proBadge: 'PRO {level}'
+    tierAdmin: '管理员',
+    tierMember: '普通',
+    tierIron: '黑铁',
+    tierBronze: '青铜',
+    tierSilver: '白银',
+    tierGold: '黄金'
   },
 
   // ===== 会员支付页 =====
   pay: {
-    title: 'Pro会员',
+    title: '会员',
     subtitle: '终极体验，即刻开启',
     perk1Title: '绝对个性化',
     perk1Text: '解锁多达十种个性化主题，定义你的专属界面',

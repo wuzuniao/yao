@@ -5,8 +5,8 @@
     <view class="settings-page__main">
       <!-- 用户资料卡 + 公告管理（靠近，减少间距） -->
       <view class="settings-page__near-group">
-        <!-- 用户资料卡片（普通版式：未登录或角色等级 ≤1） -->
-        <view v-if="!isAdminProfile" class="settings-page__profile-card guide-target-profile-card" @click="goProfileOrLogin">
+        <!-- 用户资料卡片（普通版式：未登录或普通会员） -->
+        <view v-if="!isMemberProfile" class="settings-page__profile-card guide-target-profile-card" @click="goProfileOrLogin">
           <!-- 左侧品牌色装饰竖条（设计稿样式，覆盖卡片左缘全高） -->
           <view class="settings-page__profile-accent"></view>
           <view class="settings-page__profile-info">
@@ -20,12 +20,12 @@
           <view class="settings-page__profile-notch"></view>
         </view>
 
-        <!-- 用户资料卡片（管理员版式：已登录且角色等级 >1；Kinetic Asymmetric Cut 设计稿——上绿 PRO 横幅 + 下深信息板错位叠放） -->
+        <!-- 用户资料卡片（会员版式：黑铁及以上或管理员；Kinetic Asymmetric Cut 设计稿——上绿横幅（会员名徽标）+ 下深信息板错位叠放） -->
         <view v-else class="settings-page__kinetic-card guide-target-profile-card" @click="goProfileOrLogin">
-          <!-- 上半：品牌绿横幅（PRO 徽标 + 头像直接落绿底、无环无裁剪），右下 48px 圆角 -->
+          <!-- 上半：品牌绿横幅（会员名徽标 + 头像直接落绿底、无环无裁剪），右下 48px 圆角 -->
           <view class="settings-page__kinetic-hero">
             <view class="settings-page__kinetic-pro-wrap">
-              <text class="settings-page__kinetic-pro">{{ $t('settings.proBadge', { level: memberLevel }) }}</text>
+              <text class="settings-page__kinetic-pro">{{ memberTierName }}</text>
             </view>
             <image v-if="avatarUrl" class="settings-page__kinetic-avatar" :src="avatarUrl" mode="widthFix" />
           </view>
@@ -135,11 +135,11 @@
  *    - 已登录：显示用户信息，点击跳转 profile.vue
  *    - 未登录：用户名显示"请登录"，点击跳转 login.vue
  *  - 会员卡片：深色权益卡（徽章、主题权益标题、价格、抢购按钮），
- *    仅「谷歌商店/鸿蒙商店」分发渠道且登录的普通用户（role=0）显示；
- *    微信小程序/H5/其他安卓商店渠道包/iOS 及未登录、role≥1（含管理员）隐藏
- *  - 资料卡双版式：未登录/角色 0 用普通白卡版式；
- *    已登录且角色 ≥1 用管理员版式（Kinetic Asymmetric Cut：上绿 PRO 横幅 + 下深信息板，
- *    PRO 徽标后数字动态显示用户角色等级）
+ *    仅「谷歌商店/鸿蒙商店」分发渠道且登录的黑铁及以上会员或管理员显示；
+ *    微信小程序/H5/其他安卓商店渠道包/iOS 及未登录、普通会员隐藏
+ *  - 资料卡双版式：未登录/普通会员用普通白卡版式；
+ *    黑铁及以上或管理员用会员版式（Kinetic Asymmetric Cut：上绿横幅 + 下深信息板，
+ *    横幅徽标动态显示会员档位名——黑铁/青铜/白银/黄金/管理员（不含「会员」后缀））
  *  - 分组 1（功能入口）：制定计划（含进行中状态徽章 + 绿色箭头）、通知方式
  *  - 分组 2（帮助入口）：帮助中心、联系我们、隐私政策
  *  - 底部固定导航栏（BottomNav），当前激活项为"设置"
@@ -178,11 +178,30 @@ const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 // 是否为管理员（roles 数组包含 admin）
 const isAdmin = computed(() => !!userStore.userInfo?.roles?.includes('admin'))
 
-// 兼容角色等级（未登录为 0，管理员为 7），驱动 PRO 徽标数字与管理员版式判断
-const memberLevel = computed(() => (isAdmin.value ? 7 : 0))
+// 会员档位：档位数值采用 auth 角色表 id（member=1 普通会员、iron=2 黑铁、
+// bronze=3 青铜、silver=4 白银、gold=5 黄金，取已授最高档）；admin（id=0）
+// 不参与档位序，作为最高特殊档直通会员卡与会员版式
+const memberLevel = computed(() => {
+  const roles = userStore.userInfo?.roles || []
+  const tierIds = { iron: 2, bronze: 3, silver: 4, gold: 5 }
+  return roles.reduce((max, code) => Math.max(max, tierIds[code] || 0), 1)
+})
 
-// 是否使用管理员版式资料卡：已登录且角色等级 ≥1（Kinetic Asymmetric Cut 设计稿版式）
-const isAdminProfile = computed(() => memberLevel.value >= 1)
+// 会员名前缀（资料卡横幅徽标文案）：管理员显示「管理员」，其余按档位取名
+const MEMBER_TIER_KEYS = {
+  2: 'settings.tierIron',
+  3: 'settings.tierBronze',
+  4: 'settings.tierSilver',
+  5: 'settings.tierGold',
+}
+const memberTierName = computed(() => {
+  if (isAdmin.value) return t('settings.tierAdmin')
+  return t(MEMBER_TIER_KEYS[memberLevel.value] || 'settings.tierMember')
+})
+
+// 是否使用会员版式资料卡：黑铁及以上（memberLevel ≥ 2）或管理员
+// （Kinetic Asymmetric Cut 设计稿版式；普通会员/未登录走普通版式）
+const isMemberProfile = computed(() => isAdmin.value || memberLevel.value >= 2)
 
 // 会员卡片渠道可见性：仅「谷歌商店」「鸿蒙商店」两种分发方式可见——
 // Android：云打包须勾选 Google Play 渠道出包（渠道 id 'google'，提交 Google Play 上架也必须用该渠道包），
@@ -198,10 +217,11 @@ memberChannelVisible = true
 memberChannelVisible = plus.runtime.channel === 'google'
 // #endif
 
-// 是否显示会员卡片：允许的分发渠道（谷歌/鸿蒙商店）且登录且非管理员（roles 不含 admin）时显示，
-// 未登录、管理员或非允许渠道（小程序/H5/其他安卓商店/iOS）均隐藏
+// 是否显示会员卡片：允许的分发渠道（谷歌/鸿蒙商店）且登录且为黑铁及以上
+// 会员或管理员（memberLevel ≥ 2 或 admin）时显示；
+// 未登录、普通会员或非允许渠道（小程序/H5/其他安卓商店/iOS）均隐藏
 const showMemberCard = computed(
-  () => memberChannelVisible && !!userStore.userInfo && !isAdmin.value
+  () => memberChannelVisible && !!userStore.userInfo && (isAdmin.value || memberLevel.value >= 2)
 )
 
 // 管理员按钮出现/消失会导致设置页布局变化（公告管理卡片插入用户资料卡与功能入口之间），
@@ -424,8 +444,9 @@ function goAgreement() {
   height: 286rpx;
   padding: 48rpx;
   box-sizing: border-box;
-  /* 设计稿仅右下角 40px 大圆角，其余三角直角 */
-  border-radius: 0 0 80rpx 0;
+  /* 左上/左下与右下同弧度 24px 圆角（overflow 裁齐左侧竖条圆弧），
+     右上由斜切角覆盖保持直角 */
+  border-radius: 48rpx 0 48rpx 48rpx;
   background: var(--color-card-bg);
   /* 阴影收紧为紧贴边缘的微阴影（--shadow-card）：切角由页面背景色三角覆盖形成，
      大范围扩散阴影（--shadow-popup）会沿矩形轮廓在右上切角处残留穿帮，
@@ -508,7 +529,8 @@ function goAgreement() {
 }
 
 /* PRO 徽标大字（设计稿 56px，粗体 + 斜体强调，带 1px 级微投影）；
-   单行完整显示（不用省略号截断） */
+   单行完整显示（不用省略号截断）；水平对称 padding 为斜体右倾出血留位，
+   防止末字右缘被元素边界裁剪（对称不破坏居中） */
 .settings-page__kinetic-pro {
   flex-shrink: 0;
   color: var(--color-text-primary);
@@ -518,6 +540,7 @@ function goAgreement() {
   font-style: italic;
   text-shadow: var(--shadow-card);
   white-space: nowrap;
+  padding: 0 16rpx;
 }
 
 /* 头像：不做圆形裁剪（widthFix 按图片原始比例完整显示），固定像素为图像自身大小
@@ -956,7 +979,7 @@ function goAgreement() {
   .settings-page__profile-card {
     height: 143px;
     padding: 24px;
-    border-radius: 0 0 40px 0;
+    border-radius: 24px 0 24px 24px;
   }
   .settings-page__profile-accent {
     width: 6px;
@@ -976,6 +999,7 @@ function goAgreement() {
   .settings-page__kinetic-pro {
     font-size: 56px;
     line-height: 56px;
+    padding: 0 8px;
   }
   .settings-page__kinetic-panel {
     margin-top: -24px;

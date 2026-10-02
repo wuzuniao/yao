@@ -310,12 +310,17 @@ export default {
     memberOriginalPrice: 'was $6',
     memberPriceUnit: '/ month',
     memberBuyNow: 'Buy Now',
-    proBadge: 'PRO {level}'
+    tierAdmin: 'Admin',
+    tierMember: 'Member',
+    tierIron: 'Iron',
+    tierBronze: 'Bronze',
+    tierSilver: 'Silver',
+    tierGold: 'Gold'
   },
 
   // ===== Member pay page =====
   pay: {
-    title: 'Pro Membership',
+    title: 'Membership',
     subtitle: 'Ultimate experience, start now',
     perk1Title: 'Total Personalization',
     perk1Text: 'Unlock up to 10 personalized themes to define your own interface',
