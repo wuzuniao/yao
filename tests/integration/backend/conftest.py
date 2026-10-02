@@ -110,7 +110,7 @@ async def test_user(db_session):
 @pytest.fixture
 def auth_token(test_user):
     """生成测试用户的 RS256 access_token（测试私钥签发，claims 与 auth 服务一致）"""
-    return rsa_keys.sign_token(test_user.id, role=test_user.role)
+    return rsa_keys.sign_token(test_user.id, roles=[])
 
 
 @pytest.fixture

@@ -480,8 +480,8 @@ const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 const hasPassword = computed(() => !!userStore.userInfo?.has_password)
 // 当前用户是否已绑定邮箱（微信登录用户可能无邮箱）
 const hasEmail = computed(() => !!userStore.userInfo?.email)
-// 仅 users 表中 role > 1 的用户显示「主题」入口（进入页面时查询数据库刷新）
-const showTheme = computed(() => (userStore.userInfo?.role ?? 0) > 1)
+// 仅管理员（roles 含 admin）显示「主题」入口（进入页面时查询数据库刷新）
+const showTheme = computed(() => !!userStore.userInfo?.roles?.includes('admin'))
 
 // ===== App 端指纹登录开关（仅 App 端）=====
 // 显示条件：设备支持指纹 + 当前已登录
@@ -509,7 +509,7 @@ onLoad((options) => {
   if (options && options.focus === 'email' && !isDeletionScheduled.value) {
     expandedSections.email = true
   }
-  // 查询数据库刷新最新 userInfo（含 role），用于「主题」入口按 role>1 显隐判定
+  // 查询数据库刷新最新 userInfo（含 roles），用于「主题」入口按管理员显隐判定
   if (userStore.userInfo?.id) {
     getUserInfo()
       .then((res) => {

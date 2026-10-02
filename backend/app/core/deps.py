@@ -9,12 +9,12 @@ FastAPI 依赖：认证依赖
 - 用户库已不可达，本依赖不再查库——用户状态与令牌撤销经 auth 的撤销增量同步
   （后台每 REVOCATION_SYNC_INTERVAL_SECONDS 秒拉取一次）本地比对 iat 实现，
   撤销生效窗口 ≈ 同步间隔（默认 5 分钟）；
-- role 取自令牌 claims（auth 签发时写入）。
+- roles 取自令牌 claims（auth 签发时写入全局角色编码数组）。
 
 安全校验：
 1. RS256 签名 + issuer + 过期校验（Security.verify_access_token，本地公钥验签）
 2. 令牌撤销本地比对（auth_client.is_revoked：iat < 该用户最新撤销时刻 → 401）
-3. 管理员角色校验（claims.role == 7）
+3. 管理员角色校验（claims.roles 数组包含 admin）
 
 用法：
     from fastapi import Depends
@@ -68,8 +68,8 @@ async def _authenticate_and_validate(
     if auth_client.is_revoked(user_id, payload.get("iat", 0)):
         raise HTTPException(status_code=401, detail="登录已失效，请重新登录")
 
-    # 管理员角色（auth 签发时写入 role 声明：0-普通用户，7-管理员）
-    if require_admin and payload.get("role") != 7:
+    # 管理员角色（auth 签发时写入 roles 声明：全局角色编码数组，如 ["admin"]）
+    if require_admin and "admin" not in (payload.get("roles") or []):
         raise HTTPException(status_code=403, detail="无管理员权限")
 
     return user_id
@@ -91,7 +91,7 @@ async def get_current_admin(
     authorization: str | None = Header(default=None),
 ) -> int:
     """
-    从请求头 Authorization 解析 access_token，校验管理员角色（claims.role==7）
+    从请求头 Authorization 解析 access_token，校验管理员角色（claims.roles 含 admin）
     :param authorization: 请求头 Authorization 字段，格式 "Bearer <access_token>"
     :return: 当前管理员用户ID
     :raises HTTPException: 401 未携带/无效/过期/已撤销 token；403 非管理员

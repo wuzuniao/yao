@@ -70,7 +70,7 @@ export const useUserStore = defineStore('user', () => {
       email: data.email || '',
       has_password: !!data.has_password,
       status: data.status ?? 1,
-      role: data.role ?? 0,
+      roles: Array.isArray(data.roles) ? data.roles : [],
       is_wechat_bound: !!data.is_wechat_bound
     }
     // 登录类接口响应中携带令牌三件套，保存以供后续请求附加 Authorization 头与静默续期

@@ -175,11 +175,11 @@ const { requery: requeryPlan } = useGuideTarget('plan-method', '.guide-target-pl
 // 账号是否处于删除冷静期（status=0）
 const isDeletionScheduled = computed(() => userStore.userInfo?.status === 0)
 
-// 是否为管理员（role=7）
-const isAdmin = computed(() => userStore.userInfo?.role === 7)
+// 是否为管理员（roles 数组包含 admin）
+const isAdmin = computed(() => !!userStore.userInfo?.roles?.includes('admin'))
 
-// 用户角色等级（未登录为 0），驱动 PRO 徽标数字与管理员版式判断
-const memberLevel = computed(() => userStore.userInfo?.role ?? 0)
+// 兼容角色等级（未登录为 0，管理员为 7），驱动 PRO 徽标数字与管理员版式判断
+const memberLevel = computed(() => (isAdmin.value ? 7 : 0))
 
 // 是否使用管理员版式资料卡：已登录且角色等级 ≥1（Kinetic Asymmetric Cut 设计稿版式）
 const isAdminProfile = computed(() => memberLevel.value >= 1)
@@ -198,10 +198,10 @@ memberChannelVisible = true
 memberChannelVisible = plus.runtime.channel === 'google'
 // #endif
 
-// 是否显示会员卡片：允许的分发渠道（谷歌/鸿蒙商店）且登录且角色等级为 0（普通用户）时显示，
-// 未登录、role≥1（含管理员）或非允许渠道（小程序/H5/其他安卓商店/iOS）均隐藏
+// 是否显示会员卡片：允许的分发渠道（谷歌/鸿蒙商店）且登录且非管理员（roles 不含 admin）时显示，
+// 未登录、管理员或非允许渠道（小程序/H5/其他安卓商店/iOS）均隐藏
 const showMemberCard = computed(
-  () => memberChannelVisible && !!userStore.userInfo && userStore.userInfo.role === 0
+  () => memberChannelVisible && !!userStore.userInfo && !isAdmin.value
 )
 
 // 管理员按钮出现/消失会导致设置页布局变化（公告管理卡片插入用户资料卡与功能入口之间），

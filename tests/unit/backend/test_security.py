@@ -101,10 +101,10 @@ class TestVerifyAccessToken:
     @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_valid_token(self):
-        token = rsa_keys.sign_token(1, role=7)
+        token = rsa_keys.sign_token(1, roles=["admin"])
         payload = await Security.verify_access_token(token)
         assert payload["sub"] == "1"
-        assert payload["role"] == 7
+        assert payload["roles"] == ["admin"]
         assert payload["azp"] == "yao"
         assert "iat" in payload
         assert "exp" in payload

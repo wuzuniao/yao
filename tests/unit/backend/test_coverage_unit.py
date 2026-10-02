@@ -127,7 +127,7 @@ class TestDepsCoverage:
         payload = {
             "iss": rsa_keys.TEST_ISSUER,
             "sub": "not-an-int",
-            "role": 0,
+            "roles": [],
             "iat": int(time.time()),
             "exp": int(time.time()) + 3600,
         }
@@ -157,16 +157,16 @@ class TestDepsCoverage:
 
     @pytest.mark.asyncio
     async def test_admin_role_required(self):
-        """普通用户令牌访问管理员依赖应返回 403（role 取自 claims）"""
-        # get_current_admin 经 _authenticate_and_validate(require_admin=True) 校验 role
+        """普通用户令牌访问管理员依赖应返回 403（roles 取自 claims）"""
+        # get_current_admin 经 _authenticate_and_validate(require_admin=True) 校验 roles
         from app.core.deps import get_current_admin
 
-        token = rsa_keys.sign_token(1, role=0)
+        token = rsa_keys.sign_token(1, roles=[])
         with pytest.raises(HTTPException) as exc:
             await get_current_admin(authorization=f"Bearer {token}")
         assert exc.value.status_code == 403
         # 管理员令牌应通过
-        admin_token = rsa_keys.sign_token(1, role=7)
+        admin_token = rsa_keys.sign_token(1, roles=["admin"])
         assert await get_current_admin(authorization=f"Bearer {admin_token}") == 1
 
 

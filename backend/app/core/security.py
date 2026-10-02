@@ -98,7 +98,7 @@ class Security:
         - 公钥来源：auth_client 的 JWKS 缓存（内存 + 磁盘），未知 kid 自动重拉
         - 校验项：RS256 签名 / iss（=AUTH_ISSUER）/ exp（leeway 60s）/ sub 存在
         :param token: JWT 字符串（前端经 Authorization: Bearer 携带）
-        :return: 解码后的 payload（含 iss/sub/role/azp/jti/iat/exp）
+        :return: 解码后的 payload（含 iss/sub/roles/azp/jti/iat/exp）
         :raises ValueError: token 无效、已过期、签名错误或签发方不匹配
         """
         if not isinstance(token, str) or not token.strip():

@@ -270,8 +270,8 @@ const templateTitleLimit = useInputLimit(200)
 const templateContentLimit = useInputLimit(5000)
 
 onLoad(() => {
-  // 角色守卫：非管理员禁止进入（服务端接口另有 get_current_admin 兜底）
-  if (!userStore.userInfo || userStore.userInfo.role !== 7) {
+  // 角色守卫：非管理员（roles 不含 admin）禁止进入（服务端接口另有 get_current_admin 兜底）
+  if (!userStore.userInfo || !userStore.userInfo.roles?.includes('admin')) {
     uni.showToast({ title: t('announcement.noPermission'), icon: 'none' })
     setTimeout(() => uni.navigateBack(), 800)
     return

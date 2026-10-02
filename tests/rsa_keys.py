@@ -40,7 +40,7 @@ PUBLIC_KEY_OBJ = pyjwt.algorithms.RSAAlgorithm.from_jwk(
 
 def sign_token(
     user_id: int,
-    role: int = 0,
+    roles: list[str] | None = None,
     expires_in: int = 3600,
     issued_at: int | None = None,
     issuer: str = TEST_ISSUER,
@@ -48,7 +48,7 @@ def sign_token(
     """
     用测试私钥签发 access_token（claims 结构与 auth 服务签发的一致）
     :param user_id: 用户ID（写入 sub）
-    :param role: 角色（0-普通用户，7-管理员）
+    :param roles: 全局角色编码数组（如 ["admin"]，普通用户为空数组/None）
     :param expires_in: 有效期（秒）
     :param issued_at: 签发时间戳（默认当前时间；测试撤销比对时可指定历史时间）
     :param issuer: 签发方标识（默认 TEST_ISSUER）
@@ -57,7 +57,7 @@ def sign_token(
     payload = {
         "iss": issuer,
         "sub": str(user_id),
-        "role": role,
+        "roles": roles if roles else [],
         "azp": "yao",
         "jti": uuid.uuid4().hex,
         "iat": iat,
