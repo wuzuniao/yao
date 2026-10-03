@@ -76,7 +76,6 @@ export default {
     forgotPassword: 'Reset Password',
     profile: 'Profile',
     messages: 'Messages',
-    announcement: 'Announcements',
     agreement: 'Terms of Service',
     privacy: 'Privacy Policy',
     memberPay: 'Membership',
@@ -296,7 +295,6 @@ export default {
   settings: {
     login: 'Sign in',
     defaultSlogan: '"Stay passionate, chase the horizon, and make every day count."',
-    announcementAdmin: 'Announcements',
     plan: 'Create a Plan',
     planActive: 'Active',
     notification: 'Notification Methods',
@@ -582,42 +580,14 @@ export default {
   // ===== Messages page =====
   messages: {
     title: 'Messages',
-    desc: 'View your check-in reminders. Tap an unread message to mark it as read.',
+    desc: 'View your reminders and system announcements. Tap an unread message to mark it as read.',
     markAll: 'Mark all read',
+    tabReminders: 'Reminders',
+    tabAnnouncements: 'Announcements',
     empty: 'No messages yet',
+    announcementEmpty: 'No announcements yet',
     markFailed: 'Could not mark as read. Please try again.',
     allMarked: 'All messages marked as read'
-  },
-
-  // ===== Announcements page =====
-  announcement: {
-    title: 'Announcements',
-    desc: 'Publish and manage site-wide announcements. Admins only.',
-    templateEntry: 'Announcement template',
-    templateEntrySubtitle: 'Tap to edit the announcement template',
-    newEntry: 'Publish announcement',
-    newFormHeading: 'New announcement',
-    editTemplateHeading: 'Edit announcement template',
-    fieldTitle: 'Announcement title',
-    titlePlaceholder: 'Enter the announcement title',
-    content: 'Announcement content',
-    contentPlaceholder: 'Enter the announcement content',
-    cancel: 'Cancel',
-    publish: 'Submit',
-    update: 'Update',
-    deleteConfirm: 'Delete this announcement?',
-    deleted: 'Deleted',
-    deleteFailed: 'Delete failed',
-    needLogin: 'Please sign in first',
-    needTitle: 'Please enter the announcement title',
-    needContent: 'Please enter the announcement content',
-    templateUpdated: 'Template updated',
-    templateUpdateFailed: 'Template update failed',
-    published: 'Announcement published',
-    publishFailed: 'Publish failed',
-    updated: 'Announcement updated',
-    updateFailed: 'Update failed',
-    noPermission: 'You do not have access'
   },
 
   // ===== Help center =====
@@ -895,7 +865,7 @@ export default {
 
     c2s7Title: '7. Receiving and displaying system announcements',
     c2s7p1Em: 'contain no user personal information',
-    c2s7p1b: ', and are not targeted at specific users. The "read" status of an announcement is recorded only locally on your device and is not uploaded to the server.',
+    c2s7p1b: ', and are not targeted at specific users. The "read" status of an announcement is stored in the unified auth service (per account and project) to sync read state across devices.',
 
     c2s8Title: '8. Share function (WeChat Mini Program only)',
     c2s8p1Em: 'The share link contains no account identifier and carries none of your plans, check-in records, or profile',
@@ -1008,9 +978,6 @@ export default {
     c4r3Name: 'Theme preference',
     c4r3Info: 'Identifier of your chosen color scheme',
     c4r3Purpose: 'Keep your interface color on next open',
-    c4r4Name: 'Announcement read marker',
-    c4r4Info: 'Announcement ID and the version time when read',
-    c4r4Purpose: 'Avoid repeatedly showing read announcements',
     c4r5Name: 'Fingerprint sign-in related (App only)',
     c4r5Info: 'Locally generated device identifier UUID, encrypted biometric credential, toggle state',
     c4r5Purpose: 'Support fingerprint one-tap sign-in; the device identifier is uploaded with the sign-in request for binding verification',

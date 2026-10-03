@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # ==================== auth 统一认证服务配置 ====================
     # auth 服务基础地址（用户模块独立部署后，本服务经域名调用其 /internal/* 接口）
-    # 开发环境：http://localhost:10000；生产环境：https://auth.wuzuniao.com
+    # 开发环境：http://localhost:11000；生产环境：https://auth.wuzuniao.com
     AUTH_BASE_URL: str = "https://auth.wuzuniao.com"
     # 令牌签发方标识（须与 auth 服务 .env 的 ISSUER 完全一致，否则验签不通过）
     AUTH_ISSUER: str = "https://auth.wuzuniao.com"
@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     # 决定「改密码/退出/删号后旧令牌在本服务的最大残留窗口」
     REVOCATION_SYNC_INTERVAL_SECONDS: int = 300
 
-    # CORS 允许的源（逗号分隔，如 "https://yao.wuzuniao.com,http://localhost:8000"）
+    # CORS 允许的源（逗号分隔，如 "https://yao.wuzuniao.com,http://localhost:11003"）
     # 微信小程序请求不携带 Origin 头，不受 CORS 限制；此项主要约束 Web 端访问
     # 实际值从 .env 文件读取，此处为开发环境默认值
-    CORS_ALLOW_ORIGINS: str = "https://yao.wuzuniao.com,http://localhost:8000"
+    CORS_ALLOW_ORIGINS: str = "https://yao.wuzuniao.com,http://localhost:11003"
 
     @property
     def cors_origins_list(self) -> list[str]:

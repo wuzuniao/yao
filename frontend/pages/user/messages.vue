@@ -7,18 +7,37 @@
       <!-- 页面标题区（复用 PageHeader 组件，结构与 help/notification 等页面保持一致） -->
       <PageHeader :title="$t('messages.title')" :desc="$t('messages.desc')" />
 
-      <!-- 全部已读按钮（仅当存在未读消息且非加载中时显示） -->
-      <view
-        v-if="hasUnread && !loading && !loadingMore"
-        class="messages-page__mark-all"
-        :class="{ 'messages-page__mark-all--disabled': markingAll }"
-        @click="handleMarkAllRead"
-      >
-        {{ $t('messages.markAll') }}
+      <!-- 工具栏：提醒/公告分类切换（左） + 当前分类全部已读按钮（右） -->
+      <view class="messages-page__toolbar">
+        <view class="messages-page__tabs">
+          <view
+            class="messages-page__tab"
+            :class="{ 'messages-page__tab--active': activeTab === 'reminders' }"
+            @click="switchTab('reminders')"
+          >
+            {{ $t('messages.tabReminders') }}
+          </view>
+          <view
+            class="messages-page__tab"
+            :class="{ 'messages-page__tab--active': activeTab === 'announcements' }"
+            @click="switchTab('announcements')"
+          >
+            {{ $t('messages.tabAnnouncements') }}
+          </view>
+        </view>
+        <!-- 全部已读（仅当前分类存在未读且非加载中时显示） -->
+        <view
+          v-if="currentTabHasUnread && !currentTabLoading"
+          class="messages-page__mark-all"
+          :class="{ 'messages-page__mark-all--disabled': markingAll }"
+          @click="handleMarkAllRead"
+        >
+          {{ $t('messages.markAll') }}
+        </view>
       </view>
 
-      <!-- 消息卡片列表 -->
-      <view class="messages-page__list">
+      <!-- 提醒列表（数据来源：yao 后端 notification_logs） -->
+      <view v-if="activeTab === 'reminders'" class="messages-page__list">
         <!-- 加载中（初次加载） -->
         <view v-if="loading && messages.length === 0" class="messages-page__status">
           <text class="messages-page__status-text">{{ $t('common.loading') }}</text>
@@ -62,6 +81,52 @@
           </view>
         </template>
       </view>
+
+      <!-- 公告列表（数据来源：auth /api/v1/announcements，卡片直接显示全部内容） -->
+      <view v-else class="messages-page__list">
+        <!-- 加载中（初次加载） -->
+        <view v-if="annLoading && announcements.length === 0" class="messages-page__status">
+          <text class="messages-page__status-text">{{ $t('common.loading') }}</text>
+        </view>
+
+        <!-- 加载失败（初次加载，点击重试） -->
+        <view v-else-if="annError && announcements.length === 0" class="messages-page__status" @click="retryAnnouncements">
+          <text class="messages-page__status-text messages-page__status-text--error">{{ $t('common.loadFailedRetry') }}</text>
+        </view>
+
+        <!-- 空数据 -->
+        <view v-else-if="announcements.length === 0" class="messages-page__status">
+          <text class="messages-page__status-text">{{ $t('messages.announcementEmpty') }}</text>
+        </view>
+
+        <!-- 公告卡片列表 -->
+        <template v-else>
+          <view
+            v-for="item in announcements"
+            :key="'ann-' + item.id"
+            class="messages-page__card"
+            :class="{ 'messages-page__card--unread': !item.is_read }"
+            @click="handleAnnouncementClick(item)"
+          >
+            <!-- 未读左侧高亮标识 -->
+            <view v-if="!item.is_read" class="messages-page__card-bar"></view>
+            <view class="messages-page__card-body">
+              <text class="messages-page__card-title">{{ item.title }}</text>
+              <text class="messages-page__card-meta">{{ formatSendTime(item.created_at) }}</text>
+              <text class="messages-page__card-text">{{ item.content }}</text>
+            </view>
+          </view>
+
+          <!-- 加载更多（分页加载中） -->
+          <view v-if="annLoadingMore" class="messages-page__status">
+            <text class="messages-page__status-text">{{ $t('common.loadingMore') }}</text>
+          </view>
+          <!-- 没有更多 -->
+          <view v-else-if="!annHasMore && announcements.length > 0" class="messages-page__status">
+            <text class="messages-page__status-text">{{ $t('common.noMore') }}</text>
+          </view>
+        </template>
+      </view>
     </view>
   </view>
 </template>
@@ -70,14 +135,14 @@
 /**
  * 站内信页（messages.vue）
  * --------------------------------------------------------------------------
- * 功能：展示当前用户的站内信消息列表，支持标记已读
- *  - 数据来源：notification_logs 表（channel_type='站内信'，按 send_time 倒序）
- *  - 卡片内容：计划名称 + 备注说明 + 发送时间
- *  - 未读消息（is_unread=true）：左侧绿色高亮条 + 浅绿背景
- *  - 点击未读卡片：调用 API 标记已读，前端实时移除高亮（卡片保留）
- *  - 全部已读：一键将所有未读消息标记为已读（按钮仅在存在未读时显示）
- *  - 通知按钮图标：有未读显示 tongzhi_1.png，全部已读显示 tongzhi_0.png（实时切换）
- *  - 分页加载：触底加载下一页（onReachBottom）
+ * 功能：展示当前用户的站内信消息列表与系统公告，支持标记已读
+ *  - 分类切换：「提醒」（yao 后端 notification_logs，打卡提醒）/「公告」（auth 直连查询）
+ *  - 「全部已读」仅作用于当前选中分类（公告已读状态存 auth，按项目独立维护）
+ *  - 提醒卡片内容：计划名称 + 备注说明 + 发送时间
+ *  - 公告卡片内容：公告标题 + 发布时间 + 全部内容（未读高亮同提醒）
+ *  - 通知按钮图标：提醒未读 + 公告未读合计驱动（有未读显示 tongzhi_1.png）
+ *  - 公告未读数仅在打开本页时查询并入全局未读（刷新时机与原提醒逻辑一致）
+ *  - 分页加载：触底加载下一页（onReachBottom，两分类独立分页）
  *  - 加载中/空数据/加载失败三种状态反馈，失败可点击重试
  */
 import { ref, computed } from 'vue'
@@ -86,6 +151,11 @@ import BackButton from '../../components/BackButton.vue'
 import PageHeader from '../../components/PageHeader.vue'
 import { useUserStore } from '../../store/modules/user'
 import { listMessages, markMessageRead, markAllMessagesRead } from '../../api/modules/message'
+import {
+  getAnnouncements,
+  markAnnouncementRead,
+  markAllAnnouncementsRead
+} from '../../api/modules/announcement'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
 
@@ -93,18 +163,46 @@ useShare({ title: t('share.messages') })
 
 const userStore = useUserStore()
 
+// ===== 分类状态 =====
+const activeTab = ref('reminders') // reminders=提醒（打卡通知） / announcements=公告（auth）
+
+// ===== 提醒状态（yao 后端 notification_logs） =====
 const messages = ref([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref(false)
 const hasMore = ref(false)
 const page = ref(1)
+const reminderUnread = ref(0)
+
+// ===== 公告状态（auth 直连） =====
+const announcements = ref([])
+const annPage = ref(1)
+const annLoading = ref(false)
+const annLoadingMore = ref(false)
+const annError = ref(false)
+const annHasMore = ref(false)
+const annUnread = ref(0)
+
 const markingAll = ref(false) // 全部已读按钮防抖（点击后立即置灰，避免重复点击）
 
-// 列表中是否存在未读消息（控制"全部已读"按钮显示）
-const hasUnread = computed(() => messages.value.some((item) => item.is_unread))
+// 当前分类是否存在未读（控制"全部已读"按钮显示）与是否初次加载中
+const currentTabHasUnread = computed(() => {
+  if (activeTab.value === 'reminders') {
+    return messages.value.some((item) => item.is_unread)
+  }
+  return announcements.value.some((item) => !item.is_read)
+})
+const currentTabLoading = computed(() =>
+  activeTab.value === 'reminders' ? loading.value : annLoading.value
+)
 
 const PAGE_SIZE = 20
+
+// ===== 全局未读数同步（提醒 + 公告合计，供所有页面 NoticeButton 图标切换） =====
+function syncUnread() {
+  userStore.setUnreadCount(reminderUnread.value + annUnread.value)
+}
 
 // ===== 数据加载 =====
 
@@ -132,8 +230,9 @@ async function loadMessages(reset = false) {
         messages.value = messages.value.concat(items)
       }
       hasMore.value = !!res.data.has_more
-      // 同步未读数量到全局 store，供所有页面 NoticeButton 图标切换
-      userStore.setUnreadCount(res.data.unread_count || 0)
+      // 记录提醒未读数并与公告未读合计同步到全局 store（供所有页面 NoticeButton 图标切换）
+      reminderUnread.value = res.data.unread_count || 0
+      syncUnread()
     }
   } catch (e) {
     console.warn('加载站内信失败', e)
@@ -147,7 +246,7 @@ async function loadMessages(reset = false) {
 
 // ===== 交互 =====
 
-// 点击卡片：未读则标记已读（已读卡片无操作）
+// 点击提醒卡片：未读则标记已读（已读卡片无操作）
 async function handleCardClick(item) {
   if (!item.is_unread || !userStore.userInfo) return
   try {
@@ -155,8 +254,9 @@ async function handleCardClick(item) {
     if (res.code === 0) {
       // 状态更新成功：前端实时移除高亮（卡片保留在列表）
       item.is_unread = false
-      // 同步全局未读数量，所有页面 NoticeButton 图标即时切换
-      userStore.decrementUnread()
+      // 同步全局未读数量（提醒未读 -1），所有页面 NoticeButton 图标即时切换
+      if (reminderUnread.value > 0) reminderUnread.value -= 1
+      syncUnread()
     }
   } catch (e) {
     // 优雅的错误提示，不中断用户操作
@@ -164,21 +264,52 @@ async function handleCardClick(item) {
   }
 }
 
-// 全部标记已读：批量将所有未读站内信置为已读（防抖，点击后立即置灰）
+// 点击公告卡片：未读则向 auth 标记已读（已读公告无操作）
+async function handleAnnouncementClick(item) {
+  if (item.is_read || !userStore.userInfo) return
+  try {
+    const res = await markAnnouncementRead(item.id)
+    if (res.code === 0) {
+      // 状态更新成功：前端实时移除高亮（卡片保留在列表）
+      item.is_read = true
+      annUnread.value = (res.data && res.data.unread_count) || Math.max(0, annUnread.value - 1)
+      syncUnread()
+    }
+  } catch (e) {
+    uni.showToast({ title: e.message || t('messages.markFailed'), icon: 'none' })
+  }
+}
+
+// 全部标记已读：仅作用于当前选中分类（防抖，点击后立即置灰）
 async function handleMarkAllRead() {
   if (markingAll.value) return
   markingAll.value = true
   try {
-    const res = await markAllMessagesRead()
-    if (res.code === 0) {
-      // 成功：将列表中所有卡片置为已读（移除高亮，卡片保留）
-      messages.value.forEach((item) => {
-        item.is_unread = false
-      })
-      userStore.setUnreadCount(0)
-      uni.showToast({ title: t('messages.allMarked'), icon: 'none' })
+    if (activeTab.value === 'reminders') {
+      const res = await markAllMessagesRead()
+      if (res.code === 0) {
+        // 成功：将列表中所有提醒卡片置为已读（移除高亮，卡片保留）
+        messages.value.forEach((item) => {
+          item.is_unread = false
+        })
+        reminderUnread.value = 0
+        syncUnread()
+        uni.showToast({ title: t('messages.allMarked'), icon: 'none' })
+      } else {
+        uni.showToast({ title: res.msg || t('common.operationFailed'), icon: 'none' })
+      }
     } else {
-      uni.showToast({ title: res.msg || t('common.operationFailed'), icon: 'none' })
+      const res = await markAllAnnouncementsRead()
+      if (res.code === 0) {
+        announcements.value.forEach((item) => {
+          item.is_read = true
+        })
+        annUnread.value = 0
+        syncUnread()
+        uni.showToast({ title: t('messages.allMarked'), icon: 'none' })
+      } else {
+        uni.showToast({ title: res.msg || t('common.operationFailed'), icon: 'none' })
+      }
     }
   } catch (e) {
     uni.showToast({ title: e.message || t('common.operationFailed'), icon: 'none' })
@@ -187,9 +318,60 @@ async function handleMarkAllRead() {
   }
 }
 
-// 重试初次加载
+// 重试初次加载（提醒）
 function retry() {
   loadMessages(true)
+}
+
+// 重试初次加载（公告）
+function retryAnnouncements() {
+  loadAnnouncements(true)
+}
+
+// ===== 公告加载（auth 直连） =====
+
+// 加载公告列表（reset=true 重新加载第一页，false 加载下一页）
+async function loadAnnouncements(reset = false) {
+  if (!userStore.userInfo) {
+    announcements.value = []
+    return
+  }
+  if (reset) {
+    annPage.value = 1
+    annLoading.value = true
+    annError.value = false
+  } else {
+    annLoadingMore.value = true
+  }
+  try {
+    const res = await getAnnouncements(annPage.value, PAGE_SIZE)
+    if (res.code === 0 && res.data) {
+      const items = res.data.items || []
+      // reset 替换列表，分页追加
+      if (reset) {
+        announcements.value = items
+      } else {
+        announcements.value = announcements.value.concat(items)
+      }
+      annHasMore.value = !!res.data.has_more
+      annUnread.value = res.data.unread_count || 0
+      syncUnread()
+    }
+  } catch (e) {
+    console.warn('加载公告失败', e)
+    // 仅初次加载失败时显示错误态（分页失败静默，避免打断用户）
+    if (reset) annError.value = true
+  } finally {
+    annLoading.value = false
+    annLoadingMore.value = false
+  }
+}
+
+// ===== 分类切换 =====
+
+function switchTab(tab) {
+  if (activeTab.value === tab) return
+  activeTab.value = tab
 }
 
 // 格式化发送时间：ISO 字符串 "2026-07-02T14:30:00" → "2026-07-02 14:30"
@@ -201,14 +383,21 @@ function formatSendTime(iso) {
 // ===== 生命周期 =====
 
 onShow(() => {
+  // 打开站内信页时同时加载提醒与公告（公告未读数此时并入全局未读，驱动通知图标）
   loadMessages(true)
+  loadAnnouncements(true)
 })
 
-// 触底加载下一页
+// 触底加载下一页（按当前选中分类）
 onReachBottom(() => {
-  if (hasMore.value && !loadingMore.value && !loading.value) {
-    page.value += 1
-    loadMessages(false)
+  if (activeTab.value === 'reminders') {
+    if (hasMore.value && !loadingMore.value && !loading.value) {
+      page.value += 1
+      loadMessages(false)
+    }
+  } else if (annHasMore.value && !annLoadingMore.value && !annLoading.value) {
+    annPage.value += 1
+    loadAnnouncements(false)
   }
 })
 </script>
@@ -254,6 +443,44 @@ onReachBottom(() => {
 /* 防抖置灰（点击后等待接口返回期间禁用交互） */
 .messages-page__mark-all--disabled {
   opacity: 0.5;
+}
+
+/* ===== 工具栏：提醒/公告分类切换（左） + 全部已读（右） ===== */
+.messages-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.messages-page__tabs {
+  display: flex;
+  gap: 16rpx;
+}
+
+.messages-page__tab {
+  padding: 12rpx 32rpx;
+  font-size: 28rpx;
+  line-height: 40rpx;
+  /* 未选中：次级按钮（中性浅底 + 主文字，无描边） */
+  background: var(--color-card-bg-alt);
+  color: var(--color-text-primary);
+  border-radius: 32rpx;
+}
+
+/* 选中分类：主按钮（品牌绿实底 + 反色文字，无描边） */
+.messages-page__tab--active {
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+  font-weight: 600;
+}
+
+/* 公告卡片发布时间（标题下方次要信息，同提醒卡片时间弱化色） */
+.messages-page__card-meta {
+  color: var(--color-text-tertiary);
+  font-size: 24rpx;
+  line-height: 32rpx;
+  margin-top: 8rpx;
 }
 
 /* ===== 消息卡片列表 ===== */
@@ -349,6 +576,23 @@ onReachBottom(() => {
     font-size: 14px;
     line-height: 20px;
     border-radius: 16px;
+  }
+  .messages-page__toolbar {
+    gap: 12px;
+  }
+  .messages-page__tabs {
+    gap: 8px;
+  }
+  .messages-page__tab {
+    padding: 6px 16px;
+    font-size: 14px;
+    line-height: 20px;
+    border-radius: 16px;
+  }
+  .messages-page__card-meta {
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 4px;
   }
   .messages-page__list {
     gap: 16px;

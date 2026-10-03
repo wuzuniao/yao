@@ -85,7 +85,6 @@ export default {
     forgotPassword: '找回密码',
     profile: '个人信息',
     messages: '站内信',
-    announcement: '公告管理',
     agreement: '服务协议',
     privacy: '隐私政策',
     memberPay: '会员支付',
@@ -298,7 +297,6 @@ export default {
   settings: {
     login: '请登录',
     defaultSlogan: '“保持热爱，奔赴山海，每一天都要好好生活。”',
-    announcementAdmin: '公告管理',
     plan: '制定计划',
     planActive: '进行中',
     notification: '通知方式',
@@ -583,42 +581,14 @@ export default {
   // ===== 站内信页 =====
   messages: {
     title: '站内信',
-    desc: '查看您的打卡提醒消息，点击未读消息可标记为已读。',
+    desc: '查看您的提醒消息与系统公告，点击未读消息可标记为已读。',
     markAll: '全部已读',
+    tabReminders: '提醒',
+    tabAnnouncements: '公告',
     empty: '暂无站内信消息',
+    announcementEmpty: '暂无公告',
     markFailed: '标记失败，请重试',
     allMarked: '已全部标记为已读'
-  },
-
-  // ===== 公告管理页 =====
-  announcement: {
-    title: '公告管理',
-    desc: '发布与管理全站公告，仅管理员可操作。',
-    templateEntry: '公告模板',
-    templateEntrySubtitle: '点击编辑公告模板',
-    newEntry: '发布公告',
-    newFormHeading: '发布新公告',
-    editTemplateHeading: '编辑公告模板',
-    fieldTitle: '公告标题',
-    titlePlaceholder: '请输入公告标题',
-    content: '公告内容',
-    contentPlaceholder: '请输入公告内容',
-    cancel: '取消',
-    publish: '提交',
-    update: '更新',
-    deleteConfirm: '确定要删除该公告吗？',
-    deleted: '删除成功',
-    deleteFailed: '删除失败',
-    needLogin: '请先登录',
-    needTitle: '请输入公告标题',
-    needContent: '请输入公告内容',
-    templateUpdated: '模板更新成功',
-    templateUpdateFailed: '模板更新失败',
-    published: '公告发布成功',
-    publishFailed: '发布失败',
-    updated: '公告更新成功',
-    updateFailed: '更新失败',
-    noPermission: '无权限访问'
   },
 
   // ===== 帮助中心页 =====
@@ -883,7 +853,7 @@ export default {
 
     c2s7Title: '7. 系统公告的接收与展示',
     c2s7p1Em: '不含任何用户的个人信息',
-    c2s7p1b: '，也不针对特定用户投放。公告的"已读"状态仅记录在您的设备本地，不会上传服务器。',
+    c2s7p1b: '，也不针对特定用户投放。公告的“已读”状态存储于统一认证服务（按账号与项目区分），用于在各设备间同步已读状态。',
 
     c2s8Title: '8. 分享功能（仅微信小程序端）',
     c2s8p1Em: '分享链接中不包含您的账号标识，也不携带您的任何计划、打卡记录或个人资料',
@@ -996,9 +966,6 @@ export default {
     c4r3Name: '主题偏好',
     c4r3Info: '您所选配色方案的标识',
     c4r3Purpose: '下次打开时保持您的界面配色',
-    c4r4Name: '公告已读标记',
-    c4r4Info: '公告 ID 与已读时的版本时间',
-    c4r4Purpose: '避免重复展示已读公告',
     c4r5Name: '指纹登录相关（仅 App）',
     c4r5Info: '本地生成的设备标识 UUID、加密后的生物识别凭证、开关状态',
     c4r5Purpose: '支持指纹一键登录；设备标识会随登录请求上传用于绑定校验',

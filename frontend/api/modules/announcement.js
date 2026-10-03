@@ -1,71 +1,56 @@
 import { request } from '../request'
+import { AUTH_BASE_URL } from '../../config/env'
 
 /**
- * 查询全部公告（仅管理员）
+ * 公告接口（直连 auth 统一认证服务；公告管理迁移 auth，2026-10-02）
+ * --------------------------------------------------------------------------
+ * - 已读状态存 auth 库，按 (公告, 用户, 项目) 维度分别维护（user_id 取令牌 sub）
+ * - 项目归属由 JWT azp 判定，前端无需传 client_id
+ * - baseUrl 用 AUTH_BASE_URL 覆盖默认业务后端地址（request 支持按请求覆盖）
  */
-export function getAnnouncements() {
+
+/**
+ * 分页查询本项目可见公告（倒序；每条含 is_read，data 附 unread_count / has_more）
+ */
+export function getAnnouncements(page, pageSize = 20) {
   return request({
-    url: '/api/v1/announcements',
-    method: 'GET'
+    url: `/api/v1/announcements?page=${page}&page_size=${pageSize}`,
+    method: 'GET',
+    baseUrl: AUTH_BASE_URL
   })
 }
 
 /**
- * 查询最近 7 天内发布的公告（普通用户），按创建时间倒序；后端已排除 id=1 模板
+ * 查询公告未读数（通知组件查询用）
  */
-export function getRecentAnnouncements() {
+export function getAnnouncementUnreadCount() {
   return request({
-    url: '/api/v1/announcements/recent',
-    method: 'GET'
+    url: '/api/v1/announcements/unread-count',
+    method: 'GET',
+    baseUrl: AUTH_BASE_URL
   })
 }
 
 /**
- * 查询公共公告模板（id=1，仅管理员）
+ * 标记单条公告已读（幂等）；成功响应 data.unread_count 为最新未读数
  */
-export function getAnnouncementTemplate() {
+export function markAnnouncementRead(id) {
   return request({
-    url: '/api/v1/announcements/template',
-    method: 'GET'
-  })
-}
-
-/**
- * 发布公告（仅管理员）
- * @param {Object} param0 公告数据
- * @param {string} param0.title 公告标题
- * @param {string} param0.content 公告内容
- */
-export function publishAnnouncement({ title, content }) {
-  return request({
-    url: '/api/v1/announcements',
+    url: `/api/v1/announcements/${id}/read`,
     method: 'POST',
-    data: { title, content }
+    data: {},
+    baseUrl: AUTH_BASE_URL
   })
 }
 
 /**
- * 更新公告（仅管理员）
- * @param {number} id 公告ID
- * @param {Object} param0 公告数据
- * @param {string} param0.title 公告标题
- * @param {string} param0.content 公告内容
+ * 全部已读（当前项目全部未读公告）；成功响应 data.marked 为本次标记条数
  */
-export function updateAnnouncement(id, { title, content }) {
+export function markAllAnnouncementsRead() {
   return request({
-    url: `/api/v1/announcements/${id}`,
-    method: 'PUT',
-    data: { title, content }
-  })
-}
-
-/**
- * 删除公告（仅管理员）
- * @param {number} id 公告ID
- */
-export function deleteAnnouncement(id) {
-  return request({
-    url: `/api/v1/announcements/${id}`,
-    method: 'DELETE'
+    url: '/api/v1/announcements/read-all',
+    method: 'POST',
+    data: {},
+    baseUrl: AUTH_BASE_URL
   })
 }

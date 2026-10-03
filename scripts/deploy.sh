@@ -433,9 +433,9 @@ ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
-EXPOSE 8000
+EXPOSE 11003
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "11003"]
 EOF
 
   sed -i \
@@ -501,7 +501,7 @@ server {
     # 后端 API（路径保持不变：/api/v1/...）
     # 注意：X-Real-IP 与 X-Forwarded-For 是后端限流器（rate_limit.py）识别真实客户端 IP 的关键，
     #       缺失会导致限流被 X-Forwarded-For 伪造绕过。切勿删除以下两个 proxy_set_header。
-    set $yao_upstream http://yao-backend:8000;
+    set $yao_upstream http://yao-backend:11003;
 
     location /api/ {
         proxy_pass $yao_upstream;
@@ -592,7 +592,7 @@ services:
       # 以挂载本地目录方式将项目挂载到容器中运行
       - $INSTALL_DIR:/app:z
     working_dir: /app/backend
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "11003"]
     # 低资源服务器（约 1.8GB 内存）资源限制：防止单容器无限制占用内存触发整机 OOM/swap，
     # 拖累 mariadb/nginx/auth-backend 等共享基础设施。单 worker 事件循环已可处理高并发 IO。
     mem_limit: 512m
@@ -603,7 +603,7 @@ services:
     networks:
       - app-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11003/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -1099,7 +1099,7 @@ verify_deployment() {
   log_info "等待后端服务就绪 ..."
   local max=30 i=0
   while [[ $i -lt $max ]]; do
-    if docker exec yao-backend curl -sf http://localhost:8000/health &>/dev/null; then
+    if docker exec yao-backend curl -sf http://localhost:11003/health &>/dev/null; then
       log_ok "后端健康检查通过 /health → {\"status\":\"ok\"}"
       break
     fi
@@ -1156,7 +1156,7 @@ print_summary() {
 
   容器服务：
     MariaDB  →  mariadb  (共享，内部 3306，仅本机可访问)
-    Backend  →  yao-backend  (本项目专属，内部 8000，经 app-net 网络互通)
+    Backend  →  yao-backend  (本项目专属，内部 11003，经 app-net 网络互通)
     H5 前端  →  共享 Nginx 静态托管（构建产物 frontend/dist/build/h5 → /var/www/yao）
     Nginx    →  nginx  (共享，对外 80/443，反代 /api/、/health 至后端)
 

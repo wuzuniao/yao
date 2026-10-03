@@ -2,7 +2,7 @@
   PageHeader —— 页面标题区复用组件
   ==========================================================================
   适用场景：plan.vue / notification.vue / profile.vue / help.vue / contact.vue
-    / messages.vue / announcement.vue 共 7 个页面的标题区结构完全一致
+    / messages.vue 共 6 个页面的标题区结构完全一致
     （标题 + 副标题/描述），仅文案不同。
 
   视觉规范（对照 Figma 设计稿）：

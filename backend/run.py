@@ -10,4 +10,4 @@ os.chdir(BASE_DIR)  # uvicorn 的 "app.main:app" 导入字符串依赖 CWD 为 b
 import uvicorn
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=11003, reload=True)

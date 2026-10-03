@@ -60,12 +60,7 @@
           </view>
         </view>
 
-        <!-- 公共管理（仅管理员可见，紧贴用户资料卡下方；占半行：无图标、无副标题、无箭头，仅标题） -->
-        <view v-if="isAdmin" class="settings-page__admin-row">
-          <view class="settings-page__admin-card" @click="goAnnouncement">
-            <text class="settings-page__admin-title">{{ $t('settings.announcementAdmin') }}</text>
-          </view>
-        </view>
+        <!-- 公告管理已随「公告管理迁移 auth」（2026-10-02）下线：管理员经 auth 前端管理公告 -->
       </view>
 
       <!-- 分组 1：制定计划 + 通知方式（删除冷静期内整体置灰禁点击，独占整行） -->
@@ -224,7 +219,7 @@ const showMemberCard = computed(
   () => memberChannelVisible && !!userStore.userInfo && (isAdmin.value || memberLevel.value >= 2)
 )
 
-// 管理员按钮出现/消失会导致设置页布局变化（公告管理卡片插入用户资料卡与功能入口之间），
+// 管理员状态变化会导致会员卡片显隐变化（设置页布局变化），
 // 引导激活时需重新查询所有目标位置，确保高亮与实际按钮匹配
 watch(isAdmin, () => {
   if (!guideStore.isActive) return
@@ -355,11 +350,6 @@ function goNotification() {
 
 function goPlan() {
   uni.navigateTo({ url: '/pages/index/plan' })
-}
-
-// 跳转到公告管理页
-function goAnnouncement() {
-  navigate('/pages/user/announcement')
 }
 
 // 会员卡片「立即抢购」→ 会员支付页（user 分包，前端静态页）
@@ -806,38 +796,11 @@ function goAgreement() {
   pointer-events: none;
 }
 
-/* 靠近用户资料卡的分组：用户卡 + 公告管理，间距更小（更贴近用户资料卡） */
+/* 靠近用户资料卡的分组：用户卡 + 功能入口，间距更小（更贴近用户资料卡） */
 .settings-page__near-group {
   display: flex;
   flex-direction: column;
   gap: 32rpx;
-}
-
-/* 公共管理行：单列网格，列宽随内容收缩（max-content），卡片随之缩小 */
-.settings-page__admin-row {
-  display: grid;
-  grid-template-columns: max-content;
-}
-
-/* 公共管理卡片：简洁文字卡（仅标题，无图标/副标题/箭头），宽度随文字收缩 */
-.settings-page__admin-card {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  padding: 24rpx 32rpx;
-  box-sizing: border-box;
-  border-radius: 48rpx;
-  background: var(--color-card-bg);
-  box-shadow: inset 0 0 0 1px var(--color-border-card), var(--shadow-card);
-}
-
-.settings-page__admin-title {
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  line-height: 48rpx;
-  font-weight: 600;
-  text-align: center;
 }
 
 .settings-page__link-card {
@@ -1092,19 +1055,6 @@ function goAgreement() {
   /* 靠近用户资料卡分组 */
   .settings-page__near-group {
     gap: 16px;
-  }
-  /* 公共管理行（单列网格） */
-  .settings-page__admin-row {
-    gap: 16px;
-  }
-  /* 公共管理卡片 */
-  .settings-page__admin-card {
-    padding: 12px 16px;
-    border-radius: 24px;
-  }
-  .settings-page__admin-title {
-    font-size: 16px;
-    line-height: 24px;
   }
   /* 分组 1 */
   .settings-page__group1 {

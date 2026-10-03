@@ -129,19 +129,9 @@ CREATE TABLE `checkin_records` (
   INDEX `idx_plan_time_id` (`plan_time_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户打卡记录（支持多个时间点）';
 
--- ------------------------------------------------------
--- 表：announcements（全站公告表）
--- 说明：每条公告一行，用户侧投递后续实现
--- ------------------------------------------------------
-CREATE TABLE `announcements` (
-  `id`         BIGINT       NOT NULL AUTO_INCREMENT,
-  `title`      VARCHAR(200) NOT NULL COMMENT '公告标题',
-  `content`    TEXT         NOT NULL COMMENT '公告内容',
-  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='全站公告表（每条公告一行）';
+-- 注：announcements（全站公告表）已随「公告管理迁移 auth」（2026-10-02）废弃——
+-- 公告内容与已读状态收口 auth 库，前端直连 auth /api/v1/announcements/* 查询；
+-- 存量库执行 DROP TABLE IF EXISTS `announcements`; 清理（数据不迁移）。
 
 -- 注：旧版 merge_sync_tasks（账号合并同步任务表）已随「账号别名与合并改造」（2026-10-01）
 -- 废弃——合并完全收敛在 auth 内部，本服务零合并逻辑；存量库中的残留行永久接受，不再清理。

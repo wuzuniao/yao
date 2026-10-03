@@ -117,7 +117,7 @@ verify_service() {
     # 后端健康（等待就绪，最多 60 秒）
     local i=0
     while [[ $i -lt 30 ]]; do
-        if docker exec yao-backend curl -sf http://localhost:8000/health &>/dev/null; then
+        if docker exec yao-backend curl -sf http://localhost:11003/health &>/dev/null; then
             log_ok "yao-backend /health → 200"
             break
         fi
@@ -138,8 +138,8 @@ verify_service() {
 
     # 后端经容器网络可达
     if docker exec nginx curl -sf -o /dev/null -w '%{http_code}' \
-        --max-time 10 http://yao-backend:8000/health | grep -q 200; then
-        log_ok "Backend（nginx → yao-backend:8000/health）→ 200"
+        --max-time 10 http://yao-backend:11003/health | grep -q 200; then
+        log_ok "Backend（nginx → yao-backend:11003/health）→ 200"
     else
         log_warn "后端经容器网络访问异常"
     fi

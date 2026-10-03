@@ -88,12 +88,6 @@
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://yao.wuzuniao.com/pages/user/announcement</loc>
-    <lastmod>2026-08-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
     <loc>https://yao.wuzuniao.com/pages/user/delete-account</loc>
     <lastmod>2026-08-08</lastmod>
     <changefreq>yearly</changefreq>

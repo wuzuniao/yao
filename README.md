@@ -43,7 +43,7 @@
 yao/
 ├── backend/                # 后端（FastAPI）
 │   ├── app/
-│   │   ├── api/v1/         # 路由（plans / checkins / notification_* / announcements）
+│   │   ├── api/v1/         # 路由（plans / checkins / notification_*）
 │   │   ├── core/           # 配置 / 数据库 / 安全 / 依赖注入
 │   │   ├── models/         # SQLAlchemy 数据模型
 │   │   ├── schemas/        # Pydantic 请求/响应 Schema
@@ -71,7 +71,7 @@ yao/
 
 **前端**：配置集中在 `frontend/config/env.js` 常量模块（HBuilderX 不加载 `.env`，以常量模块保证多端构建一致）：`API_BASE_URL`、`AUTH_BASE_URL`、`AUTH_CLIENT_ID`、`WX_SUBSCRIBE_TEMPLATE_ID`。该文件提交 Git，严禁写入密码/密钥。
 
-**数据库**：本服务仅连接业务库 `wuzuniao_yao`（计划/打卡/通知/公告）；用户账户与认证数据由 auth 认证服务持有，本服务需要用户信息时经 auth 的 `/internal/*` 服务接口查询。初始化 SQL 位于 `backend/sql/create_yao_db.sql`。
+**数据库**：本服务仅连接业务库 `wuzuniao_yao`（计划/打卡/通知）；用户账户与认证数据由 auth 认证服务持有，公告内容与已读状态收口 auth（2026-10-02 起业务前端直连 auth 查询），本服务需要用户信息时经 auth 的 `/internal/*` 服务接口查询。初始化 SQL 位于 `backend/sql/create_yao_db.sql`（存量库执行 `DROP TABLE IF EXISTS announcements` 清理旧公告表）。
 
 ---
 
@@ -83,7 +83,7 @@ yao/
 { "code": 0, "msg": "success", "data": { } }
 ```
 
-主要模块：计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）、公告（`/announcements`）。本服务主动调用 auth 的 `/internal/*`（用户邮箱/openid 查询、撤销增量同步，X-Service-Token 认证）；auth 不回调本服务。账号合并与删号标记已完全收敛在 auth 服务内部（账号别名与合并改造，2026-10-01），本服务零合并逻辑、业务库永不改写 user_id——同一自然人在不同项目 id 不同（本项目恒见 identity id=令牌 sub），合并后历史 id 全部有效同属一人，禁止假设邮箱=同一 user_id。用户认证接口（注册/登录/资料）由 auth 认证服务提供（`https://auth.wuzuniao.com`）。完整接口见 Swagger UI：`http://localhost:8000/docs`。
+主要模块：计划（`/plans`）、打卡（`/checkins`）、通知渠道（`/notification-channels`）、站内信（`/notification-logs`）。公告接口已随「公告管理迁移 auth」（2026-10-02）下线——公告内容与已读状态收口 auth 库，前端直连 auth `/api/v1/announcements/*` 查询，站内信页「公告」栏目按人按项目独立维护未读。本服务主动调用 auth 的 `/internal/*`（用户邮箱/openid 查询、撤销增量同步，X-Service-Token 认证）；auth 不回调本服务。账号合并与删号标记已完全收敛在 auth 服务内部（账号别名与合并改造，2026-10-01），本服务零合并逻辑、业务库永不改写 user_id——同一自然人在不同项目 id 不同（本项目恒见 identity id=令牌 sub），合并后历史 id 全部有效同属一人，禁止假设邮箱=同一 user_id。用户认证接口（注册/登录/资料）由 auth 认证服务提供（`https://auth.wuzuniao.com`）。完整接口见 Swagger UI：`http://localhost:11003/docs`。
 
 ---
 

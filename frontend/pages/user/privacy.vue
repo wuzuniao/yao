@@ -388,11 +388,6 @@
                 <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">{{ $t('privacyDoc.c4r3Purpose') }}</text>
               </view>
               <view class="privacy-page__table-row">
-                <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">{{ $t('privacyDoc.c4r4Name') }}</text>
-                <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">{{ $t('privacyDoc.c4r4Info') }}</text>
-                <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">{{ $t('privacyDoc.c4r4Purpose') }}</text>
-              </view>
-              <view class="privacy-page__table-row">
                 <text class="privacy-page__table-cell privacy-page__table-cell--name privacy-page__table-cell--data">{{ $t('privacyDoc.c4r5Name') }}</text>
                 <text class="privacy-page__table-cell privacy-page__table-cell--info privacy-page__table-cell--data">{{ $t('privacyDoc.c4r5Info') }}</text>
                 <text class="privacy-page__table-cell privacy-page__table-cell--purpose privacy-page__table-cell--data">{{ $t('privacyDoc.c4r5Purpose') }}</text>

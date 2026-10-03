@@ -3,7 +3,7 @@ import { AUTH_BASE_URL, AUTH_CLIENT_ID, WX_APPID } from '../../config/env'
 
 /**
  * 用户模块接口（全部直连 auth 统一认证服务，不经 yao 后端转发）
- * - baseUrl 固定为 AUTH_BASE_URL（开发 http://localhost:10000 / 生产 https://auth.wuzuniao.com）
+ * - baseUrl 固定为 AUTH_BASE_URL（开发 http://localhost:11000 / 生产 https://auth.wuzuniao.com）
  * - 登录类请求携带 client_id（auth 服务 oauth_clients 表注册的本应用公共 client）
  * - 登录/注册/重置密码/绑定邮箱成功响应的 data 含 OIDC 令牌三件套：
  *   access_token / refresh_token / expires_in / token_type
