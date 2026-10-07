@@ -146,6 +146,7 @@ import BottomNav from '../../components/BottomNav.vue'
 import BeginnerGuide from '../../components/BeginnerGuide.vue'
 import touxiangHei from '../../assets/images/touxiang/hei.png'
 import touxiangHong from '../../assets/images/touxiang/hong.png'
+import touxiangHuang from '../../assets/images/touxiang/huang.png'
 import touxiangLan from '../../assets/images/touxiang/lan.png'
 import huiyuanIcon from '../../assets/images/huiyuan.png'
 import { useUserStore } from '../../store/modules/user'
@@ -309,6 +310,7 @@ onShow(() => {
 const avatarMap = {
   hei: touxiangHei,
   hong: touxiangHong,
+  huang: touxiangHuang,
   lan: touxiangLan
 }
 

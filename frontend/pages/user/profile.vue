@@ -409,6 +409,7 @@ import {
 } from '../../api/modules/user'
 import heiAvatar from '../../assets/images/touxiang/hei.png'
 import hongAvatar from '../../assets/images/touxiang/hong.png'
+import huangAvatar from '../../assets/images/touxiang/huang.png'
 import lanAvatar from '../../assets/images/touxiang/lan.png'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
@@ -455,6 +456,7 @@ const newCodeLimit = useInputLimit(6, /^\d$/)
 const avatarOptions = [
   { key: 'hei', src: heiAvatar },
   { key: 'hong', src: hongAvatar },
+  { key: 'huang', src: huangAvatar },
   { key: 'lan', src: lanAvatar }
 ]
 
@@ -462,6 +464,7 @@ const avatarOptions = [
 const avatarKeyToDbValue = {
   hei: 'hei',
   hong: 'hong',
+  huang: 'huang',
   lan: 'lan'
 }
 
