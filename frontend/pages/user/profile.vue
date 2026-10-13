@@ -1355,6 +1355,7 @@ function handleLogout() {
 .profile-page__avatar-list {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   gap: 32rpx;
   padding: 16rpx 0;
 }
