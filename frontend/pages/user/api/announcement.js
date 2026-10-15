@@ -1,5 +1,5 @@
-import { request } from '../request'
-import { AUTH_BASE_URL } from '../../config/env'
+import { request } from '../../../api/request'
+import { AUTH_BASE_URL } from '../../../config/env'
 
 /**
  * 公告接口（直连 auth 统一认证服务；公告管理迁移 auth，2026-10-02）
@@ -7,6 +7,7 @@ import { AUTH_BASE_URL } from '../../config/env'
  * - 已读状态存 auth 库，按 (公告, 用户, 项目) 维度分别维护（user_id 取令牌 sub）
  * - 项目归属由 JWT azp 判定，前端无需传 client_id
  * - baseUrl 用 AUTH_BASE_URL 覆盖默认业务后端地址（request 支持按请求覆盖）
+ * - 本模块仅被分包页 pages/user/messages 使用，置于分包目录避免打进主包
  */
 
 /**

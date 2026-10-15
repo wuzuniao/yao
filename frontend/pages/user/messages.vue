@@ -155,7 +155,7 @@ import {
   getAnnouncements,
   markAnnouncementRead,
   markAllAnnouncementsRead
-} from '../../api/modules/announcement'
+} from './api/announcement'
 import { useShare } from '../../composables/useShare'
 import { t } from '../../locale'
 
