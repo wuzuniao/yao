@@ -58,10 +58,12 @@ class Settings(BaseSettings):
     # 决定「改密码/退出/删号后旧令牌在本服务的最大残留窗口」
     REVOCATION_SYNC_INTERVAL_SECONDS: int = 300
 
-    # CORS 允许的源（逗号分隔，如 "https://yao.wuzuniao.com,http://localhost:11003"）
+    # CORS 允许的源（逗号分隔）：生产页面源（域名）
     # 微信小程序请求不携带 Origin 头，不受 CORS 限制；此项主要约束 Web 端访问
-    # 实际值从 .env 文件读取，此处为开发环境默认值
-    CORS_ALLOW_ORIGINS: str = "https://yao.wuzuniao.com,http://localhost:11003"
+    # 本地开发源（任意 localhost/127.0.0.1 端口，如 Vite 5173）由 main.py 的
+    # allow_origin_regex 统一放行，不再逐个登记
+    # 实际值从 .env 文件读取，此处为生产环境默认值
+    CORS_ALLOW_ORIGINS: str = "https://yao.wuzuniao.com"
 
     @property
     def cors_origins_list(self) -> list[str]:

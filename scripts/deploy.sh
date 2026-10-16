@@ -690,7 +690,7 @@ server {
     gzip_min_length 1024;
     gzip_types text/css text/javascript application/javascript application/json image/svg+xml application/xml text/plain;
 
-    set $auth_upstream http://auth-backend:10000;
+    set $auth_upstream http://auth-backend:11000;
 
     # 站点首页（/ 经 StaticFiles(html=True) 返回 index.html）：禁止强缓存（协商缓存）
     location = / {
@@ -1017,8 +1017,8 @@ AUTH_ISSUER=https://auth.wuzuniao.com
 AUTH_SERVICE_TOKEN=${auth_token}
 REVOCATION_SYNC_INTERVAL_SECONDS=300
 
-# CORS 跨域配置
-CORS_ALLOW_ORIGINS=https://yao.wuzuniao.com,http://localhost:5173
+# CORS 跨域配置（本地开发源由 main.py 的 allow_origin_regex 统一放行）
+CORS_ALLOW_ORIGINS=https://yao.wuzuniao.com
 EOF
 
   chmod 600 "$env_file"

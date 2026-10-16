@@ -33,6 +33,8 @@ ENV/
 # ============================================================
 .env
 *.env.local
+# 部署脚本重复执行时对 .env 的自动备份（backend/.env.bak.<时间戳>）
+.env.bak.*
 
 # JWKS 公钥磁盘缓存（auth 服务公钥，运行时生成）
 backend/.jwks_cache.json
