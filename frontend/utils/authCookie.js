@@ -31,6 +31,14 @@ const DEFAULT_ACCESS_TTL_SECONDS = 3 * 24 * 3600
 // auth 平台 client_id（Cookie 内平台令牌的签发目标，N12/P24）
 const PLATFORM_CLIENT_ID = 'auth'
 
+// 共享恢复链 Promise（启动恢复与 401 兜底恢复共用，防并发重复交换/触发平台 rt 轮换重放）
+let _restoreChain = null
+// 恢复完成监听（单槽）：store 初始化时经 onAuthRestored 注册，恢复成功后同步响应式状态
+let _restoredListener = null
+// 恢复链期间是否收到过 auth 服务 HTTP 响应（区分「平台登录态被服务端拒绝」与「网络不可达」，
+// 仅前者才清 Cookie，避免离线/瞬时网络故障误毁仍有效的跨站登录态）
+let _authServerSeen = false
+
 /** 当前是否为 H5 端（条件编译期确定） */
 function isH5() {
   // #ifdef H5
@@ -66,6 +74,7 @@ async function exchangeToken(bearerToken, targetClientId) {
       data: { target_client_id: targetClientId },
       timeout: 10000
     })
+    _authServerSeen = true
     const body = res.data
     if (res.statusCode !== 200 || !body || !body.access_token) return null
     return body
@@ -87,6 +96,7 @@ async function refreshPlatformToken(platformRefreshToken) {
       data: { grant_type: 'refresh_token', refresh_token: platformRefreshToken, client_id: PLATFORM_CLIENT_ID },
       timeout: 10000
     })
+    _authServerSeen = true
     const body = res.data
     if (res.statusCode !== 200 || !body || !body.access_token) return null
     return body
@@ -125,27 +135,45 @@ export function syncAuthCookie({ access_token, refresh_token, expires_in, userIn
 }
 
 /**
- * 页面加载时从父域 Cookie 恢复登录态（H5 端；恢复语义见 N34/P39）
- * 1. Cookie 缺失：另一子域已登出或用户清理了浏览器数据——本地令牌若仍为项目身份可继续用
- *    （N34 本地身份独立维持），但跨站登录态已断，无需动作；本地亦无令牌则无事可做
- * 2. 本地已有项目 access_token：本地有效不交换（N34），直接返回
- * 3. 本地无令牌 + Cookie 有平台令牌：交换 → 项目令牌 + 资料（/users/info）写本地，
- *    并经 onRestored 回调同步 store 响应式状态
- * 4. 平台 access 无效：用 Cookie 内平台 refresh_token 刷新后重试交换（P39）；
- *    平台刷新也失败（Cookie 登录态已失效）→ 清 Cookie 保持一致
- * @param {Function} [onRestored] 恢复成功回调（参数为 { access_token, refresh_token, userInfo }）
- * @returns {boolean} 是否立即完成了本地无令牌判定（异步恢复不改变返回值语义）
+ * 注册恢复完成监听（单槽，store 初始化时调用）：启动恢复与 401 兜底恢复
+ * 成功后回调，同步 store 响应式状态（重复注册覆盖前次）
+ * @param {Function} cb 回调（参数 { access_token, refresh_token, userInfo }）
  */
-export function restoreAuthFromCookie(onRestored) {
-  if (!isH5()) return false
+export function onAuthRestored(cb) {
+  _restoredListener = cb
+}
+
+/** 平台令牌组回写父域 Cookie（恢复链中平台 rt 轮换后调用，防旧 rt 留存触发重放检测） */
+function writePlatformCookie(platformSet, prevUserInfo) {
   try {
-    const saved = readAuthCookie()
-    // 本地已有项目令牌：N34 本地有效不交换
-    if (uni.getStorageSync('accessToken')) return false
-    if (!saved || !saved.access_token) return false
-    // 异步恢复：交换 → 资料 → 写本地 → 回调
-    ;(async () => {
-      let platformSet = { access_token: saved.access_token, refresh_token: saved.refresh_token }
+    const payload = {
+      at: platformSet.access_token,
+      rt: platformSet.refresh_token || '',
+      exp: Date.now() + (platformSet.expires_in || DEFAULT_ACCESS_TTL_SECONDS) * 1000,
+      ui: prevUserInfo || null
+    }
+    writeCookie(encodeURIComponent(JSON.stringify(payload)))
+  } catch (e) {
+    // Cookie 不可用（隐私模式等）不影响主流程
+  }
+}
+
+/**
+ * 共享恢复链核心：读 Cookie 平台令牌 → 交换项目令牌（平台 access 失效时经平台
+ * rt 刷新后重试，P39）→ 项目令牌与资料写本地 → 通知监听方
+ * - 平台 rt 轮换后回写 Cookie（否则 Cookie 留存已撤销旧 rt，下次使用触发
+ *   服务端重放检测撤销该用户全部平台令牌，全端强制重新登录）
+ * - 仅服务端明确拒绝（有 HTTP 响应）才清 Cookie；网络不可达时保留待下次重试
+ * @returns {Promise<{access_token:string, refresh_token:string, userInfo:Object}|null>} 失败返回 null
+ */
+function startRestoreChain() {
+  if (_restoreChain) return _restoreChain
+  _authServerSeen = false
+  const chain = (async () => {
+    try {
+      const saved = readAuthCookie()
+      if (!saved || !saved.access_token) return null
+      let platformSet = { access_token: saved.access_token, refresh_token: saved.refresh_token, expires_in: 0 }
       let project = await exchangeToken(platformSet.access_token, AUTH_CLIENT_ID)
       if (!project && saved.refresh_token) {
         // 平台 access 失效：平台 rt 独立刷新链（P39）
@@ -156,9 +184,14 @@ export function restoreAuthFromCookie(onRestored) {
         }
       }
       if (!project) {
-        // 平台登录态已失效：清 Cookie（与各站「Cookie 缺失即退出」语义一致）
-        clearAuthCookie()
-        return
+        if (_authServerSeen) {
+          // 平台登录态已被服务端拒绝：清 Cookie（与各站「Cookie 缺失即退出」语义一致）
+          clearAuthCookie()
+        }
+        return null
+      }
+      if (platformSet.refresh_token && platformSet.refresh_token !== saved.refresh_token) {
+        writePlatformCookie(platformSet, saved.userInfo)
       }
       const userInfo = await fetchProjectUserInfo(project.access_token)
       try {
@@ -167,14 +200,56 @@ export function restoreAuthFromCookie(onRestored) {
         if (userInfo) uni.setStorageSync('userInfo', userInfo)
       } catch (e) {
         // 本地存储不可用：放弃本次恢复
-        return
+        return null
       }
-      if (onRestored) onRestored({
-        access_token: project.access_token,
-        refresh_token: project.refresh_token,
-        userInfo
-      })
-    })()
+      const restored = { access_token: project.access_token, refresh_token: project.refresh_token, userInfo }
+      if (_restoredListener) {
+        try { _restoredListener(restored) } catch (e) { /* 监听方异常不影响恢复结果 */ }
+      }
+      return restored
+    } catch (e) {
+      return null
+    }
+  })()
+  _restoreChain = chain
+  // 结束后重置共享标记（不使用 finally，兼容旧引擎）
+  const cleanup = () => { _restoreChain = null }
+  chain.then(cleanup, cleanup)
+  return chain
+}
+
+/**
+ * 401 终态兜底：项目本地令牌链路（access + rt 刷新）已失效时，经父域 Cookie 的
+ * 平台令牌重新交换项目令牌（SSO 单点恢复；与启动恢复共享同一链，去重并发）
+ * @returns {Promise<Object|null>} 成功返回令牌与资料（已写本地并通知监听方），失败返回 null
+ */
+export function recoverAuthFromCookie() {
+  if (!isH5()) return Promise.resolve(null)
+  return startRestoreChain()
+}
+
+/**
+ * 页面加载时从父域 Cookie 恢复登录态（H5 端；恢复语义见 N34/P39）
+ * 1. Cookie 缺失：另一子域已登出或用户清理了浏览器数据——本地令牌若仍为项目身份可继续用
+ *    （N34 本地身份独立维持），但跨站登录态已断，无需动作；本地亦无令牌则无事可做
+ * 2. 本地已有项目 access_token：本地有效不交换（N34），直接返回
+ *    （本地令牌失效场景由请求 401 链经 recoverAuthFromCookie 兜底恢复）
+ * 3. 本地无令牌 + Cookie 有平台令牌：经共享恢复链交换 → 项目令牌 + 资料（/users/info）
+ *    写本地，并经 onRestored 回调与 onAuthRestored 监听同步 store 响应式状态
+ * 4. 平台 access 无效：用 Cookie 内平台 refresh_token 刷新后重试交换（P39）；
+ *    服务端明确拒绝平台登录态 → 清 Cookie 保持一致（网络不可达时保留）
+ * @param {Function} [onRestored] 恢复成功回调（参数为 { access_token, refresh_token, userInfo }）
+ * @returns {boolean} 是否立即完成了本地无令牌判定（异步恢复不改变返回值语义）
+ */
+export function restoreAuthFromCookie(onRestored) {
+  if (!isH5()) return false
+  try {
+    // 本地已有项目令牌：N34 本地有效不交换
+    if (uni.getStorageSync('accessToken')) return false
+    if (!readAuthCookie()) return false
+    startRestoreChain().then((restored) => {
+      if (restored && onRestored) onRestored(restored)
+    })
     return false
   } catch (e) {
     return false

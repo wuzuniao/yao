@@ -17,7 +17,7 @@
  */
 import { API_BASE_URL, AUTH_BASE_URL, AUTH_CLIENT_ID } from '../config/env'
 import { t } from '../locale'
-import { syncAuthCookie, clearAuthCookie } from '../utils/authCookie'
+import { syncAuthCookie, recoverAuthFromCookie } from '../utils/authCookie'
 
 const BASE_URL = API_BASE_URL
 
@@ -58,6 +58,8 @@ function _getRefreshToken() {
  * - 仅在本地存在 token 但收到 401 时提示"登录已过期"（说明 token 失效）
  * - 本地无 token 的 401 视为未登录访问，静默跳转登录页
  * - 使用 _isHandling401 标记防止并发请求同时触发多次跳转
+ * - 不在此清父域 SSO Cookie：Cookie 生命周期由 authCookie 恢复链管理
+ *   （能走到这里说明 Cookie 链兜底也已失败——Cookie 缺失或已被恢复链清除）
  */
 function _handleUnauthorized() {
   if (_isHandling401) return
@@ -71,14 +73,44 @@ function _handleUnauthorized() {
   } catch (e) {
     console.warn('清除本地登录态失败', e)
   }
-  // 同步清除父域 SSO Cookie（H5），避免另一子域仍读到已失效令牌
-  clearAuthCookie()
   if (hadToken) {
     uni.showToast({ title: t('request.sessionExpired'), icon: 'none' })
   }
   setTimeout(() => {
     uni.reLaunch({ url: LOGIN_PAGE, complete: () => { _isHandling401 = false } })
   }, hadToken ? 1500 : 0)
+}
+
+/**
+ * 401 兜底恢复（SSO 单点登录闭环）：本地 rt 链静默刷新失败后，再经父域 Cookie
+ * 的平台令牌交换恢复一次（跨子域「一处登录，处处通行」的关键链路——项目本地
+ * 令牌失效不等于登录态失效，Cookie 中的平台令牌可能仍有效）
+ * - 恢复成功：令牌已写本地（recoverAuthFromCookie 内部完成），重试原请求一次
+ *   （skipAuthRefresh 防递归；重试仍 401 则不再恢复，直接清态跳登录）
+ * - 恢复失败：Cookie 缺失或平台登录态已失效（恢复链已同步清 Cookie），清态跳登录
+ */
+function _recoverAndRetry(opts, resolve, reject) {
+  const retry = () => {
+    request({ url: opts.url, method: opts.method, data: opts.data, header: opts.header, timeout: opts.timeout, baseUrl: opts.baseUrl, skipAuthRefresh: true })
+      .then(resolve, reject)
+  }
+  const recover = () => {
+    recoverAuthFromCookie().then((restored) => {
+      if (restored && restored.access_token) {
+        retry()
+      } else {
+        _handleUnauthorized()
+        reject(new Error(t('request.sessionExpired')))
+      }
+    })
+  }
+  if (_getRefreshToken()) {
+    _silentRefresh()
+      .then(retry)
+      .catch(recover)
+  } else {
+    recover()
+  }
 }
 
 /**
@@ -157,23 +189,14 @@ export function request({ url, method = 'GET', data, header, timeout, baseUrl, s
       success: (res) => {
         // 401 未授权：token 失效或缺失
         if (res.statusCode === 401) {
-          // 静默刷新重试：非刷新请求且本地有 refreshToken 时先刷新再重试一次
-          if (!skipAuthRefresh && _getRefreshToken()) {
-            _silentRefresh()
-              .then(() => {
-                // 刷新成功：重试原请求一次（skipAuthRefresh 防递归）
-                request({ url, method, data, header, timeout, baseUrl, skipAuthRefresh: true })
-                  .then(resolve, reject)
-              })
-              .catch(() => {
-                // 刷新失败（refresh_token 已失效/被撤销）：清态跳登录
-                _handleUnauthorized()
-                reject(new Error(t('request.sessionExpired')))
-              })
+          // 已是重试请求仍 401：本地与 Cookie 恢复链均已失效，直接清态跳登录
+          if (skipAuthRefresh) {
+            _handleUnauthorized()
+            reject(new Error(t('request.sessionExpired')))
             return
           }
-          _handleUnauthorized()
-          reject(new Error(t('request.sessionExpired')))
+          // 先本地 rt 静默刷新，失败再经父域 Cookie 平台令牌兜底恢复（SSO）
+          _recoverAndRetry({ url, method, data, header, timeout, baseUrl }, resolve, reject)
           return
         }
         // 429 限流：请求过于频繁，展示后端 detail 文案或本地化提示，不跳转登录页

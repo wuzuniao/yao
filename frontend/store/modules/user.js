@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { getUserInfo } from '../../api/modules/user'
 import { getUnreadCount } from '../../api/modules/message'
 import { t } from '../../locale'
-import { syncAuthCookie, clearAuthCookie, restoreAuthFromCookie } from '../../utils/authCookie'
+import { syncAuthCookie, clearAuthCookie, restoreAuthFromCookie, onAuthRestored } from '../../utils/authCookie'
 
 /**
  * 用户状态管理 Store
@@ -34,6 +34,15 @@ export const useUserStore = defineStore('user', () => {
   // 从本地存储加载用户信息与双 token（页面刷新后恢复状态）
   // H5 端：本地已有项目令牌则维持（N34 本地有效不交换）；本地无令牌时经父域 SSO
   // Cookie 的平台令牌异步交换恢复（完成后经回调写入 store，另一子域登录后本域首访通行）
+  // 另注册恢复监听：启动恢复与请求 401 后的 Cookie 兜底恢复成功时同步本 store 响应式状态
+  onAuthRestored((restored) => {
+    if (restored && restored.access_token) {
+      if (restored.userInfo) userInfo.value = restored.userInfo
+      accessToken.value = restored.access_token
+      refreshToken.value = restored.refresh_token || ''
+    }
+  })
+
   function loadUserFromStorage() {
     try {
       restoreAuthFromCookie((restored) => {
