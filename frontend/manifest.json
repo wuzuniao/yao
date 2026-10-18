@@ -126,9 +126,12 @@
     "h5" : {
         "router" : {
             "mode" : "history",
-            "base" : "/"
+            /* H5 子目录部署：站点发布于域名 /h5/ 路径下（yao.wuzuniao.com/h5/），
+             * 域名根路径保留给 Web 端；nginx 侧以 alias 去前缀复用原有静态规则
+             * （见 scripts/deploy.sh）。开发调试时本地访问地址同样带 /h5/ 前缀。 */
+            "base" : "/h5/"
         },
-        "publicPath" : "/",
+        "publicPath" : "/h5/",
         "devServer" : {
             "port" : 5173
         },
