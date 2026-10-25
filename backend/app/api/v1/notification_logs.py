@@ -10,7 +10,7 @@ from ...services.notification_log_service import NotificationLogService
 router = APIRouter()
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(limit_authenticated)])
 async def list_notification_logs(
     page: int = Query(1, ge=1, description="页码，从1开始"),
     limit: int = Query(20, ge=1, le=100, description="每页数量，1-100"),

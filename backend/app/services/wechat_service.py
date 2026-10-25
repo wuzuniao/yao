@@ -8,9 +8,8 @@
 import asyncio
 import time
 
-import httpx
-
 from ..core.config import settings
+from ..core.http import get_http_client
 from ..utils.logger import logger
 
 # 微信接口地址
@@ -41,9 +40,8 @@ class WeChatService:
                 "appid": settings.WX_APPID,
                 "secret": settings.WX_APP_SECRET,
             }
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(_TOKEN_URL, params=params, timeout=10)
-                data = resp.json()
+            resp = await get_http_client().get(_TOKEN_URL, params=params)
+            data = resp.json()
             if data.get("errcode", 0) != 0:
                 raise RuntimeError(
                     f"获取微信 access_token 失败：{data.get('errcode')} {data.get('errmsg', '未知错误')}"
@@ -67,14 +65,15 @@ class WeChatService:
         payload: dict = {"touser": openid, "template_id": template_id, "data": data}
         if page:
             payload["page"] = page
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                _SEND_URL, params={"access_token": token}, json=payload, timeout=10
-            )
-            result = resp.json()
+        resp = await get_http_client().post(
+            _SEND_URL, params={"access_token": token}, json=payload
+        )
+        result = resp.json()
         if result.get("errcode", 0) != 0:
+            # openid 脱敏后写日志（2026-10-25 安全修复：日志不留 PII 原文）
+            masked_openid = f"{openid[:4]}***{openid[-4:]}" if len(openid) > 8 else "***"
             logger.warning(
-                f"微信订阅消息发送失败 openid={openid} "
+                f"微信订阅消息发送失败 openid={masked_openid} "
                 f"errcode={result.get('errcode')} errmsg={result.get('errmsg')}"
             )
         return result

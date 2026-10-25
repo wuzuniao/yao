@@ -1,11 +1,60 @@
 import base64
 import html
+import re
 import smtplib
+import socket
+import ssl
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
 from ..core.config import settings
+from ..core.security import Security
 from ..utils.logger import logger
+
+# 邮件头值净化：换行替换为空格（存量数据可能含换行，compat32 MIMEText 不拦截头注入）
+_HEADER_NEWLINES = re.compile(r"[\r\n]+")
+
+# TLS 校验上下文（证书链 + 主机名校验）：显式传入两处 TLS 握手——
+# smtplib 默认 context（ssl._create_stdlib_context）不校验证书（2026-10-25 安全加固）
+_TLS_CONTEXT = ssl.create_default_context()
+
+
+class _PinnedSMTP(smtplib.SMTP):
+    """
+    按已校验解析 IP 固定建连的 SMTP 客户端（2026-10-25 安全加固，防 DNS rebinding）：
+    - 建连 IP 由 Security.validate_smtp_target 校验并返回，直连该 IP，
+      消除「校验时解析/实连时再解析」两次独立 DNS 解析的换绑间隙
+    - TLS 握手仍按主机名做 SNI 与证书校验（smtplib 以 self._host 作 server_hostname）
+    """
+
+    def __init__(self, hostname: str, pinned_ip: str, port: int, timeout: float) -> None:
+        self._pinned_ip = pinned_ip
+        super().__init__(host=hostname, port=port, timeout=timeout)
+
+    def _get_socket(self, host, port, timeout):
+        # 不对 host 二次 DNS 解析，直连已校验 IP
+        return socket.create_connection((self._pinned_ip, port), timeout=timeout)
+
+
+class _PinnedSMTPSSL(smtplib.SMTP_SSL):
+    """同 _PinnedSMTP，465 SSL 直连场景（TLS 层按主机名校验证书）"""
+
+    def __init__(self, hostname: str, pinned_ip: str, port: int, timeout: float) -> None:
+        self._pinned_ip = pinned_ip
+        super().__init__(host=hostname, port=port, timeout=timeout, context=_TLS_CONTEXT)
+
+    def _get_socket(self, host, port, timeout):
+        new_socket = socket.create_connection((self._pinned_ip, port), timeout=timeout)
+        # 镜像 SMTP_SSL._get_socket：用 self.context 包 TLS，server_hostname 为主机名
+        return self.context.wrap_socket(new_socket, server_hostname=self._host)
+
+
+def _mask_email(email: str) -> str:
+    """邮箱脱敏（写日志用，2026-10-25 安全修复：日志不留 PII 原文）：保留首字符与域名"""
+    if "@" not in email:
+        return email[:1] + "***"
+    local, _, domain = email.partition("@")
+    return f"{local[:1]}***@{domain}"
 
 
 class Email:
@@ -82,6 +131,12 @@ class Email:
         - 字段行统一置于 hairline-soft 高亮容器内，前后各附一句引导与提示语。
         :raises RuntimeError: SMTP 连接或发送失败
         """
+        # 发信端 SSRF 兜底闸门：API 层创建/更新已校验，此处覆盖存量数据与任何绕过路径
+        # （send_notification 由调度器经线程池调用，阻塞 DNS 查询无碍事件循环）；
+        # 返回通过校验的解析 IP，建连固定直连该 IP（防 DNS rebinding TOCTOU）
+        pinned_ip = Security.validate_smtp_target(smtp_host)
+        Security.validate_smtp_port(smtp_port)
+
         home_url = "https://www.wuzuniao.com"
         logo_url = "https://www.wuzuniao.com/images/logo_wuzuniao_com_s.png"
 
@@ -158,7 +213,8 @@ class Email:
 </html>"""
 
         msg = MIMEText(body, "html", "utf-8")
-        msg["Subject"] = subject
+        # Subject 含计划名等用户输入：换行替换为空格，防邮件头注入（存量数据兜底）
+        msg["Subject"] = _HEADER_NEWLINES.sub(" ", subject)
         # 发件人显示名：项目名称（原 SMTP_SENDER_NAME 配置已随验证码邮件迁 auth 服务）
         msg["From"] = formataddr((settings.PROJECT_NAME, from_email))
         msg["To"] = to_email
@@ -166,16 +222,16 @@ class Email:
         try:
             if smtp_port == 465:
                 # SSL 直连（如腾讯企业邮、QQ 邮箱）
-                with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
+                with _PinnedSMTPSSL(smtp_host, pinned_ip, smtp_port, timeout=10) as server:
                     self._smtp_authenticate(server, from_email, smtp_password)
                     _ = server.sendmail(from_email, [to_email], msg.as_string())
             else:
-                # STARTTLS（如 Gmail 587、Outlook 587）
-                with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-                    _ = server.starttls()
+                # STARTTLS（如 Gmail 587、Outlook 587）；显式传入校验 context
+                with _PinnedSMTP(smtp_host, pinned_ip, smtp_port, timeout=10) as server:
+                    _ = server.starttls(context=_TLS_CONTEXT)
                     self._smtp_authenticate(server, from_email, smtp_password)
                     _ = server.sendmail(from_email, [to_email], msg.as_string())
-            logger.info(f"打卡通知邮件发送成功：{from_email} -> {to_email}")
+            logger.info(f"打卡通知邮件发送成功：{_mask_email(from_email)} -> {_mask_email(to_email)}")
         except smtplib.SMTPAuthenticationError as e:
             if isinstance(e.smtp_error, bytes):
                 err_detail = e.smtp_error.decode("utf-8", errors="replace")
@@ -183,8 +239,11 @@ class Email:
                 err_detail = str(e.smtp_error)
             else:
                 err_detail = str(e)
-            logger.error(f"打卡通知邮件发送失败：{from_email} -> {to_email}，SMTP 认证失败（{e.smtp_code}）：{err_detail}")
+            logger.error(
+                f"打卡通知邮件发送失败：{_mask_email(from_email)} -> {_mask_email(to_email)}，"
+                f"SMTP 认证失败（{e.smtp_code}）：{err_detail}"
+            )
             raise RuntimeError(f"邮件发送失败：SMTP 认证失败（{e.smtp_code}）：{err_detail}")
         except Exception as e:
-            logger.error(f"打卡通知邮件发送失败：{from_email} -> {to_email}，错误：{e}")
+            logger.error(f"打卡通知邮件发送失败：{_mask_email(from_email)} -> {_mask_email(to_email)}，错误：{e}")
             raise RuntimeError(f"邮件发送失败：{e}")

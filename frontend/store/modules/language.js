@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { setLocale } from '../../locale'
+import { loadLocale, setLocale } from '../../locale'
 
 // 当前语言偏好的本地持久化键
 const LANGUAGE_STORAGE_KEY = 'app-language'
@@ -33,17 +33,36 @@ export const useLanguageStore = defineStore('language', () => {
   const initial = stored && LANGUAGE_LIST.some((l) => l.key === stored)
     ? stored
     : detectDefaultLocale()
-  const current = ref(initial)
+
+  // H5 端 en 词条为异步 chunk（见 locale/index.js）：先以兜底语言 zh-CN 就绪首屏，
+  // chunk 到达后再切到 en（current 变化触发 langMixin 全站文案重算）；
+  // zh-CN 及小程序/App 端无此过程，行为与原同步初始化一致
+  const current = ref(initial === 'en' ? 'zh-CN' : initial)
 
   // 初始化时同步给 locale 核心，使纯 JS 模块（api/request.js 等无组件上下文处）
   // 在首屏即可取到正确语言
   setLocale(current.value)
+  if (initial === 'en') {
+    loadLocale('en')
+      .then(() => {
+        current.value = 'en'
+        setLocale('en')
+      })
+      .catch((e) => console.warn('英文语言包加载失败，暂以中文显示', e))
+  }
 
   // 切换并持久化语言偏好。
   // current 为响应式 ref，变更后 main.js 注册的 langMixin 中的 $t 会重算，
   // 所有模板文案即时切换，无需刷新页面。
-  function setLanguage(key) {
+  // H5 端切换到 en 时先等词条 chunk 就绪再变更 current，避免切换后短暂显示 key。
+  async function setLanguage(key) {
     if (!LANGUAGE_LIST.some((l) => l.key === key)) return
+    try {
+      await loadLocale(key)
+    } catch (e) {
+      console.warn('语言包加载失败，保持当前语言', e)
+      return
+    }
     current.value = key
     setLocale(key)
     try {

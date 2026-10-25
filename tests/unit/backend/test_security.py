@@ -31,12 +31,13 @@ class TestValidateSmtp:
 
     @pytest.mark.unit
     def test_port_out_of_range(self):
-        with pytest.raises(ValueError, match="端口范围"):
+        # 端口白名单 25/465/587/994：范围外端口一律拒绝（防任意内网端口探测）
+        with pytest.raises(ValueError, match="仅支持 25、465、587、994"):
             Security.validate_smtp_port(70000)
 
     @pytest.mark.unit
     def test_port_zero(self):
-        with pytest.raises(ValueError, match="端口范围"):
+        with pytest.raises(ValueError, match="仅支持 25、465、587、994"):
             Security.validate_smtp_port(0)
 
     @pytest.mark.unit

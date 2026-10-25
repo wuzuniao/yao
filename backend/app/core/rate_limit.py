@@ -21,8 +21,28 @@ from typing import Callable, Awaitable
 from fastapi import HTTPException, Request
 
 # 进程内存储：key -> [timestamp, ...]
-# 说明：未做持久化与过期清理，依赖惰性清理（每次访问时移除窗口外记录）
+# 说明：未做持久化，依赖惰性清理（每次访问时移除窗口外记录）+
+# 定期清扫（_sweep_stale_keys 删除全部时间戳过期的键，防键空间只增不减）
 _rate_store: dict[str, list[float]] = defaultdict(list)
+
+# 定期清扫间隔（秒）与清扫判定窗口（秒）：当前全部策略窗口 ≤ 60 秒，
+# 时间戳全部早于「当前时间-60秒」的键不可能再被命中，可安全删除；
+# ⚠️ 新增更大窗口的策略时须同步调大 _SWEEP_MAX_WINDOW_SECONDS
+_SWEEP_INTERVAL_SECONDS: float = 300.0
+_SWEEP_MAX_WINDOW_SECONDS: float = 60.0
+_last_sweep_ts: float = 0.0
+
+
+def _sweep_stale_keys(now: float) -> None:
+    """清扫全部时间戳已过期的键（2026-10-25 安全加固：长期运行内存只增不减）"""
+    global _last_sweep_ts
+    if now - _last_sweep_ts < _SWEEP_INTERVAL_SECONDS:
+        return
+    _last_sweep_ts = now
+    cutoff = now - _SWEEP_MAX_WINDOW_SECONDS
+    stale = [k for k, ts in _rate_store.items() if not any(t > cutoff for t in ts)]
+    for k in stale:
+        del _rate_store[k]
 
 
 def _client_ip(request: Request) -> str:
@@ -59,6 +79,8 @@ def _make_limiter(
         ip = _client_ip(request)
         key = f"{ip}:{request.url.path}"
         now = time.time()
+        # 定期清扫过期键（每 5 分钟一次，摊销到请求路径上）
+        _sweep_stale_keys(now)
         # 惰性清理：仅保留窗口内的记录
         history = [t for t in _rate_store[key] if t > now - window_seconds]
         if len(history) >= max_count:

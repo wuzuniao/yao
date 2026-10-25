@@ -544,6 +544,14 @@ server {
         proxy_redirect off;
     }
 
+    # 后端文档端点显式拒绝（2026-10-25 安全加固）：
+    # 本站点仅反代 /api/ 与 /health，FastAPI 的 /docs、/redoc、/openapi.json 本就不可达；
+    # 此处显式 404 作为防回归保护——避免日后有人把 location / 改为 proxy_pass 时文档对外暴露。
+    # 服务器内部调试可经 docker exec yao-backend curl http://localhost:11003/docs 访问。
+    location ^~ /docs     { return 404; }
+    location ^~ /redoc    { return 404; }
+    location ^~ /openapi.json { return 404; }
+
     # ===== H5 子目录部署（/h5/ 前缀，根路径保留给 Web 端）=====
     # 前端以 h5.router.base=/h5/ 构建（frontend/manifest.json），产物仍挂载 /var/www/yao，
     # 以下 location 以 alias 去前缀映射到挂载点，产物零拷贝。
@@ -1057,6 +1065,41 @@ verify_deployment() {
     log_warn "H5 首页访问异常，请查看 docker logs nginx"
   fi
 
+  # ===== 安全基线验证（2026-10-25 安全加固） =====
+  # 1. 后端容器不得对外发布端口：11003 仅经 app-net 内网由 nginx 反代访问，
+  #    直连场景下客户端可伪造 X-Real-IP 绕过限流（rate_limit.py 信任该头）
+  local backend_ports
+  backend_ports=$(docker port yao-backend 2>/dev/null || true)
+  if [[ -n "$backend_ports" ]]; then
+    log_warn "安全基线：yao-backend 存在对外端口映射（限流可被伪造 IP 绕过），请检查 $DEPLOY_DIR/docker-compose.yml 移除 ports 映射："
+    echo "$backend_ports"
+  else
+    log_ok "安全基线：yao-backend 未发布宿主机端口（仅 app-net 内网可达，X-Real-IP 不可伪造）"
+  fi
+
+  # 2. MariaDB 3306 不得绑定公网（127.0.0.1 本机回环可接受）
+  local db_ports
+  db_ports=$(docker port mariadb 2>/dev/null | grep -E '3306' || true)
+  if [[ -n "$db_ports" ]]; then
+    if echo "$db_ports" | grep -qE '0\.0\.0\.0:3306|\[::\]:3306'; then
+      log_warn "安全基线：mariadb 3306 绑定在所有网卡（公网可达），建议改为 127.0.0.1:3306:3306 或移除映射："
+      echo "$db_ports"
+    else
+      log_ok "安全基线：mariadb 3306 仅本机回环可达"
+    fi
+  else
+    log_ok "安全基线：mariadb 未发布宿主机端口（仅 app-net 内网可达）"
+  fi
+
+  # 3. 后端文档端点不可达（nginx 显式 404 拦截 /docs /redoc /openapi.json）
+  local docs_code
+  docs_code=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $DOMAIN" "https://127.0.0.1/docs" 2>/dev/null || true)
+  if [[ "$docs_code" == "404" ]]; then
+    log_ok "安全基线：/docs 已被 nginx 拦截（404），接口文档不对外暴露"
+  else
+    log_warn "安全基线：/docs 响应码为 ${docs_code:-异常}（预期 404），请检查 nginx 配置"
+  fi
+
   echo ""
   log_info "容器运行状态："
   docker ps --filter "name=yao-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -1109,6 +1152,10 @@ print_summary() {
        本脚本不生成/修改 auth 站点配置（各仓库部署脚本各自维护，不再强关联）；
        服务间令牌 AUTH_SERVICE_TOKEN 已自动与 auth 侧对齐（任一先部署均收敛为同一令牌）
     7. 泛域名证书由 acme.sh 自动续期并热重载共享 nginx，全站子域名均自动覆盖
+    8. 安全基线（2026-10-25 加固，部署验证环节会自动检查）：
+       - yao-backend 不发布宿主机端口（11003 仅 app-net 内网经 nginx 反代，防 X-Real-IP 伪造绕过限流）
+       - nginx 仅反代 /api/ 与 /health，/docs /redoc /openapi.json 显式 404（接口文档不对外暴露）
+       - 数据库使用最小权限用户 yao_backend（仅授权 wuzuniao_yao 库），root 不参与应用连接
 
 EOF
 }

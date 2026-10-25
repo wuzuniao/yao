@@ -8,6 +8,8 @@
  *
  * 机制：
  *   - 词条集中在 locale/zh-CN.js 与 locale/en.js，结构为嵌套对象；
+ *   - zh-CN 为兜底语言恒静态注册；H5 端 en 按需动态加载（loadLocale），
+ *     小程序/App 端两套均静态注册（见下方条件编译块）；
  *   - main.js 注册全局 langMixin，向所有组件注入响应式 $t（依赖 languageStore.current）；
  *   - 语言切换 → store.current 变化 → 所有模板中的 $t(...) 自动重算 → 全站即时切换。
  *
@@ -16,12 +18,49 @@
  *   脚本：import { t } from '../../locale'; t('common.submit')
  */
 import zhCN from './zh-CN'
-import en from './en'
 
-// 语言包注册表（新增语言仅需在此追加，并在 store/modules/language.js 的 LANGUAGE_LIST 增项）
+// #ifndef H5
+import en from './en'
+// #endif
+
+// 语言包注册表（新增语言仅需在此追加，并在 store/modules/language.js 的 LANGUAGE_LIST 增项）。
+// 兜底语言 zh-CN 恒为静态注册（词条缺失回退依赖它同步可用）。
 const MESSAGES = {
-  'zh-CN': zhCN,
-  en
+  'zh-CN': zhCN
+}
+
+// #ifndef H5
+// 小程序/App 端不支持动态 import，en 与 zh-CN 一样静态注册（两套语言包随主包下发）
+MESSAGES.en = en
+// #endif
+
+// #ifdef H5
+// H5 端 en 改为按需动态加载：vite 将 en.js 拆为独立 chunk，首屏入口不再包含
+// 英文词条（入口体积约减 80KB 源码）；英文用户首帧短暂回退中文文案，
+// chunk 到达后由 languageStore 写入 current 触发 langMixin 全站重算刷新
+let enLoading = null
+
+function ensureEnLoaded() {
+  if (MESSAGES.en) return Promise.resolve()
+  if (!enLoading) {
+    enLoading = import('./en').then((m) => {
+      MESSAGES.en = m.default
+    })
+  }
+  return enLoading
+}
+// #endif
+
+/**
+ * 确保指定语言的词条已注册（H5 端 en 为异步 chunk，其余语言恒同步可用）
+ * @param {string} locale - 语言键
+ * @returns {Promise<void>} 词条就绪后 resolve；加载失败 reject（调用方可回退）
+ */
+export function loadLocale(locale) {
+  // #ifdef H5
+  if (locale === 'en') return ensureEnLoaded()
+  // #endif
+  return Promise.resolve()
 }
 
 // 兜底语言：词条缺失时回退到简体中文，避免界面出现空白

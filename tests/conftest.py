@@ -67,6 +67,17 @@ def reset_rate_limiter():
 
 
 @pytest.fixture(autouse=True)
+def bypass_smtp_dns_check(monkeypatch):
+    """
+    绕过 SMTP 出网 DNS 校验（防 SSRF 的 validate_smtp_target）：
+    测试使用 smtp.example.com 等假域名，不依赖外部 DNS 解析；
+    该校验属出网安全闸门，不在此测试其内网拒绝逻辑
+    """
+    from app.core.security import Security
+    monkeypatch.setattr(Security, "validate_smtp_target", staticmethod(lambda host: host))
+
+
+@pytest.fixture(autouse=True)
 def reset_auth_client_state():
     """
     每个测试前重置 auth_client 进程内状态（撤销缓存/水位/信息缓存），

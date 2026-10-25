@@ -31,10 +31,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import httpx
 import jwt as pyjwt
 
 from .config import settings
+from .http import get_http_client
 from ..utils.logger import logger
 from ..utils.timezone import SHANGHAI_TZ, now_shanghai
 
@@ -58,8 +58,13 @@ _revocation_watermark: str | None = None
 # 撤销增量首轮回填窗口（天）= access_token 最大 TTL（重启后补齐漏拉的撤销记录）
 _REVOCATION_BACKFILL_DAYS: int = 3
 
-# HTTP 调用超时（秒）
-_HTTP_TIMEOUT: float = 10.0
+# HTTP 调用超时（秒）——由共享客户端 core/http.py 统一提供（HTTP_TIMEOUT_SECONDS）
+
+# JWKS 拉取最小间隔（秒）：verify_access_token 遇未知 kid 会触发 fetch_jwks 外呼，
+# 无节流时携带伪造 kid 的未认证请求可逐请求借本服务放大打击 auth（2026-10-25 安全加固）。
+# 节流后正常密钥轮换的新 kid 最多延迟一个窗口生效（access_token 有效期 3 天，30 秒可忽略）
+JWKS_FETCH_MIN_INTERVAL_SECONDS: float = 30.0
+_last_jwks_fetch_at: float = 0.0
 
 
 def _auth_url(path: str) -> str:
@@ -74,28 +79,24 @@ def _service_headers() -> dict[str, str]:
 
 async def _get_json(path: str, params: dict | None = None) -> dict:
     """调用 auth 服务 GET 接口并返回 JSON（非 2xx 抛异常由调用方降级处理）"""
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            _auth_url(path),
-            params=params,
-            headers=_service_headers(),
-            timeout=_HTTP_TIMEOUT,
-        )
-        resp.raise_for_status()
-        return resp.json()
+    resp = await get_http_client().get(
+        _auth_url(path),
+        params=params,
+        headers=_service_headers(),
+    )
+    resp.raise_for_status()
+    return resp.json()
 
 
 async def _post_json(path: str, json_body: dict | None = None) -> dict:
     """调用 auth 服务 POST 接口并返回 JSON（非 2xx 抛异常由调用方处理）"""
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            _auth_url(path),
-            json=json_body or {},
-            headers=_service_headers(),
-            timeout=_HTTP_TIMEOUT,
-        )
-        resp.raise_for_status()
-        return resp.json()
+    resp = await get_http_client().post(
+        _auth_url(path),
+        json=json_body or {},
+        headers=_service_headers(),
+    )
+    resp.raise_for_status()
+    return resp.json()
 
 
 # ==================== JWKS 公钥管理 ====================
@@ -137,9 +138,16 @@ async def fetch_jwks() -> bool:
     """
     拉取 auth 服务 JWKS 公钥集，更新内存 + 磁盘双缓存
     - 进程启动时调用一次；遇未知 kid 时重拉（支持 auth 密钥轮换）
-    :return: 是否拉取成功
+    - 最小间隔节流：间隔内的重复拉取直接跳过返回 False，防止携带伪造 kid
+      的未认证请求逐请求触发外呼（密钥轮换场景新 kid 最多延迟一个窗口生效）
+    :return: 是否拉取成功（节流跳过视为未成功）
     """
-    global _jwks_keys
+    global _jwks_keys, _last_jwks_fetch_at
+    now = time.monotonic()
+    if now - _last_jwks_fetch_at < JWKS_FETCH_MIN_INTERVAL_SECONDS:
+        return False
+    # 先记时间戳再外呼：并发到达的未知 kid 请求只有一个真正发起拉取
+    _last_jwks_fetch_at = now
     try:
         data = await _get_json("/.well-known/jwks.json")
     except Exception as e:
@@ -293,9 +301,10 @@ def is_revoked(user_id: int, iat: int) -> bool:
 
 def reset_for_tests() -> None:
     """清空全部进程内状态（测试 fixture 使用，确保测试间互不影响）"""
-    global _revocation_watermark
+    global _revocation_watermark, _last_jwks_fetch_at
     _jwks_keys.clear()
     _email_cache.clear()
     _openid_cache.clear()
     _revocations.clear()
     _revocation_watermark = None
+    _last_jwks_fetch_at = 0.0

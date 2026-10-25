@@ -1,7 +1,7 @@
 """友盟+ U-Push 服务：App 端离线推送（Android 厂商通道 / iOS APNs）。
 
 说明：
-- 友盟推送采用 HTTP + 签名方式调用：
+- 友盟推送采用 HTTPS + 签名方式调用：
   sign = MD5(请求方法 + 请求URL + 请求Body + App Master Secret)，全部大写拼接后取 32 位小写。
 - Android 与 iOS 在友盟控制台是两个独立应用，各有一套 AppKey / App Master Secret，
   故按设备平台选择对应密钥，payload 结构也不同（Android=display_type，iOS=aps）。
@@ -14,13 +14,14 @@ import json
 import time
 from typing import Any
 
-import httpx
-
 from ..core.config import settings
+from ..core.http import get_http_client
 from ..utils.logger import logger
 
 # 友盟推送接口地址（签名参与计算的 URL 必须与实际请求 URL 完全一致）
-_SEND_URL = "http://msg.umeng.com/api/send"
+# 2026-10-25 安全修复：明文 HTTP 改为 HTTPS——推送正文含计划名/备注等健康相关内容，
+# 明文传输可被链路观察/篡改；友盟官方接口 HTTPS 同路径同签名算法
+_SEND_URL = "https://msg.umeng.com/api/send"
 
 
 class UmengPushError(Exception):
@@ -116,14 +117,12 @@ class UmengService:
         sign = cls._sign(_SEND_URL, body, master_secret)
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{_SEND_URL}?sign={sign}",
-                    content=body.encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    timeout=10,
-                )
-                result = resp.json()
+            resp = await get_http_client().post(
+                f"{_SEND_URL}?sign={sign}",
+                content=body.encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            result = resp.json()
         except Exception as e:
             raise UmengPushError(f"友盟推送请求异常：{e}") from e
 

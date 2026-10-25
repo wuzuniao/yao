@@ -129,7 +129,7 @@ def restart_backend() -> None:
 
     - Docker 环境（检测 /.dockerenv）：容器内无法重启自身容器，
       提示从宿主机执行 docker restart
-    - 开发环境：杀掉占用 8000 端口的旧 uvicorn 进程树，
+    - 开发环境：杀掉占用 11003 端口的旧 uvicorn 进程树，
       后台启动新进程（非 reload 单进程模式）并轮询 /health 验证启动成功
 
     注意：run.py 使用 uvicorn --reload 模式（主进程 + 子进程），
@@ -140,7 +140,7 @@ def restart_backend() -> None:
     import time
     import urllib.request
 
-    port = 8000
+    port = 11003  # 与项目规范后端启动命令端口一致（原 8000 为历史遗留，2026-10-25 修正）
     health_url = f"http://localhost:{port}/health"
 
     # 检测 Docker 环境
@@ -396,7 +396,9 @@ async def main() -> int:
         print("==========================================")
         print("  轮换成功完成")
         print("==========================================")
-        print(f"新密钥: {new_key}")
+        # 不打印完整新密钥（2026-10-25 安全修复：防密钥落入终端历史/CI 日志），
+        # 完整密钥仅写入 .env，可随时查看
+        print(f"新密钥前缀: {new_key[:8]}...（完整密钥已写入 .env，勿在终端展示）")
         print(f".env 文件已更新: {_ENV_FILE}")
         print("==========================================")
 

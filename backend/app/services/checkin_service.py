@@ -1,13 +1,13 @@
 from datetime import datetime, date, time as dt_time, timedelta
 
-from sqlalchemy import select, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..models.checkin_record import CheckinRecord
 from ..models.plan import CheckinPlan, PlanNotificationTime
 from ..utils.logger import logger
-from ..utils.timezone import today_shanghai
+from ..utils.timezone import now_shanghai, today_shanghai
 
 # 末次催办触发后的跨日补打宽限分钟数：
 # 末次提醒的匹配区间跨日延伸至「末次催办触发点 + 该宽限」，期间打卡仍归属该次提醒
@@ -56,15 +56,23 @@ class CheckinService:
         if plan.user_id != user_id:
             raise ValueError("无权操作该计划")
 
-        # 校验时间点归属
-        time_result = await self.db.execute(
-            select(PlanNotificationTime).where(PlanNotificationTime.id == plan_time_id)
-        )
-        plan_time = time_result.scalar_one_or_none()
+        # 校验时间点归属：优先从已 selectinload 的 notification_times 集合中查找，
+        # 命中即免一次数据库往返；未命中（非法入参的异常路径）才补查一次，
+        # 区分「时间点不存在」与「时间点不属于该计划」两种对外文案
+        plan_time = next((nt for nt in plan.notification_times if nt.id == plan_time_id), None)
         if not plan_time:
-            raise ValueError("通知时间点不存在")
-        if plan_time.plan_id != plan_id:
+            time_result = await self.db.execute(
+                select(PlanNotificationTime).where(PlanNotificationTime.id == plan_time_id)
+            )
+            plan_time = time_result.scalar_one_or_none()
+            if not plan_time:
+                raise ValueError("通知时间点不存在")
             raise ValueError("通知时间点不属于该计划")
+
+        # 拒绝未来时刻打卡（2026-10-25 安全修复：防预打卡作弊）；
+        # 留 5 分钟容差容忍客户端时钟轻微超前
+        if actual_time > now_shanghai() + timedelta(minutes=5):
+            raise ValueError("打卡时间不能晚于当前时间")
 
         # 校验提醒日：当日有效（区间覆盖全天，任意时刻可打卡）；
         # 当日非提醒日时，仅允许处于前一日末次提醒跨日补打窗口内、且打卡对象为该末次时间点
@@ -95,26 +103,40 @@ class CheckinService:
         try:
             await self.db.flush()
             # end_mode=1（按打卡总次数结束）：flush 后本条记录已在事务内可见，计数含本次打卡；
-            # 累计口径按「不同（提醒时间点+打卡日期）」去重，同一时间点重复打卡只计 1 次
+            # 累计口径按「不同（提醒时间点+打卡日期）」去重，同一时间点重复打卡只计 1 次。
+            # 子查询在库端完成 DISTINCT + COUNT 仅回传标量，免拉全量历史行到应用层
+            # （actual_time 为 DATETIME 存 naive 上海墙钟，DATE() 不涉及时区换算）
             if plan.end_mode == 1 and plan.total_target_count:
-                count_result = await self.db.execute(
-                    select(CheckinRecord.plan_time_id, CheckinRecord.actual_time).where(
+                distinct_pairs = (
+                    select(
+                        CheckinRecord.plan_time_id,
+                        func.date(CheckinRecord.actual_time),
+                    )
+                    .where(
                         CheckinRecord.user_id == user_id,
                         CheckinRecord.plan_id == plan_id,
                     )
+                    .distinct()
+                    .subquery()
                 )
-                distinct_doses = {(row[0], row[1].date()) for row in count_result.all()}
-                if len(distinct_doses) >= plan.total_target_count:
+                count_result = await self.db.execute(
+                    select(func.count()).select_from(distinct_pairs)
+                )
+                done_doses = int(count_result.scalar() or 0)
+                if done_doses >= plan.total_target_count:
                     plan.status = 0
                     logger.info(
-                        f"计划 {plan_id} 累计打卡 {len(distinct_doses)} 次达到目标 "
+                        f"计划 {plan_id} 累计打卡 {done_doses} 次达到目标 "
                         f"{plan.total_target_count}，已自动置为已结束"
                     )
             await self.db.commit()
         except Exception as e:
             await self.db.rollback()
-            raise ValueError(f"打卡失败：{e}") from e
-        await self.db.refresh(record)
+            # 对外仅返回固定文案，异常详情（可能含表名/SQL 片段）只写日志
+            logger.exception("创建打卡记录失败 user_id=%s plan_id=%s", user_id, plan_id)
+            raise ValueError("打卡失败，请稍后重试") from e
+        # 模型无服务器端默认列（id 由 flush 回填，其余列均为客户端赋值），
+        # expire_on_commit=False 下无需 refresh 回读
         return record
 
     async def list_today_by_user(self, user_id: int) -> list[CheckinRecord]:

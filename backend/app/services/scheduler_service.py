@@ -40,6 +40,7 @@
 import asyncio
 import json
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date, time as dt_time, timedelta
 
 from sqlalchemy import select, or_, and_
@@ -79,13 +80,21 @@ from .checkin_service import CheckinService
 from .email_service import Email
 from .plan_service import PlanService
 from .notification_channel_service import NotificationChannelService
+from .notification_log_service import NotificationLogService
 
 
 # 后台循环间隔（秒）
 INTERVAL_PLAN_CLOSE: int = 1800  # 计划关闭：每 30 分钟
 INTERVAL_NOTIFICATION: int = 60   # 通知派发：每 60 秒
+# 通知日志清理：每日一次（保留策略见 settings.NOTIFICATION_LOG_RETENTION_DAYS）
+INTERVAL_LOG_CLEANUP: int = 86400
 # 令牌撤销同步间隔（秒）：从 settings 读取（.env 可调，默认 300 = 5 分钟）
 INTERVAL_REVOCATION_SYNC: int = settings.REVOCATION_SYNC_INTERVAL_SECONDS
+
+# 邮件发送专用线程池（2026-10-25 性能加固）：与 asyncio.to_thread 共用的默认
+# 执行器隔离——SMTP 发送单次最长 10 秒，突发批量发信时不再挤占 API 侧
+# SSRF DNS 校验（validate_smtp_target 的 to_thread）等短任务的线程配额
+_EMAIL_SEND_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="email-send")
 
 # 通知派发回放窗口（分钟）：进程重启/宕机恢复后向前回放的分钟数（含当前分钟），
 # 窗口内的漏发通知自动补发（防重键挡住已发条目），超出窗口的不再补发
@@ -108,6 +117,7 @@ class SchedulerService:
             asyncio.create_task(self._loop_close_expired_plans()),
             asyncio.create_task(self._loop_dispatch_notifications()),
             asyncio.create_task(self._loop_sync_revocations()),
+            asyncio.create_task(self._loop_cleanup_logs()),
         ]
         # 启动即拉取一次 JWKS 公钥（磁盘+内存缓存），供 access_token 本地验签
         await auth_client.fetch_jwks()
@@ -126,6 +136,8 @@ class SchedulerService:
             except asyncio.CancelledError:
                 pass
         self._tasks = []
+        # 关闭邮件发送专用线程池（不等待在途发送结束，避免关停被 SMTP 超时拖住）
+        _EMAIL_SEND_EXECUTOR.shutdown(wait=False)
 
     # ==================== 后台循环 ====================
 
@@ -165,6 +177,22 @@ class SchedulerService:
             except Exception:
                 logger.exception("令牌撤销同步任务异常")
             await asyncio.sleep(INTERVAL_REVOCATION_SYNC)
+
+    async def _loop_cleanup_logs(self) -> None:
+        """
+        循环：每日清理过期的通知日志（委托 NotificationLogService）
+        - 删除「非未读且 send_time 早于 NOTIFICATION_LOG_RETENTION_DAYS 天」的记录
+        - 配置为 0 时清理方法内部直接跳过，本循环空转无害
+        """
+        while True:
+            try:
+                async with AsyncSessionLocal() as session:
+                    await NotificationLogService(session).cleanup_expired_logs(
+                        settings.NOTIFICATION_LOG_RETENTION_DAYS
+                    )
+            except Exception:
+                logger.exception("通知日志清理任务异常")
+            await asyncio.sleep(INTERVAL_LOG_CLEANUP)
 
 def _trigger_desc(plan_time: PlanNotificationTime, trigger_type: int) -> str:
     """
@@ -345,6 +373,14 @@ class NotificationDispatcher:
                                 await self._send_via_channel(plan, pt, channel, trigger_type, d)
                                 sent_keys.add((pt.id, trigger_type, d, channel.id))
                                 sent += 1
+
+        # 站内信日志统一落库：本轮累积的 ZNX 日志一次 commit（失败回滚后由
+        # 回放窗口自动补发——未提交即未发送，防重键不存在，下轮重派）
+        try:
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            logger.exception("站内信通知批量写入失败")
         return sent
 
     @staticmethod
@@ -385,7 +421,10 @@ class NotificationDispatcher:
         now = now_shanghai()
 
         if channel.channel_type == CHANNEL_TYPE_ZNX:
-            # 站内信：直接写 notification_logs（status=未读），即完成"发送"
+            # 站内信：写 notification_logs（status=未读）即完成"发送"。
+            # 仅 add 不逐条 commit，由 _dispatch_batch 末尾统一一次提交
+            # （每轮 N 条站内信从 N 次事务提交收敛为 1 次；若中途邮件/推送渠道
+            # 的 commit 先触发 flush，累积条目随之落库，行为不变）
             log = NotificationLog(
                 plan_id=plan.id,
                 channel_id=channel.id,
@@ -397,11 +436,6 @@ class NotificationDispatcher:
                 trigger_type=trigger_type,
             )
             self.db.add(log)
-            try:
-                await self.db.commit()
-            except Exception:
-                await self.db.rollback()
-                logger.exception(f"站内信通知写入失败 plan={plan.id} channel={channel.id}")
             return
 
         if channel.channel_type == CHANNEL_TYPE_EMAIL:
@@ -465,11 +499,14 @@ class NotificationDispatcher:
             ("触发类型", trigger_desc, True),
         ]
 
-        # 5. SMTP 发送（在线程池中执行同步调用，避免阻塞事件循环）
+        # 5. SMTP 发送（置入邮件专用线程池：与 to_thread 默认执行器隔离，
+        #    单次最长 10 秒的阻塞发送不挤占 API 侧短任务的线程配额）
         status = LOG_STATUS_SUCCESS
         error_msg = None
         try:
-            await asyncio.to_thread(
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                _EMAIL_SEND_EXECUTOR,
                 Email().send_notification,
                 user_email,
                 subject,

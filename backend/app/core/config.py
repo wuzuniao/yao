@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     # 实际值从 .env 文件读取，此处为生产环境默认值
     CORS_ALLOW_ORIGINS: str = "https://yao.wuzuniao.com"
 
+    # 通知日志保留天数（数据保留策略，2026-10-25 性能加固）：后台每日清理
+    # 「非未读（已读/失败）且 send_time 早于保留期」的 notification_logs，
+    # 防表无限增长拖慢站内信列表与未读热路径；0 = 关闭清理。
+    # 未读（status=2）不清理（保留未读角标语义）；checkin_records 属用户打卡
+    # 历史（记录页日历依赖），不纳入清理
+    NOTIFICATION_LOG_RETENTION_DAYS: int = 365
+
     @property
     def cors_origins_list(self) -> list[str]:
         """解析 CORS_ALLOW_ORIGINS 为列表（去除空白与重复项）"""

@@ -128,6 +128,7 @@ class TestDepsCoverage:
             "iss": rsa_keys.TEST_ISSUER,
             "sub": "not-an-int",
             "roles": [],
+            "azp": "yao",  # 与 auth 签发结构一致（azp 校验先于 sub 解析）
             "iat": int(time.time()),
             "exp": int(time.time()) + 3600,
         }

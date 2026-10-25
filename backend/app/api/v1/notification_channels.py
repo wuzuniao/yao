@@ -1,9 +1,12 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...core.database import get_db
 from ...core.deps import get_current_user_id
 from ...core.rate_limit import limit_authenticated
+from ...core.security import Security
 from ...schemas.notification_channel import (
     CHANNEL_TYPE_APP_PUSH,
     CHANNEL_TYPE_EMAIL,
@@ -77,6 +80,8 @@ async def create_email_channel(
     """创建邮件通知渠道（user_id 来自 JWT，站内信在用户注册时自动创建，不允许用户主动添加）"""
     service = NotificationChannelService(db)
     try:
+        # SSRF 校验：DNS 解析拒绝内网/保留地址（阻塞调用置于线程池，不占事件循环）
+        await asyncio.to_thread(Security.validate_smtp_target, payload.smtp_host)
         channel = await service.create_email_channel(
             user_id=user_id,
             smtp_host=payload.smtp_host,
@@ -103,6 +108,8 @@ async def update_email_channel(
     """更新邮件通知渠道配置（user_id 来自 JWT）"""
     service = NotificationChannelService(db)
     try:
+        # SSRF 校验：DNS 解析拒绝内网/保留地址（阻塞调用置于线程池，不占事件循环）
+        await asyncio.to_thread(Security.validate_smtp_target, payload.smtp_host)
         channel = await service.update_email_channel(
             channel_id=payload.channel_id,
             user_id=user_id,
@@ -158,12 +165,15 @@ async def upsert_app_push_channel(
     - 已存在的 token 重置失败计数并更新平台，新 token 追加进数组
     """
     service = NotificationChannelService(db)
-    channel = await service.upsert_app_push_token(
-        user_id=user_id,
-        device_token=payload.device_token,
-        platform=payload.platform,
-        create_if_missing=payload.create_if_missing,
-    )
+    try:
+        channel = await service.upsert_app_push_token(
+            user_id=user_id,
+            device_token=payload.device_token,
+            platform=payload.platform,
+            create_if_missing=payload.create_if_missing,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not channel:
         # 未添加 App 推送通知方式时静默跳过（打卡上报场景），不视为错误
         return {"code": 0, "msg": "未开启App推送通知方式，已跳过", "data": None}

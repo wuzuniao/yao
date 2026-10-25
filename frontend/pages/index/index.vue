@@ -745,6 +745,7 @@ async function loadActivePlans() {
 }
 
 // 加载当前用户的通知渠道列表，用于判断计划是否包含微信通知方式
+// 仅微信小程序端调用（打卡成功后，见 handleCheckin），App/H5 端无微信订阅消息能力
 async function loadUserChannels() {
   if (!isLoggedIn.value) {
     userChannels.value = []
@@ -898,11 +899,17 @@ async function handleCheckin() {
       forceActive.value = false
       // 触发后端自动标记已读并同步刷新 NoticeButton 图标状态
       userStore.loadUnreadCount(true)
-      // 打卡成功后，若当前计划包含微信通知方式，则为微信订阅消息静默补充一次授权额度
-      // 用户已勾选"保持选择"时不弹窗；失败静默忽略（如用户已取消授权），不影响打卡主流程
+      // 微信小程序：打卡成功后，若当前计划包含微信通知方式，则为微信订阅消息
+      // 静默补充一次授权额度（用户已勾选"保持选择"时不弹窗；失败静默忽略——如用户
+      // 已取消授权，不影响打卡主流程）。
+      // 渠道列表延迟到此刻才拉取（而非首页 onShow），启动少发一次 notification-channels
+      // 请求；每次打卡重新拉取保证用户刚在通知方式页改动后判定仍准确
+      // #ifdef MP-WEIXIN
+      await loadUserChannels()
       if (hasWechatNotification.value) {
         await requestSubscribe({ silent: true })
       }
+      // #endif
       // App 端打卡成功后刷新设备标识（设备重装/卸载重装会换 token）
       // 仅刷新已有的 App 推送通知方式，未添加时后端静默跳过（须先去通知方式页添加）
       // #ifdef APP
@@ -971,11 +978,6 @@ onShow(() => {
   }
   // loadActivePlans 内部已加载今日所有打卡记录并按新规则排序，无需再单独加载
   loadActivePlans()
-  // 并行加载用户通知渠道，用于判断打卡后是否需要补授权微信订阅消息
-  // App 端无微信订阅消息能力（requestSubscribe 在非微信端为空操作），跳过该请求节省一次网络开销
-  // #ifdef MP-WEIXIN
-  loadUserChannels()
-  // #endif
   // 已登录情况下，首页加载完成后触发一次未读站内信刷新，基于打卡记录自动标记已读并同步通知图标
   if (userStore.userInfo) {
     userStore.loadUnreadCount(true)

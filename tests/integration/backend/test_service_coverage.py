@@ -166,18 +166,19 @@ class TestCheckinServiceCoverage:
     @pytest.mark.asyncio
     async def test_list_by_month_december(self, db_session, test_user):
         """list_by_month: 12月查询应正确处理跨年（year+1, 1月）"""
+        # 用过去的年份：2026-10-25 起服务端拒绝未来时刻打卡，2026-12-31 已不可用
         znx_channel = await NotificationChannelService(db_session).ensure_znx_channel(test_user.id)
         plan_service = PlanService(db_session)
         plan = await plan_service.create_plan(
-            test_user.id, "计划", "", date(2026, 1, 1), date(2026, 12, 31),
+            test_user.id, "计划", "", date(2025, 1, 1), date(2025, 12, 31),
             [NotificationTimeItem(time="08:00")], [znx_channel.id],
         )
         # 重新查询以加载关联关系（异步 SQLAlchemy 不支持懒加载）
         plan = await plan_service.get_by_id(plan.id)
         nt = plan.notification_times[0]
         service = CheckinService(db_session)
-        await service.create_checkin(test_user.id, plan.id, nt.id, datetime(2026, 12, 31, 8, 0))
-        days = await service.list_by_month(test_user.id, 2026, 12)
+        await service.create_checkin(test_user.id, plan.id, nt.id, datetime(2025, 12, 31, 8, 0))
+        days = await service.list_by_month(test_user.id, 2025, 12)
         assert 31 in days
 
 

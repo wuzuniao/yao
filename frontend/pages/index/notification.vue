@@ -629,11 +629,13 @@ const saveButtonText = computed(() => {
   return t('notification.save')
 })
 
-// 端口格式校验：空值返回空，非整数或超出 1-65535 范围返回错误提示
+// 端口格式校验：空值返回空，非白名单端口返回错误提示
+// 白名单与后端 Security.SMTP_ALLOWED_PORTS 一致（25/465/587/994，主流邮箱 SSL/STARTTLS 端口）
+const SMTP_ALLOWED_PORTS = [25, 465, 587, 994]
 function validatePort(v) {
   if (!v) return ''
   const num = Number(v)
-  if (!Number.isInteger(num) || num < 1 || num > 65535) {
+  if (!Number.isInteger(num) || !SMTP_ALLOWED_PORTS.includes(num)) {
     return t('notification.portInvalid')
   }
   return ''

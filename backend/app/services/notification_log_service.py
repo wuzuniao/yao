@@ -1,7 +1,8 @@
-from datetime import datetime, time as dt_time, timedelta
+from collections import defaultdict
+from datetime import date, datetime, time as dt_time, timedelta
 from typing import Any
 
-from sqlalchemy import select, and_, func as sa_func, update
+from sqlalchemy import delete, select, text, and_, case, func as sa_func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -11,7 +12,19 @@ from ..models.notification_channel import NotificationChannel
 from ..models.plan import CheckinPlan
 from ..schemas.notification_channel import CHANNEL_TYPE_ZNX
 from ..schemas.notification_log import LOG_STATUS_SUCCESS, LOG_STATUS_UNREAD
+from ..utils.logger import logger
+from ..utils.timezone import now_shanghai
 from .checkin_service import CheckinService
+
+# 自动已读判定回看天数（2026-10-25 性能优化）：仅扫描归属日不早于「今天-N天」的
+# 未读——更早的未读其匹配窗口已完全结束（前端打卡均为当前时刻，跨日补打窗口
+# 最迟到次日 ~01:30），不可能再被新打卡命中；长期囤积未读的用户每次 unread-count
+# 轮询不再重算已关闭的窗口。需清理这类历史未读时用「全部已读」
+AUTO_MARK_LOOKBACK_DAYS: int = 3
+
+# 过期日志清理的每批删除行数上限：分批删除避免大事务长锁
+# （表增长后单条 DELETE 全量清理可能长时间持有行锁与 undo 压力）
+_CLEANUP_BATCH_SIZE: int = 5000
 
 
 class NotificationLogService:
@@ -33,8 +46,13 @@ class NotificationLogService:
           次日凌晨的补打记录同样会将前一日末次提醒的催办站内信标记为已读
         - plan_time_id 为 NULL / 计划已删除 / notify_date 为 NULL / 无打卡记录 → 保持未读
         - 已读（status=0）记录不参与判定
+        - 打卡记录一次范围查询预取（覆盖全部涉及计划与归属日窗口）后内存分组匹配，
+          无论未读日志条数/组数多少，打卡记录查询恒为 1 次（2026-10-25 性能优化：
+          由逐组查询收敛为单次预取）
         """
-        # 1. 查询该用户所有未读站内信记录
+        # 1. 查询该用户所有未读站内信记录（仅回看窗口内：更早的未读其匹配窗口
+        #    已完全结束，不可能再被新打卡命中，不再参与判定与加载）
+        #    notify_date 为 NULL 的记录本就不参与自动已读（下方内存跳过），一并排除
         unread_result = await self.db.execute(
             select(NotificationLog)
             .join(
@@ -46,6 +64,8 @@ class NotificationLogService:
                     NotificationLog.user_id == user_id,
                     NotificationChannel.channel_type == CHANNEL_TYPE_ZNX,
                     NotificationLog.status == LOG_STATUS_UNREAD,
+                    NotificationLog.notify_date
+                    >= now_shanghai().date() - timedelta(days=AUTO_MARK_LOOKBACK_DAYS),
                 )
             )
         )
@@ -65,43 +85,70 @@ class NotificationLogService:
             for plan in plans_result.scalars().all():
                 plans_map[plan.id] = plan
 
-        # 3. 逐条判定匹配区间内是否有打卡记录
-        marked = False
+        # 3. 按 (plan_id, notify_date) 分组：同组日志共用一次窗口计算与一次打卡记录查询
+        groups: dict[tuple[int, date], list[NotificationLog]] = {}
         for log in unread_logs:
             if log.plan_time_id is None or log.notify_date is None:
                 continue
-            plan = plans_map.get(log.plan_id)
-            if not plan:
+            if log.plan_id not in plans_map:
                 # 计划已删除 → 无法获取提醒时间，保持未读
                 continue
-            times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
-            # 定位 plan_time_id 在排序后提醒时间列表中的索引
-            idx = next(
-                (i for i, nt in enumerate(times) if nt.id == log.plan_time_id), None
-            )
-            if idx is None:
-                continue
-            # 计算匹配区间（含跨日延伸）并查询该区间内是否有打卡记录
-            windows = CheckinService.compute_day_windows(plan, log.notify_date, times)
-            start_min, end_min = windows["intervals"][idx]
-            day_start = datetime.combine(log.notify_date, dt_time(0, 0, 0))
-            interval_start = day_start + timedelta(minutes=start_min)
-            interval_end = day_start + timedelta(minutes=end_min)
-            check_result = await self.db.execute(
-                select(CheckinRecord.id)
-                .where(
+            groups.setdefault((log.plan_id, log.notify_date), []).append(log)
+
+        # 4. 一次范围查询预取全部涉及计划的打卡记录（窗口覆盖最早归属日 ~ 最晚归属日+2天，
+        #    各组窗口 [归属日 0 点, +2天) 均落在其中），内存按计划分组后逐组匹配区间，
+        #    消除逐组查询的 N+1（此前查询次数 = 组数，未读跨多日/多计划时线性放大）
+        records_by_plan: dict[int, list[datetime]] = defaultdict(list)
+        if groups:
+            group_plan_ids = {pid for pid, _ in groups}
+            min_date = min(d for _, d in groups)
+            max_date = max(d for _, d in groups)
+            span_start = datetime.combine(min_date, dt_time(0, 0, 0))
+            span_end = datetime.combine(max_date + timedelta(days=2), dt_time(0, 0, 0))
+            records_result = await self.db.execute(
+                select(CheckinRecord.plan_id, CheckinRecord.actual_time).where(
                     and_(
                         CheckinRecord.user_id == user_id,
-                        CheckinRecord.plan_id == log.plan_id,
-                        CheckinRecord.actual_time >= interval_start,
-                        CheckinRecord.actual_time < interval_end,
+                        CheckinRecord.plan_id.in_(group_plan_ids),
+                        CheckinRecord.actual_time >= span_start,
+                        CheckinRecord.actual_time < span_end,
                     )
                 )
-                .limit(1)
             )
-            if check_result.scalar_one_or_none() is not None:
-                log.status = LOG_STATUS_SUCCESS
-                marked = True
+            for pid, at in records_result.all():
+                records_by_plan[pid].append(at)
+
+        marked = False
+        for (plan_id, notify_date), logs in groups.items():
+            plan = plans_map[plan_id]
+            times = sorted(plan.notification_times, key=lambda nt: nt.notification_time)
+            # 该计划该日的完整匹配窗口（含跨日延伸，各日志按 plan_time_id 定位各自区间）
+            windows = CheckinService.compute_day_windows(plan, notify_date, times)
+            pending: list[tuple[NotificationLog, int, int]] = []
+            for log in logs:
+                idx = next(
+                    (i for i, nt in enumerate(times) if nt.id == log.plan_time_id), None
+                )
+                if idx is None:
+                    continue
+                start_min, end_min = windows["intervals"][idx]
+                pending.append((log, start_min, end_min))
+            if not pending:
+                continue
+            # 组内匹配窗口 [归属日 0 点, +2天)（区间终点最大约次日 25.5 小时，取 2 天覆盖）
+            day_start = datetime.combine(notify_date, dt_time(0, 0, 0))
+            day_end = day_start + timedelta(days=2)
+            actual_minutes = [
+                int((at - day_start).total_seconds()) // 60
+                for at in records_by_plan.get(plan_id, [])
+                if day_start <= at < day_end
+            ]
+            if not actual_minutes:
+                continue
+            for log, start_min, end_min in pending:
+                if any(start_min <= m < end_min for m in actual_minutes):
+                    log.status = LOG_STATUS_SUCCESS
+                    marked = True
 
         # 4. 提交事务（失败则回滚，不影响后续列表查询）
         if marked:
@@ -165,9 +212,21 @@ class NotificationLogService:
             for row in rows
         ]
 
-        # 总数（用于分页判断）
-        total_result = await self.db.execute(
-            select(sa_func.count(NotificationLog.id))
+        # 总数与未读数合并为一次聚合查询（过滤条件完全相同，仅 status 口径不同，
+        # 省去此前 total、unread_count 各查一次的两次往返）
+        counts_result = await self.db.execute(
+            select(
+                sa_func.count(NotificationLog.id),
+                sa_func.coalesce(
+                    sa_func.sum(
+                        case(
+                            (NotificationLog.status == LOG_STATUS_UNREAD, 1),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ),
+            )
             .select_from(NotificationLog)
             .join(
                 NotificationChannel,
@@ -180,10 +239,9 @@ class NotificationLogService:
                 )
             )
         )
-        total = int(total_result.scalar() or 0)
-
-        # 未读数量（用于通知图标切换）
-        unread_count = await self.count_unread(user_id)
+        total, unread_count = counts_result.one()
+        total = int(total)
+        unread_count = int(unread_count)
 
         return {
             "items": items,
@@ -246,8 +304,10 @@ class NotificationLogService:
             await self.db.commit()
         except Exception as e:
             await self.db.rollback()
-            raise ValueError(f"标记已读失败：{e}") from e
-        await self.db.refresh(log)
+            # 对外仅返回固定文案，异常详情只写日志
+            logger.exception("标记站内信已读失败 log_id=%s user_id=%s", log_id, user_id)
+            raise ValueError("标记已读失败，请稍后重试") from e
+        # 模型无服务器端默认列，expire_on_commit=False 下无需 refresh 回读
         return log
 
     async def mark_all_as_read(self, user_id: int) -> int:
@@ -280,5 +340,40 @@ class NotificationLogService:
             await self.db.commit()
         except Exception as e:
             await self.db.rollback()
-            raise ValueError(f"全部标记已读失败：{e}") from e
+            # 对外仅返回固定文案，异常详情只写日志
+            logger.exception("全部标记已读失败 user_id=%s", user_id)
+            raise ValueError("全部标记已读失败，请稍后重试") from e
         return int(result.rowcount or 0)
+
+    async def cleanup_expired_logs(self, retention_days: int) -> int:
+        """
+        清理过期的通知日志（数据保留策略，供调度器每日调用）
+        - 删除「非未读（已读/失败）且 send_time 早于保留期」的 notification_logs；
+          未读（status=2）不清理，保留未读角标语义
+        - 分批删除（每批 _CLEANUP_BATCH_SIZE 行），返回累计删除行数
+        - retention_days <= 0 视为关闭清理，直接返回 0
+        """
+        if retention_days <= 0:
+            return 0
+        cutoff = now_shanghai() - timedelta(days=retention_days)
+        total = 0
+        while True:
+            # MariaDB 原生 DELETE ... LIMIT 分批删除（表名取自 ORM 模型；
+            # Delete 构造无 limit()，且 MariaDB 不支持 IN 子查询内带 LIMIT）：
+            # 每批最多 _CLEANUP_BATCH_SIZE 行，避免大事务长锁与 undo 压力
+            result = await self.db.execute(
+                text(
+                    "DELETE FROM `notification_logs` "
+                    "WHERE `status` != :unread AND `send_time` < :cutoff "
+                    "LIMIT :batch"
+                ),
+                {"unread": LOG_STATUS_UNREAD, "cutoff": cutoff, "batch": _CLEANUP_BATCH_SIZE},
+            )
+            await self.db.commit()
+            deleted = int(result.rowcount or 0)
+            total += deleted
+            if deleted < _CLEANUP_BATCH_SIZE:
+                break
+        if total:
+            logger.info(f"已清理过期通知日志 {total} 条（保留 {retention_days} 天，未读不清理）")
+        return total

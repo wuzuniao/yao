@@ -9,10 +9,12 @@ engine = create_async_engine(
     echo=False,
     connect_args={"init_command": "SET time_zone='+08:00'"},
     # 连接池稳定性配置：pre_ping 借出前探活防止拿到已被 MariaDB 关闭的失效连接
-    # （对应 MariaDB 日志中的 Aborted connection），recycle 主动回收长连接
+    # （对应 MariaDB 日志中的 Aborted connection）；recycle 主动回收长连接。
+    # recycle 取 1800：pre_ping 已兜底连接失效探活，过短的回收周期只会徒增
+    # 重建连接（TCP+握手+时区初始化）的开销，30 分钟回收足以覆盖中间设备/NAT 的空闲超时
     pool_pre_ping=True,
-    pool_recycle=300,
-    pool_size=5,
+    pool_recycle=1800,
+    pool_size=10,
     max_overflow=5,
     pool_timeout=30,
 )

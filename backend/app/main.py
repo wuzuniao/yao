@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .core.config import settings
+from .core.http import close_http_client
 from .api import v1
 from .services.scheduler_service import SchedulerService
 from .utils.logger import logger
@@ -20,11 +21,20 @@ async def lifespan(app: FastAPI):  # pragma: no cover
     # 启动全部后台定时任务循环（账号删除上报/计划关闭/通知派发）
     await _scheduler.start_all()
     yield
-    # 应用关闭时停止全部后台任务
+    # 应用关闭时停止全部后台任务（先停任务再关共享 HTTP 客户端，避免在途外呼用到已关闭连接）
     await _scheduler.stop_all()
+    await close_http_client()
 
 
-app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+# 文档端点应用层关闭：生产由 nginx 404 拦截，此处纵深防御——容器内网与
+# 误暴露端口场景下接口文档同样不可达（2026-10-25 安全加固）
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 app.add_middleware(
     CORSMiddleware,

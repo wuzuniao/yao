@@ -6,6 +6,9 @@ from pydantic import BaseModel, field_validator, model_validator
 from ..core.security import Security
 from ..models.plan import PLAN_END_DATE_SENTINEL
 
+# 每计划提醒时间点上限（2026-10-25 安全修复：防单计划海量时间点制造通知派发/日志写放大）
+MAX_NOTIFICATION_TIMES_PER_PLAN = 20
+
 
 class NotificationTimeItem(BaseModel):
     """
@@ -92,7 +95,10 @@ class CreatePlan(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        v = Security.sanitize_string(v, max_length=100, field_name="计划名称")
+        # 单行：计划名会拼入邮件 Subject 等邮件头，禁止换行防头注入（备注允许多行）
+        v = Security.sanitize_string(
+            v, max_length=100, field_name="计划名称", allow_newline=False
+        )
         if not v:
             raise ValueError("计划名称不能为空")
         return v
@@ -141,6 +147,8 @@ class CreatePlan(BaseModel):
     def validate_notification_times(cls, v: List[NotificationTimeItem]) -> List[NotificationTimeItem]:
         if not v:
             raise ValueError("至少设置一个通知时间")
+        if len(v) > MAX_NOTIFICATION_TIMES_PER_PLAN:
+            raise ValueError(f"提醒时间数量不能超过 {MAX_NOTIFICATION_TIMES_PER_PLAN} 个")
         # 重复时间校验：相同时间会产生两个独立时间点（调度器防重键含 plan_time_id），
         # 各发一条导致重复提醒、匹配区间重叠——保存前拦截
         # 归一化为 (时,分,秒) 元组比较，覆盖 "08:00" 与 "08:00:00" 混写的同刻时间

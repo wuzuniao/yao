@@ -95,7 +95,7 @@ async def list_today_checkins_by_plan(
 
 @router.get("/month", dependencies=[Depends(limit_authenticated)])
 async def list_month_checkins(
-    year: int = Query(..., description="年份，如 2026"),
+    year: int = Query(..., ge=2000, le=9999, description="年份，2000-9999"),
     month: int = Query(..., ge=1, le=12, description="月份，1-12"),
     user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

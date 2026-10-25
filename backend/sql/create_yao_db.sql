@@ -107,7 +107,7 @@ CREATE TABLE `notification_logs` (
   PRIMARY KEY (`id`),
   INDEX `idx_plan_id` (`plan_id`),
   INDEX `idx_channel_id` (`channel_id`),
-  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_user_status` (`user_id`, `status`) COMMENT '未读热路径：未读扫描/未读计数/全部已读按 user_id+status 过滤',
   INDEX `idx_send_time` (`send_time`),
   INDEX `idx_dedup` (`plan_time_id`, `trigger_type`, `notify_date`, `channel_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知发送历史日志';

@@ -15,6 +15,16 @@ CHANNEL_TYPE_APP_PUSH = "App推送"
 # App 推送设备 token 累计失败上限：连续失败达到该次数即从数组中剔除该 token
 APP_PUSH_MAX_FAIL_COUNT = 3
 
+# 微信一次性订阅额度 granted 上限：服务端无法逐次核实微信侧真实授权结果，
+# 设上限防止循环调用授权接口把额度刷到任意大（正常用户点一次授权 +1，30 已远超日常囤积量）
+WECHAT_MAX_GRANTED_QUOTA = 30
+
+# 每用户邮件渠道数上限（2026-10-25 安全修复：防海量 SMTP 外呼与配置写放大）
+MAX_EMAIL_CHANNELS_PER_USER = 5
+
+# App 推送设备 token 数上限（2026-10-25 安全修复：防设备数组无限膨胀）
+APP_PUSH_MAX_DEVICE_TOKENS = 10
+
 # SMTP 客户端专用密码长度上限（各邮箱授权码均为 16 位左右，128 已远超实际长度）
 SMTP_PASSWORD_MAX_LENGTH = 128
 

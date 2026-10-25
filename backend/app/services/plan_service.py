@@ -1,6 +1,6 @@
 from datetime import time
 
-from sqlalchemy import select, delete, update, case
+from sqlalchemy import select, delete, update, case, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,6 +15,9 @@ from ..models.notification_channel import NotificationChannel
 from ..schemas.plan import NotificationTimeItem
 from ..utils.logger import logger
 from ..utils.timezone import today_shanghai
+
+# 每用户计划数上限（2026-10-25 安全修复：防海量计划制造通知派发/日志写放大）
+MAX_PLANS_PER_USER = 50
 
 
 class PlanService:
@@ -58,6 +61,15 @@ class PlanService:
         )
         return result.scalar_one_or_none()
 
+    async def _get_plan_row(self, plan_id: int) -> CheckinPlan | None:
+        """
+        按ID查询计划主行（不预加载时间点/渠道关联）
+        - 仅供仅需归属校验与字段写入的 update_plan/delete_plan 使用：
+          两者的时间点/渠道关联均为整删整写、不读旧值，无需两次 selectinload 往返
+        """
+        result = await self.db.execute(select(CheckinPlan).where(CheckinPlan.id == plan_id))
+        return result.scalar_one_or_none()
+
     async def create_plan(
         self,
         user_id: int,
@@ -82,6 +94,15 @@ class PlanService:
         - repeat_weekdays/end_mode/total_target_count：重复星期位掩码与结束方式
           （end_mode=1/2 时 end_date 由调用方传哨兵值，见 Schema.effective_end_date）
         """
+        # 0. 计划数上限校验（2026-10-25 安全修复：防资源放大）
+        count_result = await self.db.execute(
+            select(func.count()).select_from(CheckinPlan).where(CheckinPlan.user_id == user_id)
+        )
+        if (count_result.scalar() or 0) >= MAX_PLANS_PER_USER:
+            raise ValueError(
+                f"计划数量已达上限（{MAX_PLANS_PER_USER} 个），请删除不再使用的计划后再创建"
+            )
+
         # 1. 校验通知渠道归属
         await self._validate_channel_ownership(user_id, channel_ids)
 
@@ -117,7 +138,7 @@ class PlanService:
         - 以 plan_id 为过滤条件，级联删除关联的打卡记录、通知记录、通知时间点、计划-渠道关联
         - 通知渠道本身保留，仅删除与该计划的关联记录
         """
-        plan = await self.get_by_id(plan_id)
+        plan = await self._get_plan_row(plan_id)
         if not plan:
             raise ValueError("计划不存在")
         if plan.user_id != user_id:
@@ -165,7 +186,7 @@ class PlanService:
         - 删除旧的时间点和渠道关联，写入新的
         - 校验 channel_ids 均属于该用户
         """
-        plan = await self.get_by_id(plan_id)
+        plan = await self._get_plan_row(plan_id)
         if not plan:
             raise ValueError("计划不存在")
         if plan.user_id != user_id:

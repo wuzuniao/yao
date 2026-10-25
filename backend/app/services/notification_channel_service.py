@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any
 
@@ -14,10 +15,29 @@ from ..schemas.notification_channel import (
     AppPushChannelValue,
     AppPushDeviceToken,
     EmailChannelValue,
+    APP_PUSH_MAX_DEVICE_TOKENS,
+    MAX_EMAIL_CHANNELS_PER_USER,
+    WECHAT_MAX_GRANTED_QUOTA,
 )
 from ..utils.crypto import encrypt
 from ..utils.logger import logger
 from ..utils.timezone import now_shanghai
+
+# 站内信渠道懒创建的进程内互斥锁（按用户，2026-10-25 安全加固）：
+# 并发首访 list_by_user/ensure_znx_channel 时只允许一个请求建行，其余等锁后
+# 经双重检查复用已建行，消除「查无→双建」竞态产生重复站内信渠道
+# （表无 (user_id, channel_type) 唯一约束——邮件类型天然多行不能加全表唯一索引；
+#   单进程部署下进程内锁足够，多进程部署需改为数据库层约束）
+_znx_create_locks: dict[int, asyncio.Lock] = {}
+
+
+def _znx_create_lock(user_id: int) -> asyncio.Lock:
+    """获取该用户的站内信渠道懒创建锁（不存在则创建，进程生命周期内复用）"""
+    lock = _znx_create_locks.get(user_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _znx_create_locks[user_id] = lock
+    return lock
 
 
 class NotificationChannelService:
@@ -38,12 +58,21 @@ class NotificationChannelService:
         查询用户的所有通知渠道（懒创建站内信渠道）
         - 用户注册/微信登录已迁移至 auth 服务，不再联动创建站内信渠道；
           用户首次打开通知方式页或建计划加载渠道列表时在此自动补建，业务零回调
+        - 一次查询取回全量渠道后内存判定站内信是否存在，缺失才补建，
+          稳态（站内信已存在）仅 1 次查询，省去此前「先查站内信再查全量」的固定 2 次
         """
-        await self.ensure_znx_channel(user_id)
         result = await self.db.execute(
             select(NotificationChannel).where(NotificationChannel.user_id == user_id)
         )
-        return list(result.scalars().all())
+        channels = list(result.scalars().all())
+        if any(ch.channel_type == CHANNEL_TYPE_ZNX for ch in channels):
+            return channels
+
+        # 站内信缺失：加锁双重检查后补建（防并发首访重复建行）
+        channel = await self.ensure_znx_channel(user_id)
+        # 站内信渠道 id 最小、历史上恒排首位，补建时置于列表首位保持响应顺序稳定
+        channels.insert(0, channel)
+        return channels
 
     async def get_by_id(self, channel_id: int) -> NotificationChannel | None:
         """根据ID查询渠道"""
@@ -55,33 +84,35 @@ class NotificationChannelService:
     async def ensure_znx_channel(self, user_id: int) -> NotificationChannel:
         """
         为用户创建/获取站内信通知渠道（懒创建）
+        - 进程内互斥锁 + 双重检查：并发首访只建一行，其余等锁后复用（2026-10-25 安全加固）
         - 若已存在则返回现有记录，否则创建新记录并提交落库
         - channel_value = 用户ID（字符串形式）
         - 用户系统迁移至 auth 服务后注册不再联动创建，
           进入设置页/通知方式页加载渠道列表（list_by_user）时在此自动补建
         """
-        result = await self.db.execute(
-            select(NotificationChannel).where(
-                NotificationChannel.user_id == user_id,
-                NotificationChannel.channel_type == CHANNEL_TYPE_ZNX,
+        async with _znx_create_lock(user_id):
+            result = await self.db.execute(
+                select(NotificationChannel).where(
+                    NotificationChannel.user_id == user_id,
+                    NotificationChannel.channel_type == CHANNEL_TYPE_ZNX,
+                )
             )
-        )
-        existing = result.scalar_one_or_none()
-        if existing:
-            return existing
+            existing = result.scalar_one_or_none()
+            if existing:
+                return existing
 
-        channel = NotificationChannel(
-            user_id=user_id,
-            channel_type=CHANNEL_TYPE_ZNX,
-            channel_value=str(user_id),
-            enabled=True,
-        )
-        self.db.add(channel)
-        # 必须显式 commit 落库：get_db 请求结束时只 close 不提交，
-        # 仅 flush 的话新渠道会随事务回滚丢失（懒创建此前从未持久化的根因）
-        await self.db.commit()
-        await self.db.refresh(channel)
-        return channel
+            channel = NotificationChannel(
+                user_id=user_id,
+                channel_type=CHANNEL_TYPE_ZNX,
+                channel_value=str(user_id),
+                enabled=True,
+            )
+            self.db.add(channel)
+            # 必须显式 commit 落库：get_db 请求结束时只 close 不提交，
+            # 仅 flush 的话新渠道会随请求事务回滚丢失（懒创建此前从未持久化的根因）
+            await self.db.commit()
+            await self.db.refresh(channel)
+            return channel
 
     async def create_email_channel(
         self,
@@ -98,11 +129,17 @@ class NotificationChannelService:
         - channel_value 以 JSON 字符串形式存储 SMTP 配置
         - enabled 控制是否启用
         """
-        # 检查是否已存在相同邮箱地址的邮件渠道
-        existing_channels = await self.list_by_user(user_id)
-        for ch in existing_channels:
-            if ch.channel_type != CHANNEL_TYPE_EMAIL:
-                continue
+        # 只查该用户的邮件渠道：同邮箱去重与数量上限校验均只涉及邮件类型，
+        # 定向查询省去 list_by_user 连带的站内信懒创建与全量渠道查询（3 次 → 1 次）
+        result = await self.db.execute(
+            select(NotificationChannel).where(
+                NotificationChannel.user_id == user_id,
+                NotificationChannel.channel_type == CHANNEL_TYPE_EMAIL,
+            )
+        )
+        email_channel_count = 0
+        for ch in result.scalars().all():
+            email_channel_count += 1
             try:
                 cfg = EmailChannelValue.model_validate_json(ch.channel_value)
                 if cfg.email == email:
@@ -112,6 +149,8 @@ class NotificationChannelService:
                     raise
                 # 解析失败的旧记录忽略，继续创建
                 logger.warning(f"用户 {user_id} 邮件渠道 {ch.id} JSON 解析失败：{e}")
+        if email_channel_count >= MAX_EMAIL_CHANNELS_PER_USER:
+            raise ValueError(f"邮件通知方式最多配置 {MAX_EMAIL_CHANNELS_PER_USER} 个")
 
         cfg = EmailChannelValue(
             smtp_host=smtp_host,
@@ -281,15 +320,17 @@ class NotificationChannelService:
     async def grant_wechat(self, user_id: int) -> dict[str, Any]:
         """
         微信订阅授权回调：用户每同意一次授权即 +1 额度并启用该渠道。
+        granted 达到 WECHAT_MAX_GRANTED_QUOTA 上限后不再累加（防无限刷额度），仍返回当前额度。
         返回 {enabled, granted, sent, remaining} 供前端展示。
         """
         channel = await self.get_or_create_wechat_channel(user_id)
         channel.enabled = True
         quota = self.parse_wechat_channel_value(channel.channel_value)
-        quota["granted"] += 1
-        channel.channel_value = json.dumps(quota, ensure_ascii=False)
-        channel.updated_at = now_shanghai()
-        await self.db.commit()
+        if quota["granted"] < WECHAT_MAX_GRANTED_QUOTA:
+            quota["granted"] += 1
+            channel.channel_value = json.dumps(quota, ensure_ascii=False)
+            channel.updated_at = now_shanghai()
+            await self.db.commit()
         await self.db.refresh(channel)
         return {
             "enabled": True,
@@ -367,6 +408,12 @@ class NotificationChannelService:
                 item.platform = platform  # type: ignore[assignment]
                 break
         else:
+            # 设备数上限校验（2026-10-25 安全修复：防数组无限膨胀）
+            if len(cfg.device_tokens) >= APP_PUSH_MAX_DEVICE_TOKENS:
+                raise ValueError(
+                    f"App推送设备数已达上限（最多 {APP_PUSH_MAX_DEVICE_TOKENS} 台），"
+                    "请删除App推送通知方式后重新添加"
+                )
             cfg.device_tokens.append(
                 AppPushDeviceToken(token=device_token, platform=platform, fail_count=0)
             )
