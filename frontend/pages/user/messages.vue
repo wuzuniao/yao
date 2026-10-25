@@ -112,8 +112,8 @@
             <view v-if="!item.is_read" class="messages-page__card-bar"></view>
             <view class="messages-page__card-body">
               <text class="messages-page__card-title">{{ item.title }}</text>
-              <text class="messages-page__card-meta">{{ formatSendTime(item.created_at) }}</text>
               <text class="messages-page__card-text">{{ item.content }}</text>
+              <text class="messages-page__card-meta">{{ formatSendTime(item.created_at) }}</text>
             </view>
           </view>
 
@@ -139,7 +139,7 @@
  *  - 分类切换：「提醒」（yao 后端 notification_logs，打卡提醒）/「公告」（auth 直连查询）
  *  - 「全部已读」仅作用于当前选中分类（公告已读状态存 auth，按项目独立维护）
  *  - 提醒卡片内容：计划名称 + 备注说明 + 发送时间
- *  - 公告卡片内容：公告标题 + 发布时间 + 全部内容（未读高亮同提醒）
+ *  - 公告卡片内容：公告标题 + 全部内容 + 发布时间（未读高亮同提醒）
  *  - 通知按钮图标：提醒未读 + 公告未读合计驱动（有未读显示 tongzhi_1.png）
  *  - 公告未读数仅在打开本页时查询并入全局未读（刷新时机与原提醒逻辑一致）
  *  - 分页加载：触底加载下一页（onReachBottom，两分类独立分页）
@@ -475,7 +475,7 @@ onReachBottom(() => {
   font-weight: 600;
 }
 
-/* 公告卡片发布时间（标题下方次要信息，同提醒卡片时间弱化色） */
+/* 公告卡片发布时间（内容下方次要信息，同提醒卡片时间弱化色） */
 .messages-page__card-meta {
   color: var(--color-text-tertiary);
   font-size: 24rpx;
