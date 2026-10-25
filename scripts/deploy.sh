@@ -451,6 +451,23 @@ generate_nginx_conf() {
 
   # 站点配置统一放共享 nginx 的 conf.d 目录（/opt/deploy/nginx），放入即被加载
   mkdir -p "$INFRA_DIR/nginx"
+  # 基础安全响应头片段：nginx 的 add_header 在 location 内声明时会整体遮蔽 server 级头，
+  # 故除 server 级引用外，凡自带 add_header（Cache-Control）的 location 均须显式 include。
+  # 片段位于 conf.d/snippets/ 子目录，不会被 nginx 的 conf.d/*.conf 通配加载，仅经 include 生效
+  mkdir -p "$INFRA_DIR/nginx/snippets"
+  cat > "$INFRA_DIR/nginx/snippets/security-headers.conf" <<'EOF'
+# 基础安全响应头（由 yao 服务 scripts/deploy.sh 生成维护，站点配置 include 引用）
+# HSTS：一年内强制浏览器走 HTTPS（泛域名证书 + HTTP 301 跳转，全站恒可用 HTTPS）
+add_header Strict-Transport-Security "max-age=31536000" always;
+# 禁止浏览器 MIME 嗅探
+add_header X-Content-Type-Options "nosniff" always;
+# 仅允许同源 iframe 嵌入（防点击劫持）
+add_header X-Frame-Options "SAMEORIGIN" always;
+# 跨源跳转仅发送 origin，不泄露完整 URL
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+# 收敛未使用的设备能力
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+EOF
   # 写入临时文件再替换占位符，最后用 cp 覆盖目标文件（保留 inode）
   # —— 避免 sed -i 更换 inode，导致运行中 nginx 容器的 bind mount 仍读到旧内容
   local _nginx_tmp="$INFRA_DIR/nginx/.yao.conf.tmp.$$"
@@ -462,6 +479,8 @@ generate_nginx_conf() {
 #   - 证书为 wuzuniao.com 泛域名证书（acme.sh 自动续期，覆盖 *.wuzuniao.com）
 #   - 本文件由 yao 服务的 scripts/deploy.sh 生成维护（幂等），手动修改请同步模板
 #   - resolver 已统一在 00-resolver.conf 声明，站点配置内不可重复
+#   - 基础安全响应头统一由 conf.d/snippets/security-headers.conf 提供（server 级与
+#     自带 add_header 的 location 均引用——nginx 的 location 级 add_header 会遮蔽 server 级）
 
 # HTTP -> HTTPS 重定向
 server {
@@ -493,6 +512,9 @@ server {
     gzip_comp_level 5;
     gzip_min_length 1024;
     gzip_types text/css text/javascript application/javascript application/json image/svg+xml application/xml text/plain;
+
+    # 基础安全响应头（下方无 add_header 的 location 自动继承本级头）
+    include /etc/nginx/conf.d/snippets/security-headers.conf;
 
     # H5 前端静态资源根目录（共享 nginx compose 挂载至 /var/www/yao）
     root /var/www/yao;
@@ -530,6 +552,8 @@ server {
     location ^~ /h5/assets/ {
         alias /var/www/yao/assets/;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
+        # 本 location 自带 add_header，server 级安全头被遮蔽，须显式引用
+        include /etc/nginx/conf.d/snippets/security-headers.conf;
         # 单连接限速：防爬虫（bingbot 等）并发抓取挤占带宽与 nginx worker，拖慢真实用户请求
         limit_rate 512k;
         try_files $uri =404;
@@ -540,6 +564,7 @@ server {
     location = /h5/index.html {
         alias /var/www/yao/index.html;
         add_header Cache-Control "no-cache" always;
+        include /etc/nginx/conf.d/snippets/security-headers.conf;
     }
 
     # 其余 /h5/ 路径（含 history 路由 /h5/pages/...）：静态命中，未命中回退入口页
@@ -558,6 +583,7 @@ server {
     # 过期后经 ETag/Last-Modified 协商返回 304
     location ^~ /static/ {
         add_header Cache-Control "public, max-age=604800" always;
+        include /etc/nginx/conf.d/snippets/security-headers.conf;
         # 单连接限速：降低爬虫与恶意流量对出口带宽的挤占
         limit_rate 256k;
         try_files $uri =404;
@@ -568,6 +594,7 @@ server {
     # 浏览器等会按启发式策略强缓存入口页，导致继续引用已被清空的旧 bundle（白屏/旧代码）
     location = /index.html {
         add_header Cache-Control "no-cache" always;
+        include /etc/nginx/conf.d/snippets/security-headers.conf;
     }
 
     # 过渡期：域名根路径 302 至 /h5/（Web 端上线后以 Web 端站点配置替换本块）
@@ -591,6 +618,7 @@ EOF
   rm -f "$_nginx_tmp"
   # 清理旧版单文件站点配置（历史遗留，避免与新 yao.conf 重复定义 server）
   rm -f "$INFRA_DIR/nginx/default.conf"
+  log_ok "安全响应头片段已生成：$INFRA_DIR/nginx/snippets/security-headers.conf"
   log_ok "Nginx 站点配置已生成：$INFRA_DIR/nginx/yao.conf"
 }
 
@@ -644,129 +672,6 @@ networks:
 EOF
 
   log_ok "docker-compose.yml 已生成：$DEPLOY_DIR/docker-compose.yml"
-}
-
-# ============== 9.1 生成 auth 统一认证服务的 nginx 站点配置（同机部署时） ==============
-# 说明：auth 服务与 yao 同机部署时，其 TLS（auth.wuzuniao.com）由共享 nginx 统一承载；
-#       证书为 wuzuniao.com 泛域名证书（acme.sh 统一管理），本函数依据 auth 是否已部署
-#       生成/清理 auth.conf（auth 侧 deploy.sh 亦会写入同内容文件，两侧幂等一致）
-generate_auth_nginx_conf() {
-  local auth_conf="$INFRA_DIR/nginx/auth.conf"
-  local auth_deployed=false
-  if [[ -f "${AUTH_INSTALL_DIR:-/opt/auth}/backend/.env" ]] || docker ps --format '{{.Names}}' | grep -q "^auth-backend$"; then
-    auth_deployed=true
-  fi
-
-  if [[ "$auth_deployed" != true ]]; then
-    # auth 未部署：清理旧站点配置避免 nginx 加载到无效上游
-    if [[ -f "$auth_conf" ]]; then
-      rm -f "$auth_conf"
-      log_info "未检测到 auth 服务部署，已移除 auth.wuzuniao.com 站点配置（auth 部署后将自动恢复）"
-    fi
-    return 0
-  fi
-
-  cat > "$auth_conf" <<'EOF'
-# auth.wuzuniao.com —— 认证、授权、审计服务（由共享 nginx 统一承载 TLS 与反向代理）
-# 说明：
-#   - auth-backend 容器经 app-net 网络加入（auth 服务与 yao 同机部署）
-#   - 使用变量 + resolver 动态解析上游：auth-backend 未运行时 nginx 仍可正常启动（请求时 502）
-#   - auth 服务全部路由（/api/、/oauth/、/.well-known/、/internal/、/health）均挂应用根路径，整体反代即可
-#   - 证书为 wuzuniao.com 泛域名证书（acme.sh 自动续期，覆盖 *.wuzuniao.com）
-#   - 本文件由 auth 服务的 scripts/deploy.sh 与 yao 服务的 scripts/deploy.sh 共同维护（内容一致，幂等），手动修改请同步两侧模板
-#   - resolver 已统一在 00-resolver.conf 声明，站点配置内不可重复
-#   - 缓存策略：HTML 协商缓存（no-cache，发版即生效）；js/css/图片/字体浏览器缓存 7 天
-#     （静态文件名固定无 hash，html 引用不带 ?v= 参数，零维护）。代价：修改 js/css 后
-#     已访问过的用户最长 7 天内仍运行旧文件（html 引用 URL 未变，强缓存期内不发请求）；
-#     紧急修复可在 html 引用中临时追加 ?v=xxx 参数立即换新，或让用户强制刷新（Ctrl+F5）。
-#     过期后经 FastAPI StaticFiles 的 ETag 协商返回 304，零内容传输。
-
-# HTTP -> HTTPS 重定向
-server {
-    listen 80;
-    server_name auth.wuzuniao.com;
-    return 301 https://$host$request_uri;
-}
-
-# HTTPS：认证、授权、审计服务反向代理
-server {
-    listen 443 ssl;
-    http2 on;
-    server_name auth.wuzuniao.com;
-
-    ssl_certificate     /etc/nginx/certs/wuzuniao.com.pem;
-    ssl_certificate_key /etc/nginx/certs/wuzuniao.com.key;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache   shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    client_max_body_size 5m;
-
-    # gzip 压缩：HTML 由 gzip 模块默认压缩；此处补充 js/css/json/svg 等文本类型，
-    # 传输体积降 60-70%，低带宽服务器上显著加快首屏；仅压缩 >1k 响应避免小响应浪费 CPU
-    gzip on;
-    gzip_vary on;
-    gzip_comp_level 5;
-    gzip_min_length 1024;
-    gzip_types text/css text/javascript application/javascript application/json image/svg+xml application/xml text/plain;
-
-    set $auth_upstream http://auth-backend:11000;
-
-    # 站点首页（/ 经 StaticFiles(html=True) 返回 index.html）：禁止强缓存（协商缓存）
-    location = / {
-        proxy_pass $auth_upstream;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-        add_header Cache-Control "no-cache" always;
-    }
-
-    # HTML 子页（/pages/**.html 与 /index.html）：禁止强缓存（协商缓存），发版即生效；
-    # 页面引用的 js/css 均带 ?v= 版本参数，html 更新即带动静态资源换新
-    location ~* \.html$ {
-        proxy_pass $auth_upstream;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-        add_header Cache-Control "no-cache" always;
-    }
-
-    # 带静态后缀的资源（js/css/图片/字体）：浏览器强缓存 7 天，重复访问不再请求服务器；
-    # 静态文件名固定无 html ?v= 参数（零维护），修改文件后最长 7 天生效（紧急可临时加 ?v=）；
-    # API 路径均无静态后缀，不受影响（仍走下方 location / 反代）
-    # 单连接限速 256k：静态文件经反代由 auth-backend(Python) 提供，限速降低爬虫/恶意
-    # 流量对出口带宽与后端事件循环的挤占（nginx 会先缓冲上游响应再向客户端慢速发送）
-    location ~* \.(js|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot)$ {
-        proxy_pass $auth_upstream;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-        add_header Cache-Control "public, max-age=604800" always;
-        limit_rate 256k;
-    }
-
-    # 其余路径（/api/、/oauth/、/.well-known/、/internal/、/health、/readme 及未知路径）：
-    # 整体反代 auth-backend，API 响应不缓存
-    location / {
-        proxy_pass $auth_upstream;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-    }
-}
-EOF
-
-  log_ok "auth.wuzuniao.com 站点配置已生成：$auth_conf"
 }
 
 # ============== 10. 启动 MariaDB（共享基础设施） ==============
@@ -1200,7 +1105,8 @@ print_summary() {
     3. 更新代码：cd $INSTALL_DIR && git pull，然后 cd $DEPLOY_DIR && docker compose restart backend
     4. 如遇 SELinux 导致的挂载问题，可执行 setenforce 0 临时关闭后重试
     5. 更新 H5 前端代码后，FORCE_FRONTEND_BUILD=1 bash scripts/deploy.sh 强制重建（默认跳过已有构建产物）
-    6. auth 统一认证服务（同机部署）已由共享 nginx 统一承载 auth.wuzuniao.com（检测到其部署时自动生成站点配置）；
+    6. auth 统一认证服务（同机部署）的站点配置 auth.conf 由 auth 仓库的部署脚本自行维护，
+       本脚本不生成/修改 auth 站点配置（各仓库部署脚本各自维护，不再强关联）；
        服务间令牌 AUTH_SERVICE_TOKEN 已自动与 auth 侧对齐（任一先部署均收敛为同一令牌）
     7. 泛域名证书由 acme.sh 自动续期并热重载共享 nginx，全站子域名均自动覆盖
 

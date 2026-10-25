@@ -108,7 +108,7 @@ class TestCheckinAPI:
         })
 
         assert resp.status_code == 400
-        assert "计划不存在" in resp.json()["detail"]
+        assert "计划不存在" in resp.json()["msg"]
 
     async def test_create_checkin_other_user_plan(self, auth_client, db_session):
         """计划属于其他用户：返回 400"""
@@ -121,7 +121,7 @@ class TestCheckinAPI:
         })
 
         assert resp.status_code == 400
-        assert "无权" in resp.json()["detail"]
+        assert "无权" in resp.json()["msg"]
 
     async def test_create_checkin_nonexistent_plan_time(self, auth_client):
         """通知时间点不存在：返回 400"""
@@ -134,7 +134,7 @@ class TestCheckinAPI:
         })
 
         assert resp.status_code == 400
-        assert "通知时间点不存在" in resp.json()["detail"]
+        assert "通知时间点不存在" in resp.json()["msg"]
 
     async def test_create_checkin_plan_time_not_belong_to_plan(self, auth_client):
         """通知时间点不属于该计划：返回 400"""
@@ -148,7 +148,7 @@ class TestCheckinAPI:
         })
 
         assert resp.status_code == 400
-        assert "不属于该计划" in resp.json()["detail"]
+        assert "不属于该计划" in resp.json()["msg"]
 
     async def test_create_checkin_invalid_time_format(self, auth_client):
         """打卡时间格式不正确：Pydantic schema 校验器优先拦截，返回 422"""
@@ -306,7 +306,7 @@ class TestCheckinAPI:
         resp = await auth_client.get("/api/v1/checkins/day?date=invalid-date")
 
         assert resp.status_code == 400
-        assert "日期格式" in resp.json()["detail"]
+        assert "日期格式" in resp.json()["msg"]
 
     # ==================== 权限校验 ====================
 

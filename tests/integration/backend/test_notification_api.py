@@ -192,7 +192,7 @@ class TestCreateEmailChannel:
             auth_client, email="dup@example.com", password="pass2"
         )
         assert resp.status_code == 400
-        assert "已配置" in resp.json()["detail"]
+        assert "已配置" in resp.json()["msg"]
 
     @pytest.mark.integration
     async def test_create_email_channel_invalid_port(self, auth_client, test_user):
@@ -308,7 +308,7 @@ class TestUpdateEmailChannel:
             },
         )
         assert resp.status_code == 400
-        assert "不存在" in resp.json()["detail"]
+        assert "不存在" in resp.json()["msg"]
 
     @pytest.mark.integration
     async def test_update_channel_belonging_to_another_user(
@@ -346,7 +346,7 @@ class TestUpdateEmailChannel:
             },
         )
         assert resp.status_code == 400
-        assert "无权" in resp.json()["detail"]
+        assert "无权" in resp.json()["msg"]
 
 
 # ===== 通知渠道：删除渠道 =====
@@ -379,7 +379,7 @@ class TestDeleteChannel:
             json={"channel_id": znx_channel.id},
         )
         assert resp.status_code == 400
-        assert "不允许删除" in resp.json()["detail"]
+        assert "不允许删除" in resp.json()["msg"]
 
     @pytest.mark.integration
     async def test_delete_nonexistent_channel(self, auth_client, test_user):
@@ -388,7 +388,7 @@ class TestDeleteChannel:
             "/api/v1/notification-channels", json={"channel_id": 99999}
         )
         assert resp.status_code == 400
-        assert "不存在" in resp.json()["detail"]
+        assert "不存在" in resp.json()["msg"]
 
 
 # ===== 站内信：列表查询 =====
@@ -553,7 +553,7 @@ class TestMarkAsRead:
             "/api/v1/notification-logs/read", json={"log_id": 99999}
         )
         assert resp.status_code == 400
-        assert "不存在" in resp.json()["detail"]
+        assert "不存在" in resp.json()["msg"]
 
     @pytest.mark.integration
     async def test_mark_log_belonging_to_another_user(
@@ -570,7 +570,7 @@ class TestMarkAsRead:
             "/api/v1/notification-logs/read", json={"log_id": other_log.id}
         )
         assert resp.status_code == 400
-        assert "无权" in resp.json()["detail"]
+        assert "无权" in resp.json()["msg"]
 
 
 # ===== 站内信：全部标记已读 =====

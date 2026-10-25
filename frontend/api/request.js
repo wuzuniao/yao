@@ -6,7 +6,8 @@
  * - 自动附加 JWT：从本地存储读取 accessToken，存在则添加 Authorization: Bearer <token>
  * - 统一解析后端响应与错误：
  *   - 成功（2xx）：resolve 响应体
- *   - 失败：reject Error，message 兼容 FastAPI 校验错误（detail 数组）/ HTTPException（detail 字符串）/ 业务格式
+ *   - 失败：reject Error，message 兼容 yao 统一错误格式（msg 字段）/ auth 服务
+ *     FastAPI 默认格式（detail 字符串 / detail 数组）
  * - 401 处理（静默刷新重试）：
  *   - 非刷新请求且本地存在 refreshToken 时，先经 uni.request 直连
  *     AUTH_BASE_URL + /oauth/token 静默刷新（轮换制，更新双 token），
@@ -199,12 +200,17 @@ export function request({ url, method = 'GET', data, header, timeout, baseUrl, s
           _recoverAndRetry({ url, method, data, header, timeout, baseUrl }, resolve, reject)
           return
         }
-        // 429 限流：请求过于频繁，展示后端 detail 文案或本地化提示，不跳转登录页
+        // 429 限流：请求过于频繁，展示后端文案或本地化提示，不跳转登录页
         if (res.statusCode === 429) {
           let msg = t('request.tooManyRequests')
-          const detail = res.data && res.data.detail
-          if (typeof detail === 'string' && detail) {
-            msg = detail
+          // yao 后端统一错误格式 {code,msg,data}；auth 服务仍为 FastAPI 默认 {detail}
+          if (res.data && typeof res.data.msg === 'string' && res.data.msg) {
+            msg = res.data.msg
+          } else {
+            const detail = res.data && res.data.detail
+            if (typeof detail === 'string' && detail) {
+              msg = detail
+            }
           }
           reject(new Error(msg))
           return
@@ -215,12 +221,17 @@ export function request({ url, method = 'GET', data, header, timeout, baseUrl, s
         }
         // 解析错误信息
         let msg = t('request.failed')
-        const detail = res.data && res.data.detail
-        if (typeof detail === 'string') {
-          msg = detail
-        } else if (Array.isArray(detail)) {
-          // Pydantic 校验错误：[{ msg: '...' }, ...]
-          msg = detail.map((e) => e.msg).join(t('request.errorSeparator'))
+        if (res.data && typeof res.data.msg === 'string' && res.data.msg) {
+          // yao 后端全局异常处理器统一错误格式 {code,msg,data}
+          msg = res.data.msg
+        } else {
+          const detail = res.data && res.data.detail
+          if (typeof detail === 'string') {
+            msg = detail
+          } else if (Array.isArray(detail)) {
+            // auth 服务 Pydantic 校验错误：[{ msg: '...' }, ...]
+            msg = detail.map((e) => e.msg).join(t('request.errorSeparator'))
+          }
         }
         reject(new Error(msg))
       },
