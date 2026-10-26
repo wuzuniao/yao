@@ -950,10 +950,14 @@ ENCRYPTION_SECRET_KEY=${enc_key}
 AUTH_BASE_URL=https://auth.wuzuniao.com
 AUTH_ISSUER=https://auth.wuzuniao.com
 AUTH_SERVICE_TOKEN=${auth_token}
+AUTH_CLIENT_ID=yao
 REVOCATION_SYNC_INTERVAL_SECONDS=300
 
 # CORS 跨域配置（本地开发源由 main.py 的 allow_origin_regex 统一放行）
 CORS_ALLOW_ORIGINS=https://yao.wuzuniao.com
+
+# 通知日志保留天数（后台每日清理「非未读且超期」的站内信发送记录）
+NOTIFICATION_LOG_RETENTION_DAYS=365
 EOF
 
   chmod 600 "$env_file"
