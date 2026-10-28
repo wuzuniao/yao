@@ -320,13 +320,16 @@ class NotificationChannelService:
     async def grant_wechat(self, user_id: int) -> dict[str, Any]:
         """
         微信订阅授权回调：用户每同意一次授权即 +1 额度并启用该渠道。
-        granted 达到 WECHAT_MAX_GRANTED_QUOTA 上限后不再累加（防无限刷额度），仍返回当前额度。
+        上限针对「未消费额度」remaining=granted-sent：达到 WECHAT_MAX_GRANTED_QUOTA
+        后不再累加（防无限囤积额度），仍返回当前额度。
+        注意不可按 granted 终身累计值设限——一次性订阅本就要求每次下发前重新授权，
+        终身设限会让老用户授权次数冻结在历史值上，额度耗尽后永远无法恢复（2026-10-28 修复）。
         返回 {enabled, granted, sent, remaining} 供前端展示。
         """
         channel = await self.get_or_create_wechat_channel(user_id)
         channel.enabled = True
         quota = self.parse_wechat_channel_value(channel.channel_value)
-        if quota["granted"] < WECHAT_MAX_GRANTED_QUOTA:
+        if quota["granted"] - quota["sent"] < WECHAT_MAX_GRANTED_QUOTA:
             quota["granted"] += 1
             channel.channel_value = json.dumps(quota, ensure_ascii=False)
             channel.updated_at = now_shanghai()
